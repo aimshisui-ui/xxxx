@@ -15,7 +15,7 @@ public class Veilweaver {
 
     public enum Phase { ONE, TWO, THREE }
 
-    public static final double MAX_HP = 750.0;
+    public static final double MAX_HP = 7500.0;
     public static final String NBT_VEILWEAVER = "se_veilweaver";
 
     private final SoulEnchants plugin;
@@ -214,6 +214,15 @@ public class Veilweaver {
     public double getIncomingDamageMultiplier(EntityDamageType type) {
         if (phase == Phase.TWO && type == EntityDamageType.ARROW) return 0.5;
         return 1.0;
+    }
+
+    /** Players within radius of the boss itself — used by attacks instead of the static arena center. */
+    public List<Player> nearbyPlayers(double radius) {
+        List<Player> list = new ArrayList<>();
+        for (Player p : entity.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(entity.getLocation()) <= radius * radius) list.add(p);
+        }
+        return list;
     }
 
     public boolean isInvulnerable() { return invulnerable; }

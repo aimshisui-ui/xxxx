@@ -29,7 +29,7 @@ public class VeilweaverAttacks {
             @Override public void run() {
                 if (t++ >= 10) {
                     // Impact: damage + heavier particle burst
-                    for (Player p : vw.getArena().playersInArena()) {
+                    for (Player p : vw.nearbyPlayers(25)) {
                         Vector toPlayer = p.getLocation().toVector().subtract(loc.toVector()).setY(0);
                         if (toPlayer.lengthSquared() > 16) continue;
                         double dot = toPlayer.normalize().dot(forward);
@@ -63,7 +63,7 @@ public class VeilweaverAttacks {
 
     public static void shatterBolt(Veilweaver vw) {
         LivingEntity boss = vw.getEntity();
-        List<Player> players = vw.getArena().playersInArena();
+        List<Player> players = vw.nearbyPlayers(25);
         if (players.isEmpty()) return;
         for (int i = 0; i < 3; i++) {
             Player target = players.get(RNG.nextInt(players.size()));
@@ -97,7 +97,7 @@ public class VeilweaverAttacks {
 
     public static void dimensionalRift(Veilweaver vw) {
         LivingEntity boss = vw.getEntity();
-        List<Player> players = vw.getArena().playersInArena();
+        List<Player> players = vw.nearbyPlayers(25);
         if (players.isEmpty()) return;
         Player target = players.get(RNG.nextInt(players.size()));
         // Telegraph at current boss location (fracturing portal) before teleport
@@ -140,7 +140,7 @@ public class VeilweaverAttacks {
 
     public static void loomLaser(Veilweaver vw) {
         LivingEntity boss = vw.getEntity();
-        List<Player> players = vw.getArena().playersInArena();
+        List<Player> players = vw.nearbyPlayers(25);
         if (players.isEmpty()) return;
         final Player target = players.get(RNG.nextInt(players.size()));
         target.sendTitle("§5✦", "§dLoom Laser locked on you!");
@@ -227,7 +227,7 @@ public class VeilweaverAttacks {
                     p.getWorld().playEffect(p, Effect.STEP_SOUND, org.bukkit.Material.NETHER_BRICK.getId());
                 }
                 // Damage players currently in this ring (within 0.8 blocks of radius)
-                for (Player p : vw.getArena().playersInArena()) {
+                for (Player p : vw.nearbyPlayers(25)) {
                     double dist = p.getLocation().distance(center);
                     if (Math.abs(dist - radius) < 0.8) {
                         com.soulenchants.bosses.BossDamage.apply(p, 25, boss);
@@ -268,7 +268,7 @@ public class VeilweaverAttacks {
             int t = 0;
             @Override public void run() {
                 if (t++ >= 16) { cancel(); return; }
-                for (Player p : vw.getArena().playersInArena()) {
+                for (Player p : vw.nearbyPlayers(25)) {
                     if (RNG.nextDouble() < 0.4) {
                         Location strike = p.getLocation().clone().add(RNG.nextDouble() * 4 - 2, 0, RNG.nextDouble() * 4 - 2);
                         strike.getWorld().strikeLightningEffect(strike);
@@ -317,7 +317,7 @@ public class VeilweaverAttacks {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private static Player pickPlayer(Veilweaver vw) {
-        List<Player> players = vw.getArena().playersInArena();
+        List<Player> players = vw.nearbyPlayers(25);
         return players.isEmpty() ? null : players.get(RNG.nextInt(players.size()));
     }
 

@@ -23,12 +23,14 @@ public class IronGolemBoss {
 
     public enum Phase { ONE, TWO }
 
-    public static final double MAX_HP = 500.0;
+    public static final double MAX_HP = 5000.0;
     public static final String NBT_IRONGOLEM = "se_irongolem_boss";
 
     private final SoulEnchants plugin;
     private final IronGolem entity;
     private final Map<UUID, Double> damageDealt = new HashMap<>();
+    // Persistent record of every temp block we've placed; emergency cleanup on boss death
+    private final List<Location> activeTempBlocks = new ArrayList<>();
     private Phase phase = Phase.ONE;
     private boolean invulnerable = false;
     private boolean usedReinforce = false;
@@ -262,19 +264,27 @@ public class IronGolemBoss {
     private void ironWall() {
         final Location center = entity.getLocation();
         final List<Location> wallLocs = new ArrayList<>();
+        // Place 4 walls × 5 wide × 2 tall = 40 blocks. Replace anything except bedrock.
         for (int i = 0; i < 4; i++) {
             double angle = i * Math.PI / 2;
             for (int dx = -2; dx <= 2; dx++) {
-                Location wallLoc = center.clone().add(Math.cos(angle) * 4 + dx * Math.sin(angle), 1,
-                        Math.sin(angle) * 4 - dx * Math.cos(angle));
-                if (wallLoc.getBlock().getType() == Material.AIR) {
+                for (int dy = 0; dy < 2; dy++) {
+                    Location wallLoc = center.clone().add(
+                            Math.cos(angle) * 4 + dx * Math.sin(angle),
+                            dy + 1,
+                            Math.sin(angle) * 4 - dx * Math.cos(angle));
+                    Material existing = wallLoc.getBlock().getType();
+                    if (existing == Material.BEDROCK || existing == Material.COBBLESTONE) continue;
                     wallLoc.getBlock().setType(Material.COBBLESTONE);
                     wallLocs.add(wallLoc);
+                    activeTempBlocks.add(wallLoc);
                 }
             }
         }
         entity.getWorld().playSound(center, Sound.ANVIL_LAND, 2.0f, 0.5f);
-        // Fade telegraph at 8s — smoke particles + sound
+        plugin.getLogger().info("[IronGolem] Iron Wall placed " + wallLocs.size() + " blocks");
+
+        // Fade telegraph at 8s
         new BukkitRunnable() {
             @Override public void run() {
                 for (Location l : wallLocs) {
@@ -282,19 +292,24 @@ public class IronGolemBoss {
                 }
                 center.getWorld().playSound(center, Sound.FIZZ, 1.0f, 1.5f);
             }
-        }.runTaskLater(plugin, 160L); // 8 seconds
-        // Remove walls after 10 seconds
+        }.runTaskLater(plugin, 160L);
+
+        // Remove walls at 10s — unconditional removal for blocks we placed
         new BukkitRunnable() {
             @Override public void run() {
+                int removed = 0;
                 for (Location l : wallLocs) {
                     if (l.getBlock().getType() == Material.COBBLESTONE) {
                         l.getBlock().setType(Material.AIR);
                         l.getWorld().playEffect(l.clone().add(0.5, 0.5, 0.5), Effect.STEP_SOUND,
                                 Material.COBBLESTONE.getId());
+                        removed++;
                     }
+                    activeTempBlocks.remove(l);
                 }
+                plugin.getLogger().info("[IronGolem] Iron Wall removed " + removed + " blocks");
             }
-        }.runTaskLater(plugin, 200L); // 10 seconds
+        }.runTaskLater(plugin, 200L);
     }
 
     private void groundSlam() {
@@ -363,6 +378,11 @@ public class IronGolemBoss {
 
     public void stop(boolean killed) {
         if (tickTask != null) try { tickTask.cancel(); } catch (Exception ignored) {}
+        // Safety net: clean up any temp blocks still in the world
+        for (Location l : new ArrayList<>(activeTempBlocks)) {
+            if (l.getBlock().getType() == Material.COBBLESTONE) l.getBlock().setType(Material.AIR);
+        }
+        activeTempBlocks.clear();
         if (killed) plugin.getServer().broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD
                 + "✦ The Ironheart Colossus has fallen. ✦");
     }
