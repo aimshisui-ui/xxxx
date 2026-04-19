@@ -264,7 +264,7 @@ public class CombatListener implements Listener {
     private void handleArmorOnHit(Player victim, EntityDamageByEntityEvent e) {
         ItemStack[] armor = victim.getInventory().getArmorContents();
         int hardened=0, antikb=0, molten=0, lastStand=0, stormcall=0, guardians=0,
-            reflect=0, endurance=0, vengeance=0, soulburst=0;
+            reflect=0, endurance=0, vengeance=0, soulburst=0, armored=0, enlightened=0;
         for (ItemStack a : armor) {
             if (a == null) continue;
             hardened   = Math.max(hardened,   ItemUtil.getLevel(a, "hardened"));
@@ -277,8 +277,31 @@ public class CombatListener implements Listener {
             endurance  = Math.max(endurance,  ItemUtil.getLevel(a, "endurance"));
             vengeance  = Math.max(vengeance,  ItemUtil.getLevel(a, "vengeance"));
             soulburst  = Math.max(soulburst,  ItemUtil.getLevel(a, "soulburst"));
+            armored    = Math.max(armored,    ItemUtil.getLevel(a, "armored"));
+            enlightened= Math.max(enlightened,ItemUtil.getLevel(a, "enlightened"));
         }
         final UUID id = victim.getUniqueId();
+
+        // Armored: 25% chance, scaled reduction vs sword attackers
+        if (armored > 0 && e.getDamager() instanceof Player) {
+            ItemStack hand = ((Player) e.getDamager()).getItemInHand();
+            if (hand != null && hand.getType().name().endsWith("_SWORD") && rng.nextDouble() < 0.25) {
+                double reduction = 0.05 + 0.05 * armored; // 10/15/20/25%
+                e.setDamage(e.getDamage() * (1.0 - reduction));
+            }
+        }
+
+        // Enlightened: chance to convert damage to healing
+        if (enlightened > 0 && rng.nextDouble() < 0.08 * enlightened) {
+            double dmg = e.getDamage();
+            e.setCancelled(true);
+            double newHp = Math.min(victim.getMaxHealth(), victim.getHealth() + dmg);
+            victim.setHealth(newHp);
+            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
+                    org.bukkit.Effect.STEP_SOUND, Material.EMERALD_BLOCK.getId());
+            victim.sendMessage("§6✦ §eEnlightened — §a+" + (int) dmg + " HP §7(damage absorbed)");
+            return;
+        }
 
         if (hardened > 0 && e.getDamager() instanceof LivingEntity)
             e.setDamage(e.getDamage() * (1.0 - 0.07 * hardened));

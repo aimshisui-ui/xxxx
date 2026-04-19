@@ -10,6 +10,7 @@ public enum EnchantSlot {
     CHESTPLATE("Chestplate"),
     LEGGINGS("Leggings"),
     BOOTS("Boots"),
+    CHEST_OR_LEGGINGS("Chestplate or Leggings"),
     PICKAXE("Pickaxe"),
     AXE("Axe"),
     SHOVEL("Shovel"),
@@ -32,6 +33,7 @@ public enum EnchantSlot {
             case CHESTPLATE: return n.endsWith("_CHESTPLATE");
             case LEGGINGS:   return n.endsWith("_LEGGINGS");
             case BOOTS:      return n.endsWith("_BOOTS");
+            case CHEST_OR_LEGGINGS: return n.endsWith("_CHESTPLATE") || n.endsWith("_LEGGINGS");
             case PICKAXE:    return n.endsWith("_PICKAXE");
             case AXE:        return n.endsWith("_AXE") && !n.endsWith("_PICKAXE");
             case SHOVEL:     return n.endsWith("_SPADE");

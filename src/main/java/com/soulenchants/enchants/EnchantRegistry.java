@@ -77,7 +77,7 @@ public class EnchantRegistry {
 
         // ── CHESTPLATE ────────────────────────────────────────────────────
         register(new BerserkEnchant()); // chestplate now (updated below via slot override not possible — rely on default ARMOR for now)
-        register(new CustomEnchant("phoenix", "Phoenix", EnchantTier.MYTHIC, EnchantSlot.CHESTPLATE, 1,
+        register(new CustomEnchant("phoenix", "Phoenix", EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 1,
                 "Once every 2 minutes, survive a lethal hit with full HP"));
         register(new CustomEnchant("overshield", "Overshield", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
                 "Constant Absorption (+2/4/6 shield HP)"));
@@ -85,10 +85,14 @@ public class EnchantRegistry {
                 "Constant Regeneration"));
         register(new CustomEnchant("vital", "Vital", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
                 "+2/4/6 max HP"));
-        register(new CustomEnchant("laststand", "Last Stand", EnchantTier.MYTHIC, EnchantSlot.CHESTPLATE, 3,
+        register(new CustomEnchant("laststand", "Last Stand", EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 3,
                 "Resistance buff when below 6 HP"));
         register(new CustomEnchant("blessed", "Blessed", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
                 "Reduce damage taken from bosses + Wither"));
+
+        // ── CHESTPLATE OR LEGGINGS ────────────────────────────────────────
+        register(new CustomEnchant("armored", "Armored", EnchantTier.RARE, EnchantSlot.CHEST_OR_LEGGINGS, 4,
+                "25% chance to reduce damage from sword attackers (10/15/20/25%)"));
 
         // ── LEGGINGS ──────────────────────────────────────────────────────
         register(new CustomEnchant("hardened", "Hardened", EnchantTier.UNCOMMON, EnchantSlot.LEGGINGS, 3,
@@ -131,6 +135,8 @@ public class EnchantRegistry {
                 "Regen when standing still"));
         register(new CustomEnchant("magnetism", "Magnetism", EnchantTier.COMMON, EnchantSlot.ARMOR, 1,
                 "Pull nearby dropped items toward you"));
+        register(new CustomEnchant("enlightened", "Enlightened", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
+                "Chance to convert incoming damage into healing"));
 
         // ── TOOLS / GRINDING ──────────────────────────────────────────────
         register(new AutoSmeltEnchant());
