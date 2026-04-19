@@ -26,10 +26,14 @@ public class Veilweaver {
     private final Map<UUID, Double> damageDealt = new HashMap<>();
     private final List<LivingEntity> minions = new ArrayList<>();
     private final List<LivingEntity> echoClones = new ArrayList<>();
+    private final VeilweaverCrystals crystals;
 
     private boolean invulnerable = false;
     private boolean usedFinalBind = false;
     private int ticks = 0;
+    private int idleTicks = 0;
+    private boolean despawnAnnounced = false;
+    private int despawnAt = -1;
 
     // Attack cooldowns (in ticks). Smaller initial values = faster engagement.
     private int cdThreadLash = 10;
@@ -52,11 +56,13 @@ public class Veilweaver {
         configureEntity();
         de.tr7zw.changeme.nbtapi.NBTEntity nbt = new de.tr7zw.changeme.nbtapi.NBTEntity(entity);
         nbt.setBoolean(NBT_VEILWEAVER, true);
+        this.crystals = new VeilweaverCrystals(plugin, this);
     }
 
+    public VeilweaverCrystals getCrystals() { return crystals; }
+
     private void configureEntity() {
-        entity.setMaxHealth(MAX_HP);
-        entity.setHealth(MAX_HP);
+        com.soulenchants.util.BossHealthHack.apply(entity, MAX_HP);
         entity.setRemoveWhenFarAway(false);
         entity.setCanPickupItems(false);
         // Note: 1.8.8 has no Attribute API. Damage/armor scaling done via damage events;
@@ -72,6 +78,10 @@ public class Veilweaver {
         plugin.getServer().broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD
                 + "✦ The Veilweaver tears through reality! ✦");
         entity.getWorld().playSound(entity.getLocation(), Sound.WITHER_SPAWN, 2.0f, 0.6f);
+        // Phase I crystal shield
+        new BukkitRunnable() {
+            @Override public void run() { crystals.spawnRing(4); }
+        }.runTaskLater(plugin, 20L);
         tickTask = new BukkitRunnable() {
             @Override public void run() { tick(); }
         };
@@ -112,6 +122,36 @@ public class Veilweaver {
         // Update name with HP bar
         if (ticks % 5 == 0) updateName();
 
+        // No-players despawn (15 block radius). 5s grace, then 10s warning, then despawn.
+        if (ticks % 20 == 0) {
+            boolean any = !nearbyPlayers(15).isEmpty();
+            if (any) {
+                idleTicks = 0;
+                if (despawnAnnounced) {
+                    despawnAnnounced = false;
+                    despawnAt = -1;
+                    plugin.getServer().broadcastMessage(ChatColor.DARK_PURPLE
+                            + "✦ The Veilweaver feels new threads — its withdrawal is cancelled.");
+                }
+            } else {
+                idleTicks += 20;
+                if (!despawnAnnounced && idleTicks >= 100) {
+                    despawnAnnounced = true;
+                    despawnAt = ticks + 200;
+                    plugin.getServer().broadcastMessage(ChatColor.GRAY
+                            + "✦ The Veilweaver finds no opposition — withdrawing into the Veil in 10s.");
+                }
+                if (despawnAnnounced && ticks >= despawnAt) {
+                    plugin.getServer().broadcastMessage(ChatColor.DARK_GRAY
+                            + "✦ The Veilweaver vanishes between worlds.");
+                    entity.remove();
+                    plugin.getVeilweaverManager().clearActive();
+                    stop(false);
+                    return;
+                }
+            }
+        }
+
         // Phase transitions
         double pct = entity.getHealth() / entity.getMaxHealth();
         if (phase == Phase.ONE && pct <= 0.65) transitionTo(Phase.TWO);
@@ -128,26 +168,56 @@ public class Veilweaver {
         runAttacks();
     }
 
+    private int nextAttackAt = 30;
+    private final Random rng = new Random();
+
+    /** Weighted random attack picker. Cheap moves dominate, signature moves still happen. */
     private void runAttacks() {
-        // Phase 1 attacks (always available in P1, plus carried into later phases)
-        if (--cdThreadLash <= 0) { cdThreadLash = 24 + new Random().nextInt(8); VeilweaverAttacks.threadLash(this); }
-        if (--cdShatterBolt <= 0) { cdShatterBolt = 60; VeilweaverAttacks.shatterBolt(this); }
-        if (--cdMinionWeave <= 0) { cdMinionWeave = 500; VeilweaverAttacks.minionWeave(this); }
+        if (cdThreadLash > 0)      cdThreadLash--;
+        if (cdShatterBolt > 0)     cdShatterBolt--;
+        if (cdMinionWeave > 0)     cdMinionWeave--;
+        if (cdDimensionalRift > 0) cdDimensionalRift--;
+        if (cdLoomLaser > 0)       cdLoomLaser--;
+        if (cdEchoClones > 0)      cdEchoClones--;
+        if (cdRealityFracture > 0) cdRealityFracture--;
+        if (cdApocalypseWeave > 0) cdApocalypseWeave--;
 
+        if (--nextAttackAt > 0) return;
+        nextAttackAt = 35 + rng.nextInt(25); // ~1.75-3s between picks
+
+        java.util.List<String> pool = new java.util.ArrayList<>();
+        if (cdThreadLash <= 0)  for (int i = 0; i < 7; i++) pool.add("lash");    // very common
+        if (cdShatterBolt <= 0) for (int i = 0; i < 4; i++) pool.add("bolt");    // common
+        if (cdMinionWeave <= 0)                            pool.add("minion");   // rare
         if (phase == Phase.TWO || phase == Phase.THREE) {
-            if (--cdDimensionalRift <= 0) { cdDimensionalRift = 160; VeilweaverAttacks.dimensionalRift(this); }
-            if (--cdLoomLaser <= 0) { cdLoomLaser = 240; VeilweaverAttacks.loomLaser(this); }
-            if (--cdEchoClones <= 0) { cdEchoClones = 700; VeilweaverAttacks.echoClones(this); }
+            if (cdDimensionalRift <= 0) for (int i = 0; i < 3; i++) pool.add("rift");
+            if (cdLoomLaser <= 0)       for (int i = 0; i < 2; i++) pool.add("laser");
+            if (cdEchoClones <= 0)                                  pool.add("clones");
         }
-
         if (phase == Phase.THREE) {
-            if (--cdRealityFracture <= 0) { cdRealityFracture = 120; VeilweaverAttacks.realityFracture(this); }
-            if (--cdApocalypseWeave <= 0) { cdApocalypseWeave = 400; VeilweaverAttacks.apocalypseWeave(this); }
+            if (cdRealityFracture <= 0) for (int i = 0; i < 2; i++) pool.add("fracture");
+            if (cdApocalypseWeave <= 0)                             pool.add("apoc");
+        }
+        if (pool.isEmpty()) return;
+
+        switch (pool.get(rng.nextInt(pool.size()))) {
+            case "lash":     cdThreadLash = 24 + rng.nextInt(8); VeilweaverAttacks.threadLash(this); break;
+            case "bolt":     cdShatterBolt = 60;                 VeilweaverAttacks.shatterBolt(this); break;
+            case "minion":   cdMinionWeave = 500;                VeilweaverAttacks.minionWeave(this); break;
+            case "rift":     cdDimensionalRift = 160;            VeilweaverAttacks.dimensionalRift(this); break;
+            case "laser":    cdLoomLaser = 240;                  VeilweaverAttacks.loomLaser(this); break;
+            case "clones":   cdEchoClones = 700;                 VeilweaverAttacks.echoClones(this); break;
+            case "fracture": cdRealityFracture = 120;            VeilweaverAttacks.realityFracture(this); break;
+            case "apoc":     cdApocalypseWeave = 400;            VeilweaverAttacks.apocalypseWeave(this); break;
         }
     }
 
     private void transitionTo(Phase next) {
         invulnerable = true;
+        // Schedule invuln-clear FIRST so any later exception can't strand us in invuln.
+        new BukkitRunnable() {
+            @Override public void run() { invulnerable = false; }
+        }.runTaskLater(plugin, 60L);
         phase = next;
         Location loc = entity.getLocation();
         loc.getWorld().createExplosion(loc.getX(), loc.getY() + 1, loc.getZ(), 0f, false);
@@ -193,12 +263,14 @@ public class Veilweaver {
         // Destroy 2 orbs on P2 transition; remaining on P3
         if (next == Phase.TWO) arena.destroyOrbs(2);
         else if (next == Phase.THREE) arena.destroyOrbs(99);
+        // Respawn crystal shield (more crystals each phase)
+        final int crystalCount = next == Phase.TWO ? 5 : 6;
+        new BukkitRunnable() {
+            @Override public void run() { crystals.spawnRing(crystalCount); }
+        }.runTaskLater(plugin, 40L);
         // Boss floats up briefly
         entity.setVelocity(entity.getVelocity().setY(0.6));
-        // Brief invuln
-        new BukkitRunnable() {
-            @Override public void run() { invulnerable = false; }
-        }.runTaskLater(plugin, 60L);
+        // (invuln clear is scheduled at the top of this method)
     }
 
     public void onDamageDealt(Player attacker, double damage) {
@@ -210,6 +282,8 @@ public class Veilweaver {
         UUID top = Collections.max(damageDealt.entrySet(), Map.Entry.comparingByValue()).getKey();
         return plugin.getServer().getPlayer(top);
     }
+
+    public Map<UUID, Double> getDamageDealt() { return damageDealt; }
 
     public double getIncomingDamageMultiplier(EntityDamageType type) {
         if (phase == Phase.TWO && type == EntityDamageType.ARROW) return 0.5;
@@ -237,6 +311,7 @@ public class Veilweaver {
         if (tickTask != null) try { tickTask.cancel(); } catch (Exception ignored) {}
         for (LivingEntity m : minions) if (m != null && !m.isDead()) m.remove();
         for (LivingEntity c : echoClones) if (c != null && !c.isDead()) c.remove();
+        if (crystals != null) crystals.clearAll();
         arena.cleanup();
         if (killed) plugin.getServer().broadcastMessage(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD
                 + "✦ The Veilweaver has been silenced. ✦");

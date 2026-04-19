@@ -38,6 +38,23 @@ public class VeilweaverDamageListener implements Listener {
             return;
         }
 
+        // Crystal shield: while crystals are alive, boss takes no damage
+        if (vw.getCrystals() != null && vw.getCrystals().anyAlive()) {
+            e.setCancelled(true);
+            if (e instanceof EntityDamageByEntityEvent) {
+                Object dmgr = ((EntityDamageByEntityEvent) e).getDamager();
+                Player attacker = null;
+                if (dmgr instanceof Player) attacker = (Player) dmgr;
+                else if (dmgr instanceof Projectile && ((Projectile) dmgr).getShooter() instanceof Player)
+                    attacker = (Player) ((Projectile) dmgr).getShooter();
+                if (attacker != null) {
+                    attacker.sendMessage(org.bukkit.ChatColor.LIGHT_PURPLE + "✦ "
+                            + org.bukkit.ChatColor.GRAY + "Destroy the End Crystals first!");
+                }
+            }
+            return;
+        }
+
         // Phase 2 arrow reduction
         if (vw.getPhase() == Veilweaver.Phase.TWO && e.getCause() == EntityDamageEvent.DamageCause.PROJECTILE) {
             e.setDamage(e.getDamage() * 0.5);

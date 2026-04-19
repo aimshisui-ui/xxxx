@@ -86,6 +86,32 @@ public class CECommand implements CommandExecutor {
             plugin.getEnchantMenu().open((Player) sender);
             return true;
         }
+        if (sub.equals("god") || sub.equals("vault")) {
+            if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
+            plugin.getGodMenu().openHub((Player) sender);
+            return true;
+        }
+        if (sub.equals("recipe") || sub.equals("recipes")) {
+            sender.sendMessage("§9✦ §3Custom Recipes:");
+            for (com.soulenchants.loot.LootRecipes.RecipeEntry r : com.soulenchants.loot.LootRecipes.ENTRIES) {
+                sender.sendMessage("§7  ▸ §f" + r.name);
+                for (String row : r.shape) sender.sendMessage("§7      §b" + row.replace(' ', '·'));
+                java.util.Set<String> seen = new java.util.HashSet<>();
+                for (int i = 0; i < 9; i++) {
+                    String id = r.ingredientLootIds.get(i);
+                    org.bukkit.Material mat = r.perSlotMaterials[i];
+                    if (mat == null) continue;
+                    String key = (id == null ? "" : id) + "|" + mat;
+                    if (!seen.add(key)) continue;
+                    String ingLabel = id != null ? id.replace('_', ' ')
+                            : mat.name().toLowerCase().replace('_', ' ');
+                    sender.sendMessage("§7        • §f" + ingLabel);
+                }
+                sender.sendMessage("§7      §a→ §f" + r.result.getItemMeta().getDisplayName());
+            }
+            if (sender instanceof Player) sender.sendMessage("§7  §o(or use /ce god → Recipes)");
+            return true;
+        }
         if (sub.equals("summon") && args.length >= 2) {
             if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
             Player p = (Player) sender;
@@ -132,6 +158,8 @@ public class CECommand implements CommandExecutor {
         s.sendMessage("§5✦ §dSoulEnchants commands:");
         s.sendMessage("§7  /ce list");
         s.sendMessage("§7  /ce menu §8(admin GUI to grab any enchant at max)");
+        s.sendMessage("§7  /ce god §8(hub menu: enchants, loot, recipes, boss spawns)");
+        s.sendMessage("§7  /ce recipe §8(list every custom recipe)");
         s.sendMessage("§7  /ce bossset §8(give full boss-killer loadout)");
         s.sendMessage("§7  /ce book <player> <enchant> <level>");
         s.sendMessage("§7  /ce dust <player> <25|50|75|100>");

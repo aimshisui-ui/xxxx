@@ -60,7 +60,7 @@ public class CombatListener implements Listener {
         if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
                 || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) {
             int ic = maxArmor(victim, "ironclad");
-            if (ic > 0) e.setDamage(e.getDamage() * (1.0 - 0.20 * ic));
+            if (ic > 0) e.setDamage(e.getDamage() * (1.0 - 0.12 * ic));
         }
 
         // Lethal-hit save enchants (Phoenix, Soul Shield) via unified helper
@@ -286,36 +286,38 @@ public class CombatListener implements Listener {
         final UUID id = victim.getUniqueId();
 
         // Armored: stacks across chestplate + leggings.
-        // proc = 8% × sum_level (max 64% at 4+4)   reduction = 4% × sum_level (max 32%)
+        // proc = 4% × sum_level (max 32% at 4+4)   reduction = 2% × sum_level (max 16%)
         if (armoredSum > 0 && e.getDamager() instanceof Player) {
             ItemStack hand = ((Player) e.getDamager()).getItemInHand();
             if (hand != null && hand.getType().name().endsWith("_SWORD")) {
-                double proc = Math.min(0.64, 0.08 * armoredSum);
+                double proc = Math.min(0.32, 0.04 * armoredSum);
                 if (rng.nextDouble() < proc) {
-                    double reduction = Math.min(0.32, 0.04 * armoredSum);
+                    double reduction = Math.min(0.16, 0.02 * armoredSum);
                     e.setDamage(e.getDamage() * (1.0 - reduction));
                 }
             }
         }
 
         // Enlightened: stacks across all 4 armor pieces.
-        // proc = 3% × sum_level (max 36% at full set lvl 3)   heals 100% of damage
+        // proc = 0.5% × sum_level (max 6% at full set lvl 3)   heal capped at 6, rolled 1..cap
         if (enlightenedSum > 0) {
-            double proc = Math.min(0.36, 0.03 * enlightenedSum);
+            double proc = Math.min(0.06, 0.005 * enlightenedSum);
             if (rng.nextDouble() < proc) {
                 double dmg = e.getDamage();
+                int healCap = (int) Math.min(6.0, Math.max(1.0, dmg));
+                int heal = 1 + rng.nextInt(healCap); // uniform 1..healCap, so 6 is rare
                 e.setCancelled(true);
-                double newHp = Math.min(victim.getMaxHealth(), victim.getHealth() + dmg);
+                double newHp = Math.min(victim.getMaxHealth(), victim.getHealth() + heal);
                 victim.setHealth(newHp);
                 victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                         org.bukkit.Effect.STEP_SOUND, Material.EMERALD_BLOCK.getId());
-                victim.sendMessage("§6✦ §eEnlightened — §a+" + (int) dmg + " HP §7(damage absorbed)");
+                victim.sendMessage("§6✦ §eEnlightened — §a+" + heal + " HP §7(damage absorbed)");
                 return;
             }
         }
 
         if (hardened > 0 && e.getDamager() instanceof LivingEntity)
-            e.setDamage(e.getDamage() * (1.0 - 0.07 * hardened));
+            e.setDamage(e.getDamage() * (1.0 - 0.04 * hardened));
 
         if (antikb > 0) {
             long now = System.currentTimeMillis();
@@ -334,32 +336,36 @@ public class CombatListener implements Listener {
         }
         if (molten > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < 0.12 * molten)
             ((LivingEntity) e.getDamager()).setFireTicks(60 * molten);
-        if (lastStand > 0 && victim.getHealth() <= 6.0)
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 60, lastStand - 1));
+        if (lastStand > 0 && victim.getHealth() <= 4.0)
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 30, Math.max(0, lastStand - 2)));
         if (stormcall > 0 && e.getDamage() >= 6 && e.getDamager() instanceof LivingEntity
                 && plugin.getCooldownManager().isReady("stormcaller", id)) {
-            long cd = 8000L - (1500L * (stormcall - 1));
+            long cd = 14000L - (2000L * (stormcall - 1));
             plugin.getCooldownManager().set("stormcaller", id, cd);
             e.getDamager().getWorld().strikeLightning(e.getDamager().getLocation());
         }
-        if (guardians > 0 && plugin.getCooldownManager().isReady("guardians", id)) {
-            plugin.getCooldownManager().set("guardians", id, 12_000L);
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 200, guardians - 1));
+        // Guardians: very rare absorption proc, 120s CD.
+        // 4% × lvl chance per hit (max 12% at L3), then locked out for 120s regardless.
+        if (guardians > 0 && plugin.getCooldownManager().isReady("guardians", id)
+                && rng.nextDouble() < 0.04 * guardians) {
+            plugin.getCooldownManager().set("guardians", id, 120_000L);
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 100, guardians - 1));
+            victim.sendMessage("§6✦ §eGuardians §7— §a+absorption §7(120s CD)");
         }
         if (reflect > 0 && e.getDamager() instanceof LivingEntity
                 && plugin.getCooldownManager().isReady("reflect", id)) {
-            plugin.getCooldownManager().set("reflect", id, 3_000L);
-            ((LivingEntity) e.getDamager()).damage(e.getDamage() * (0.10 * reflect), victim);
+            plugin.getCooldownManager().set("reflect", id, 5_000L);
+            ((LivingEntity) e.getDamager()).damage(e.getDamage() * (0.06 * reflect), victim);
         }
         if (endurance > 0) {
             long now = System.currentTimeMillis();
             long last = lastCombatTick.getOrDefault(id, 0L);
             if (now - last < 10_000L)
-                e.setDamage(e.getDamage() * (1.0 - Math.min(0.20, 0.01 * (endurance * 2))));
+                e.setDamage(e.getDamage() * (1.0 - Math.min(0.12, 0.01 * (endurance * 2))));
             lastCombatTick.put(id, now);
         }
         if (vengeance > 0 && e.getDamager() instanceof LivingEntity)
-            ((LivingEntity) e.getDamager()).damage(1.0 + 0.5 * vengeance, victim);
+            ((LivingEntity) e.getDamager()).damage(0.5 + 0.3 * vengeance, victim);
         if (soulburst > 0) {
             int cost = 50;
             if (plugin.getSoulManager().take(victim, cost)) {

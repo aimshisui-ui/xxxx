@@ -34,7 +34,7 @@ public class VeilweaverAttacks {
                         if (toPlayer.lengthSquared() > 16) continue;
                         double dot = toPlayer.normalize().dot(forward);
                         if (dot < 0.5) continue;
-                        com.soulenchants.bosses.BossDamage.apply(p, 22, boss);
+                        com.soulenchants.bosses.BossDamage.apply(p, 45, boss);
                         p.setVelocity(toPlayer.normalize().multiply(1.2).setY(0.4));
                     }
                     for (int i = 0; i < 40; i++) {
@@ -87,7 +87,7 @@ public class VeilweaverAttacks {
             s.setHealth(20);
             s.setCustomName("§5Threadling");
             s.setCustomNameVisible(false);
-            // 1.8.8: no Attribute API. Silverfish defaults are fine for MVP.
+            new de.tr7zw.changeme.nbtapi.NBTEntity(s).setBoolean("se_vw_minion", true);
             vw.getMinions().add(s);
         }
         boss.getWorld().playSound(boss.getLocation(), Sound.SILVERFISH_KILL, 1.5f, 0.7f);
@@ -176,7 +176,7 @@ public class VeilweaverAttacks {
             Location p = from.clone().add(dir.clone().multiply(d));
             for (Entity e : p.getWorld().getNearbyEntities(p, 1.0, 1.0, 1.0)) {
                 if (e instanceof Player) {
-                    com.soulenchants.bosses.BossDamage.apply((Player) e, 30, boss);
+                    com.soulenchants.bosses.BossDamage.apply((Player) e, 60, boss);
                     ((Player) e).addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 120, 1));
                 }
             }
@@ -196,6 +196,7 @@ public class VeilweaverAttacks {
             clone.setCustomName("§8Echo of the Veilweaver");
             clone.setCustomNameVisible(true);
             clone.getEquipment().setItemInHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.IRON_SWORD));
+            new de.tr7zw.changeme.nbtapi.NBTEntity(clone).setBoolean("se_vw_clone", true);
             vw.getEchoClones().add(clone);
             final Skeleton finalClone = clone;
             // Spawn flair: portal burst + sound
@@ -230,7 +231,7 @@ public class VeilweaverAttacks {
                 for (Player p : vw.nearbyPlayers(25)) {
                     double dist = p.getLocation().distance(center);
                     if (Math.abs(dist - radius) < 0.8) {
-                        com.soulenchants.bosses.BossDamage.apply(p, 25, boss);
+                        com.soulenchants.bosses.BossDamage.apply(p, 55, boss);
                         // Levitation substitute: launch up + slowness on landing
                         p.setVelocity(p.getVelocity().setY(0.9));
                         p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2));
@@ -273,7 +274,7 @@ public class VeilweaverAttacks {
                         Location strike = p.getLocation().clone().add(RNG.nextDouble() * 4 - 2, 0, RNG.nextDouble() * 4 - 2);
                         strike.getWorld().strikeLightningEffect(strike);
                         for (Entity e : strike.getWorld().getNearbyEntities(strike, 2.5, 3, 2.5)) {
-                            if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 5, boss);
+                            if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 14, boss);
                         }
                     }
                 }
@@ -299,7 +300,7 @@ public class VeilweaverAttacks {
                 victim.setVelocity(new Vector(0, 0, 0));
                 victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 20, 6));
                 victim.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 20, -10));
-                com.soulenchants.bosses.BossDamage.applyTrue(victim, 45.0 / 12.0, boss);
+                com.soulenchants.bosses.BossDamage.applyTrue(victim, 70.0 / 12.0, boss);
                 // Visual chain
                 Location from = boss.getEyeLocation();
                 Location to = victim.getEyeLocation();

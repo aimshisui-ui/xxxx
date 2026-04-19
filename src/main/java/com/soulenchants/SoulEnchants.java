@@ -22,10 +22,13 @@ public class SoulEnchants extends JavaPlugin {
     private CooldownManager cooldownManager;
     private ScoreboardManager scoreboardManager;
     private BerserkTickTask tickTask;
+    private com.soulenchants.loot.LootProfile lootProfile;
+    private com.soulenchants.gui.GodMenuGUI godMenu;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        com.soulenchants.util.BossHealthHack.raise();
         EnchantRegistry.registerDefaults();
         this.soulManager = new SoulManager(getDataFolder());
         this.veilweaverManager = new VeilweaverManager(this);
@@ -33,6 +36,16 @@ public class SoulEnchants extends JavaPlugin {
         this.cooldownManager = new CooldownManager();
         this.enchantMenu = new EnchantMenuGUI(this);
         this.scoreboardManager = new ScoreboardManager(this);
+        this.lootProfile = new com.soulenchants.loot.LootProfile(getDataFolder());
+        this.godMenu = new com.soulenchants.gui.GodMenuGUI(this);
+
+        com.soulenchants.loot.LootRecipes.register(this);
+        getServer().getPluginManager().registerEvents(new com.soulenchants.loot.LootItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new com.soulenchants.loot.LootRecipes.GateListener(), this);
+        getServer().getPluginManager().registerEvents(godMenu, this);
+        getServer().getPluginManager().registerEvents(new BoulderBlockBlocker(), this);
+        getServer().getPluginManager().registerEvents(new CrystalListener(this), this);
+        getServer().getPluginManager().registerEvents(new IronSentinelListener(this), this);
 
         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new EntityDeathListener(this), this);
@@ -83,4 +96,6 @@ public class SoulEnchants extends JavaPlugin {
     public CooldownManager getCooldownManager() { return cooldownManager; }
     public ScoreboardManager getScoreboardManager() { return scoreboardManager; }
     public BerserkTickTask getTickTask() { return tickTask; }
+    public com.soulenchants.loot.LootProfile getLootProfile() { return lootProfile; }
+    public com.soulenchants.gui.GodMenuGUI getGodMenu() { return godMenu; }
 }

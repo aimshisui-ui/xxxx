@@ -21,12 +21,36 @@ public class EntityDeathListener implements Listener {
 
         // Veilweaver kill
         if (plugin.getVeilweaverManager().isVeilweaver(entity)) {
+            // Strip vanilla wither-skeleton drops (bones, coal, skull) and xp
+            e.getDrops().clear();
+            e.setDroppedExp(0);
             plugin.getVeilweaverManager().onVeilweaverDeath(killer);
             return;
         }
         // Iron Golem Boss kill
         if (plugin.getIronGolemManager().isIronGolemBoss(entity)) {
+            // Strip vanilla iron golem drops (iron, poppy) and xp
+            e.getDrops().clear();
+            e.setDroppedExp(0);
             plugin.getIronGolemManager().onIronGolemDeath(killer);
+            return;
+        }
+        // Veilweaver minions / echo clones — no vanilla drops
+        de.tr7zw.changeme.nbtapi.NBTEntity nbt = new de.tr7zw.changeme.nbtapi.NBTEntity(entity);
+        if (nbt.hasKey("se_vw_minion") || nbt.hasKey("se_vw_clone")) {
+            e.getDrops().clear();
+            e.setDroppedExp(0);
+            return;
+        }
+        // Iron Sentinel — strip vanilla drops, award flat 30 souls to killer
+        if (com.soulenchants.bosses.IronGolemMinions.ACTIVE_UUIDS.contains(entity.getUniqueId())) {
+            e.getDrops().clear();
+            e.setDroppedExp(0);
+            com.soulenchants.bosses.IronGolemMinions.ACTIVE_UUIDS.remove(entity.getUniqueId());
+            if (killer != null) {
+                plugin.getSoulManager().add(killer, 30);
+                killer.sendMessage("§6✦ §e+30 Souls §7(Iron Sentinel)");
+            }
             return;
         }
 

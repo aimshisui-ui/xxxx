@@ -91,9 +91,13 @@ public class BerserkTickTask extends BukkitRunnable {
 
         if (berserkLvl > 0) berserk.onTick(p, berserkLvl);
 
-        if (implants > 0 || (lifebloom > 0 && isStanding(p, id))) {
-            int lvl = Math.max(implants, (lifebloom > 0 && isStanding(p, id)) ? lifebloom : 0);
-            p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 40, lvl - 1, true, false), true);
+        // Implants now only regens when HP is below 50%, and gives Regen I (not amp lvl-1).
+        // Lifebloom retains its standing-still gate.
+        boolean lowHp = p.getHealth() < (p.getMaxHealth() * 0.5);
+        boolean lifebloomActive = lifebloom > 0 && isStanding(p, id);
+        if ((implants > 0 && lowHp) || lifebloomActive) {
+            int amp = lifebloomActive ? Math.max(0, lifebloom - 1) : 0;
+            p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 40, amp, true, false), true);
             applyThisTick.add(PotionEffectType.REGENERATION);
         }
 

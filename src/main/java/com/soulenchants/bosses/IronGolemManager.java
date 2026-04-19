@@ -35,13 +35,14 @@ public class IronGolemManager {
     }
 
     public IronGolemBoss getActive() {
-        if (active != null && active.getEntity().isDead()) active = null;
         return active;
     }
 
+    /** Manual nuller — see VeilweaverManager.clearActive() for rationale. */
+    public void clearActive() { this.active = null; }
+
     public boolean isIronGolemBoss(LivingEntity entity) {
-        IronGolemBoss b = getActive();
-        return b != null && b.getEntity().getUniqueId().equals(entity.getUniqueId());
+        return active != null && active.getEntity().getUniqueId().equals(entity.getUniqueId());
     }
 
     public void onIronGolemDeath(Player killer) {
@@ -75,6 +76,14 @@ public class IronGolemManager {
                 ItemFactories.book(chosen, Math.max(1, chosen.getMaxLevel() / 2)));
         // Drop the unique "Iron Heart" item
         b.getEntity().getWorld().dropItemNaturally(b.getEntity().getLocation(), ironHeart());
+        // Full boss loot table
+        com.soulenchants.loot.BossLootTable.dropIronGolem(b.getEntity().getLocation());
+
+        com.soulenchants.bosses.BossDeathBroadcast.broadcast(plugin,
+                ChatColor.GOLD + "" + ChatColor.BOLD + "Ironheart Colossus",
+                ChatColor.GOLD, b.getDamageDealt(),
+                IronGolemBoss.MAX_HP);
+
         b.stop(true);
         active = null;
     }

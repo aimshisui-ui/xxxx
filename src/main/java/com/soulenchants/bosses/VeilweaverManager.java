@@ -30,13 +30,16 @@ public class VeilweaverManager {
     }
 
     public Veilweaver getActive() {
-        if (active != null && active.getEntity().isDead()) active = null;
         return active;
     }
 
+    /** Manual nuller — called by death handler. Don't auto-null in getActive(),
+     *  because EntityDeathEvent fires while entity.isDead() is already true and
+     *  the death handler still needs access to the boss object. */
+    public void clearActive() { this.active = null; }
+
     public boolean isVeilweaver(LivingEntity entity) {
-        Veilweaver vw = getActive();
-        return vw != null && vw.getEntity().getUniqueId().equals(entity.getUniqueId());
+        return active != null && active.getEntity().getUniqueId().equals(entity.getUniqueId());
     }
 
     public boolean isInvulnerable() {
@@ -75,6 +78,14 @@ public class VeilweaverManager {
         CustomEnchant chosen = pool.get(rng.nextInt(pool.size()));
         vw.getEntity().getWorld().dropItemNaturally(vw.getEntity().getLocation(),
                 ItemFactories.book(chosen, Math.max(1, chosen.getMaxLevel() / 2)));
+        // Full boss loot table
+        com.soulenchants.loot.BossLootTable.dropVeilweaver(vw.getEntity().getLocation());
+
+        com.soulenchants.bosses.BossDeathBroadcast.broadcast(plugin,
+                org.bukkit.ChatColor.DARK_PURPLE + "" + org.bukkit.ChatColor.BOLD + "The Veilweaver",
+                org.bukkit.ChatColor.DARK_PURPLE, vw.getDamageDealt(),
+                Veilweaver.MAX_HP);
+
         vw.stop(true);
         active = null;
     }
