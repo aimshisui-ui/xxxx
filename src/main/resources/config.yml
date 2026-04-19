@@ -1,0 +1,23 @@
+# SoulEnchants MVP Config
+
+souls:
+  starting-balance: 0
+  # Souls only come from quest kills, quest completion, or bosses.
+  # Regular mob/player kills give nothing.
+  per-mob-kill: 0
+  per-player-kill: 0
+
+books:
+  default-success-rate: 50     # default % when no dust used
+  destroy-on-fail: true        # item destroyed if no white scroll
+
+drops:
+  # Block break book drop chance per ore (0.0 - 1.0) - grinding rewards
+  diamond_ore: 0.02
+  emerald_ore: 0.03
+  gold_ore: 0.01
+  iron_ore: 0.005
+
+veilweaver:
+  souls-reward: 2500           # killer reward
+  # Top damage dealer also gets souls-reward / 2

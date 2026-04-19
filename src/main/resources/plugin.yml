@@ -1,0 +1,24 @@
+name: SoulEnchants
+version: 1.0.0-MVP
+main: com.soulenchants.SoulEnchants
+api-version: 1.8
+author: built-via-claude
+description: Custom enchantments with Souls currency, books, dust, and scrolls.
+
+commands:
+  souls:
+    description: Check or modify your Souls balance
+    usage: /souls [give|take|set] [player] [amount]
+    aliases: [bal, soul]
+  ce:
+    description: Custom Enchants admin/utility
+    usage: /ce <give|book|dust|scroll|list>
+    aliases: [customenchants]
+
+permissions:
+  soulenchants.admin:
+    description: Admin permission
+    default: op
+  soulenchants.use:
+    description: Use enchants normally
+    default: true
