@@ -92,7 +92,7 @@ public class EnchantRegistry {
 
         // ── CHESTPLATE OR LEGGINGS ────────────────────────────────────────
         register(new CustomEnchant("armored", "Armored", EnchantTier.RARE, EnchantSlot.CHEST_OR_LEGGINGS, 4,
-                "25% chance to reduce damage from sword attackers (10/15/20/25%)"));
+                "Reduce damage from sword attackers. Stacks: more pieces = stronger."));
 
         // ── LEGGINGS ──────────────────────────────────────────────────────
         register(new CustomEnchant("hardened", "Hardened", EnchantTier.UNCOMMON, EnchantSlot.LEGGINGS, 3,
@@ -136,7 +136,7 @@ public class EnchantRegistry {
         register(new CustomEnchant("magnetism", "Magnetism", EnchantTier.COMMON, EnchantSlot.ARMOR, 1,
                 "Pull nearby dropped items toward you"));
         register(new CustomEnchant("enlightened", "Enlightened", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
-                "Chance to convert incoming damage into healing"));
+                "Chance to convert incoming damage into healing. Stacks across pieces."));
 
         // ── TOOLS / GRINDING ──────────────────────────────────────────────
         register(new AutoSmeltEnchant());
