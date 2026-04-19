@@ -21,6 +21,7 @@ public class SoulEnchants extends JavaPlugin {
     private EnchantMenuGUI enchantMenu;
     private CooldownManager cooldownManager;
     private ScoreboardManager scoreboardManager;
+    private BerserkTickTask tickTask;
 
     @Override
     public void onEnable() {
@@ -43,7 +44,7 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PvEDamageListener(this), this);
         getServer().getPluginManager().registerEvents(enchantMenu, this);
 
-        BerserkTickTask tickTask = new BerserkTickTask(this);
+        tickTask = new BerserkTickTask(this);
         tickTask.start();
         getServer().getPluginManager().registerEvents(new ArmorChangeListener(this, tickTask), this);
 
@@ -81,4 +82,5 @@ public class SoulEnchants extends JavaPlugin {
     public EnchantMenuGUI getEnchantMenu() { return enchantMenu; }
     public CooldownManager getCooldownManager() { return cooldownManager; }
     public ScoreboardManager getScoreboardManager() { return scoreboardManager; }
+    public BerserkTickTask getTickTask() { return tickTask; }
 }

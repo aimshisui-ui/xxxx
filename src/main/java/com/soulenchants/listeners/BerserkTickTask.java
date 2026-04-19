@@ -16,38 +16,38 @@ import org.bukkit.util.Vector;
 
 import java.util.*;
 
-/**
- * Applies passive armor + helmet effects every tick cycle.
- * Tracks which potion effect types WE applied per player so we can strip them
- * immediately when the armor is removed (or after death).
- */
 public class BerserkTickTask extends BukkitRunnable {
 
     private final SoulEnchants plugin;
     private final BerserkEnchant berserk = new BerserkEnchant();
     private final Map<UUID, Location> lastLoc = new HashMap<>();
     private final Map<UUID, Integer> stillTicks = new HashMap<>();
-    private final Map<UUID, Double> vitalBoost = new HashMap<>();
-    // Effects we applied last cycle, per player
     private final Map<UUID, Set<PotionEffectType>> applied = new HashMap<>();
+    // When set, skip applying Drunk's Slow/MF while this helmet is the one worn.
+    // Cleared automatically when helmet is unequipped or replaced with a different one.
+    private final Map<UUID, ItemStack> blessedHelmetSnapshot = new HashMap<>();
 
     public BerserkTickTask(SoulEnchants plugin) { this.plugin = plugin; }
 
     public void start() { this.runTaskTimer(plugin, 20L, 20L); }
 
-    /** Clear tracked state for a player (call on death / respawn). */
     public void clearPlayer(UUID id) {
         applied.remove(id);
-        vitalBoost.remove(id);
         lastLoc.remove(id);
         stillTicks.remove(id);
+        blessedHelmetSnapshot.remove(id);
+    }
+
+    /** Called by /bless. Records the currently worn helmet so we can suppress its negatives. */
+    public void bless(Player p) {
+        ItemStack helmet = p.getInventory().getHelmet();
+        if (helmet != null) blessedHelmetSnapshot.put(p.getUniqueId(), helmet.clone());
+        else blessedHelmetSnapshot.remove(p.getUniqueId());
     }
 
     @Override
     public void run() {
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            tickPlayer(p);
-        }
+        for (Player p : Bukkit.getOnlinePlayers()) tickPlayer(p);
     }
 
     public void tickPlayer(Player p) {
@@ -57,6 +57,14 @@ public class BerserkTickTask extends BukkitRunnable {
         ItemStack legs   = p.getInventory().getLeggings();
         ItemStack boots  = p.getInventory().getBoots();
         ItemStack[] allArmor = new ItemStack[]{helmet, chest, legs, boots};
+
+        // Maintain blessed-helmet invariant: clear when helmet changes or is removed
+        ItemStack snapshot = blessedHelmetSnapshot.get(id);
+        if (snapshot != null && (helmet == null || !snapshot.isSimilar(helmet))) {
+            blessedHelmetSnapshot.remove(id);
+            snapshot = null;
+        }
+        boolean drunkBlessed = snapshot != null && helmet != null && snapshot.isSimilar(helmet);
 
         int berserkLvl=0, implants=0, speed=0, adren=0, vital=0,
             aquatic=0, lifebloom=0, overshield=0;
@@ -71,13 +79,13 @@ public class BerserkTickTask extends BukkitRunnable {
             lifebloom  = Math.max(lifebloom,  ItemUtil.getLevel(a, "lifebloom"));
             overshield = Math.max(overshield, ItemUtil.getLevel(a, "overshield"));
         }
-        int drunk       = helmet == null ? 0 : ItemUtil.getLevel(helmet, "drunk");
-        int nightvision = helmet == null ? 0 : ItemUtil.getLevel(helmet, "nightvision");
-        int saturation  = helmet == null ? 0 : ItemUtil.getLevel(helmet, "saturation");
-        int depthstrider= boots  == null ? 0 : ItemUtil.getLevel(boots, "depthstrider");
-        int haste       = boots  == null ? 0 : ItemUtil.getLevel(boots, "haste");
-        int jumpboost   = boots  == null ? 0 : ItemUtil.getLevel(boots, "jumpboost");
-        int firewalker  = boots  == null ? 0 : ItemUtil.getLevel(boots, "firewalker");
+        int drunk        = helmet == null ? 0 : ItemUtil.getLevel(helmet, "drunk");
+        int nightvision  = helmet == null ? 0 : ItemUtil.getLevel(helmet, "nightvision");
+        int saturation   = helmet == null ? 0 : ItemUtil.getLevel(helmet, "saturation");
+        int depthstrider = boots  == null ? 0 : ItemUtil.getLevel(boots, "depthstrider");
+        int haste        = boots  == null ? 0 : ItemUtil.getLevel(boots, "haste");
+        int jumpboost    = boots  == null ? 0 : ItemUtil.getLevel(boots, "jumpboost");
+        int firewalker   = boots  == null ? 0 : ItemUtil.getLevel(boots, "firewalker");
 
         Set<PotionEffectType> applyThisTick = new HashSet<>();
 
@@ -126,15 +134,19 @@ public class BerserkTickTask extends BukkitRunnable {
             p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 60, overshield - 1, true, false), true);
             applyThisTick.add(PotionEffectType.ABSORPTION);
         }
+
+        // Drunk: Strength is always applied; Slow + Mining Fatigue are suppressed if blessed.
         if (drunk > 0) {
             int strAmp = Math.min(drunk, 3) - 1;
             int slowAmp = drunk - 1;
             p.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, 40, strAmp, true, false), true);
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, slowAmp, true, false), true);
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 40, slowAmp, true, false), true);
             applyThisTick.add(PotionEffectType.INCREASE_DAMAGE);
-            applyThisTick.add(PotionEffectType.SLOW);
-            applyThisTick.add(PotionEffectType.SLOW_DIGGING);
+            if (!drunkBlessed) {
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, slowAmp, true, false), true);
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 40, slowAmp, true, false), true);
+                applyThisTick.add(PotionEffectType.SLOW);
+                applyThisTick.add(PotionEffectType.SLOW_DIGGING);
+            }
         }
 
         // Strip effects we previously applied but no longer should
@@ -144,17 +156,15 @@ public class BerserkTickTask extends BukkitRunnable {
         }
         applied.put(id, applyThisTick);
 
-        // Vital — always set max HP directly (self-correcting, no delta tracking)
+        // Vital — self-correcting
         double expectedMax = 20.0 + (vital * 2.0);
         if (Math.abs(p.getMaxHealth() - expectedMax) > 0.01) {
             p.setMaxHealth(expectedMax);
             if (p.getHealth() > expectedMax) p.setHealth(expectedMax);
         }
 
-        // Track position for Lifebloom stillness check next tick
         lastLoc.put(id, p.getLocation());
 
-        // Magnetism
         if (hasMagnetism(p)) applyMagnetism(p);
     }
 

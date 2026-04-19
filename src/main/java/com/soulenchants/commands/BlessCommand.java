@@ -62,6 +62,9 @@ public class BlessCommand implements CommandExecutor {
         }
         if (target.getFireTicks() > 0) target.setFireTicks(0);
 
+        // Suppress Drunk's Slow/MF from re-applying until the helmet is taken off or swapped
+        plugin.getTickTask().bless(target);
+
         target.getWorld().playSound(target.getLocation(), Sound.LEVEL_UP, 1.0f, 1.4f);
         for (int i = 0; i < 8; i++) {
             double a = (Math.PI * 2 * i) / 8.0;
