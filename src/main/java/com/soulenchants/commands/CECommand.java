@@ -66,6 +66,14 @@ public class CECommand implements CommandExecutor {
             sender.sendMessage("§a✦ Gave " + target.getName() + " a " + args[2] + " scroll.");
             return true;
         }
+        if (sub.equals("fixhp")) {
+            Player target = args.length >= 2 ? Bukkit.getPlayer(args[1])
+                    : (sender instanceof Player ? (Player) sender : null);
+            if (target == null) { sender.sendMessage("§cPlayer not found."); return true; }
+            target.setMaxHealth(20.0);
+            sender.sendMessage("§a✦ Reset §f" + target.getName() + "§a's max HP to 20.");
+            return true;
+        }
         if (sub.equals("menu")) {
             if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
             plugin.getEnchantMenu().open((Player) sender);

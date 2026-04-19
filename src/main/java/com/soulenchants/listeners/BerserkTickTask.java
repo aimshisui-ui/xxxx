@@ -144,14 +144,11 @@ public class BerserkTickTask extends BukkitRunnable {
         }
         applied.put(id, applyThisTick);
 
-        // Vital
-        double targetBoost = vital * 2.0;
-        double currentBoost = vitalBoost.getOrDefault(id, 0.0);
-        if (Math.abs(targetBoost - currentBoost) > 0.01) {
-            double newMax = p.getMaxHealth() - currentBoost + targetBoost;
-            if (newMax < 1.0) newMax = 20.0;
-            p.setMaxHealth(newMax);
-            vitalBoost.put(id, targetBoost);
+        // Vital — always set max HP directly (self-correcting, no delta tracking)
+        double expectedMax = 20.0 + (vital * 2.0);
+        if (Math.abs(p.getMaxHealth() - expectedMax) > 0.01) {
+            p.setMaxHealth(expectedMax);
+            if (p.getHealth() > expectedMax) p.setHealth(expectedMax);
         }
 
         // Track position for Lifebloom stillness check next tick

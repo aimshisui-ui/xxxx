@@ -7,6 +7,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -46,5 +47,17 @@ public class ArmorChangeListener implements Listener {
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
         tickTask.clearPlayer(e.getPlayer().getUniqueId());
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent e) {
+        final Player p = e.getPlayer();
+        // Reset any persisted Vital max-HP boost from a prior session
+        p.setMaxHealth(20.0);
+        tickTask.clearPlayer(p.getUniqueId());
+        // Then re-apply correctly based on current armor
+        new BukkitRunnable() {
+            @Override public void run() { tickTask.tickPlayer(p); }
+        }.runTaskLater(plugin, 2L);
     }
 }

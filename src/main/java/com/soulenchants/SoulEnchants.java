@@ -46,6 +46,11 @@ public class SoulEnchants extends JavaPlugin {
         BerserkTickTask tickTask = new BerserkTickTask(this);
         tickTask.start();
         getServer().getPluginManager().registerEvents(new ArmorChangeListener(this, tickTask), this);
+
+        // Reset any lingering max-HP from a previous session, then let the tick re-apply correctly.
+        for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
+            p.setMaxHealth(20.0);
+        }
         scoreboardManager.start();
 
         getCommand("souls").setExecutor(new SoulsCommand(this));
@@ -56,6 +61,10 @@ public class SoulEnchants extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Reset player max HP so Vital boosts don't persist into the .dat file
+        for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
+            p.setMaxHealth(20.0);
+        }
         if (scoreboardManager != null) scoreboardManager.stop();
         if (soulManager != null) soulManager.save();
         if (veilweaverManager != null && veilweaverManager.getActive() != null)
