@@ -152,15 +152,43 @@ public class Veilweaver {
         Location loc = entity.getLocation();
         loc.getWorld().createExplosion(loc.getX(), loc.getY() + 1, loc.getZ(), 0f, false);
         loc.getWorld().playSound(loc, Sound.ENDERDRAGON_GROWL, 2.0f, 0.7f);
-        // Flashier: triple lightning around boss
         for (int i = 0; i < 3; i++) {
             double a = i * (Math.PI * 2 / 3);
             Location strike = loc.clone().add(Math.cos(a) * 4, 0, Math.sin(a) * 4);
             strike.getWorld().strikeLightningEffect(strike);
         }
+        // Dramatic broadcast + center-screen title + strategy hints
+        String titleMain, titleSub;
+        String[] broadcast;
+        if (next == Phase.TWO) {
+            titleMain = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "✦ THE VEIL TEARS ✦";
+            titleSub  = ChatColor.GRAY + "The Veilweaver becomes ethereal";
+            broadcast = new String[] {
+                    ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "══════════════════════════════",
+                    ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "  ✦ THE VEIL TEARS — Phase II ✦",
+                    ChatColor.GRAY + "  • §dBoss teleports to players and rips rifts",
+                    ChatColor.GRAY + "  • §dLoom Laser: 2.5s channel — break line of sight!",
+                    ChatColor.GRAY + "  • §dEcho Clones: kill with §cexplosions §dfor instant-drop",
+                    ChatColor.GRAY + "  • §5Arrows deal half damage in this phase",
+                    ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "══════════════════════════════"
+            };
+        } else {
+            titleMain = ChatColor.DARK_RED + "" + ChatColor.BOLD + "✦ THE SHATTERED LOOM ✦";
+            titleSub  = ChatColor.RED + "Reality itself breaks down";
+            broadcast = new String[] {
+                    ChatColor.DARK_RED + "" + ChatColor.BOLD + "══════════════════════════════",
+                    ChatColor.DARK_RED + "" + ChatColor.BOLD + "  ✦ THE SHATTERED LOOM — Phase III ✦",
+                    ChatColor.GRAY + "  • §cReality Fracture: §fjump between expanding rings",
+                    ChatColor.GRAY + "  • §cApocalypse Weave: §fboss goes invulnerable 4s — hide",
+                    ChatColor.GRAY + "  • §cAt §4§l10% HP§c: Final Thread Bind roots top damager",
+                    ChatColor.GRAY + "  • §cBurn the boss down fast before the bind completes",
+                    ChatColor.DARK_RED + "" + ChatColor.BOLD + "══════════════════════════════"
+            };
+        }
         for (Player p : arena.playersInArena()) {
-            p.sendTitle(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "The Veil Tears",
-                    ChatColor.GRAY + (next == Phase.TWO ? "Phase II — The Veil Tears" : "Phase III — The Shattered Loom"));
+            p.sendTitle(titleMain, titleSub);
+            for (String line : broadcast) p.sendMessage(line);
+            p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 1.5f, 1.0f);
         }
         // Destroy 2 orbs on P2 transition; remaining on P3
         if (next == Phase.TWO) arena.destroyOrbs(2);

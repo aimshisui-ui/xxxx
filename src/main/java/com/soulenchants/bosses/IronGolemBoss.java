@@ -125,15 +125,27 @@ public class IronGolemBoss {
         Location loc = entity.getLocation();
         loc.getWorld().createExplosion(loc.getX(), loc.getY() + 1, loc.getZ(), 0f, false);
         loc.getWorld().playSound(loc, Sound.IRONGOLEM_HIT, 2.0f, 0.5f);
-        // Triple lightning flash around boss
         for (int i = 0; i < 4; i++) {
             double a = i * (Math.PI / 2);
             Location strike = loc.clone().add(Math.cos(a) * 5, 0, Math.sin(a) * 5);
             strike.getWorld().strikeLightningEffect(strike);
         }
-        for (Player p : nearbyPlayers(20)) {
-            p.sendTitle(ChatColor.GOLD + "" + ChatColor.BOLD + "Awakened",
-                    ChatColor.GRAY + "Phase II — The Ironheart Burns");
+        String titleMain = ChatColor.GOLD + "" + ChatColor.BOLD + "✦ IRONHEART AWAKENED ✦";
+        String titleSub  = ChatColor.YELLOW + "The Colossus unleashes its rage";
+        String[] broadcast = new String[] {
+                ChatColor.GOLD + "" + ChatColor.BOLD + "══════════════════════════════",
+                ChatColor.GOLD + "" + ChatColor.BOLD + "  ✦ IRONHEART AWAKENED — Phase II ✦",
+                ChatColor.GRAY + "  • §6Rocket Charge: §fdodge sideways, not backward",
+                ChatColor.GRAY + "  • §6Magnetic Pull: §fbrace to avoid stomp chain",
+                ChatColor.GRAY + "  • §6Iron Wall: §fcobble cover for 10s — use it",
+                ChatColor.GRAY + "  • §6Ground Slam: §fcenter is a kill zone — scatter",
+                ChatColor.GRAY + "  • §cAt 25% HP it reinforces (regens). Burst it first.",
+                ChatColor.GOLD + "" + ChatColor.BOLD + "══════════════════════════════"
+        };
+        for (Player p : nearbyPlayers(30)) {
+            p.sendTitle(titleMain, titleSub);
+            for (String line : broadcast) p.sendMessage(line);
+            p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 1.5f, 0.8f);
         }
         new BukkitRunnable() {
             @Override public void run() { invulnerable = false; }
@@ -192,7 +204,7 @@ public class IronGolemBoss {
                     }
                 }
                 for (Player p : nearbyPlayers(6)) {
-                    BossDamage.apply(p, 22, entity);
+                    BossDamage.apply(p, 18, entity);
                     p.setVelocity(new org.bukkit.util.Vector(p.getVelocity().getX(), 1.0, p.getVelocity().getZ()));
                     p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 1));
                 }
@@ -228,7 +240,7 @@ public class IronGolemBoss {
             @Override public void run() {
                 if (t++ > 30 || entity.isDead()) { cancel(); return; }
                 if (entity.getLocation().distanceSquared(target.getLocation()) < 4) {
-                    BossDamage.apply(target, 30, entity);
+                    BossDamage.apply(target, 22, entity);
                     target.setVelocity(new Vector(0, 0.6, 0));
                     cancel();
                 }
@@ -248,8 +260,8 @@ public class IronGolemBoss {
     }
 
     private void ironWall() {
-        Location center = entity.getLocation();
-        List<Location> wallLocs = new ArrayList<>();
+        final Location center = entity.getLocation();
+        final List<Location> wallLocs = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             double angle = i * Math.PI / 2;
             for (int dx = -2; dx <= 2; dx++) {
@@ -262,14 +274,27 @@ public class IronGolemBoss {
             }
         }
         entity.getWorld().playSound(center, Sound.ANVIL_LAND, 2.0f, 0.5f);
-        // Remove walls after 5s
+        // Fade telegraph at 8s — smoke particles + sound
         new BukkitRunnable() {
             @Override public void run() {
                 for (Location l : wallLocs) {
-                    if (l.getBlock().getType() == Material.COBBLESTONE) l.getBlock().setType(Material.AIR);
+                    l.getWorld().playEffect(l.clone().add(0.5, 0.5, 0.5), Effect.SMOKE, 4);
+                }
+                center.getWorld().playSound(center, Sound.FIZZ, 1.0f, 1.5f);
+            }
+        }.runTaskLater(plugin, 160L); // 8 seconds
+        // Remove walls after 10 seconds
+        new BukkitRunnable() {
+            @Override public void run() {
+                for (Location l : wallLocs) {
+                    if (l.getBlock().getType() == Material.COBBLESTONE) {
+                        l.getBlock().setType(Material.AIR);
+                        l.getWorld().playEffect(l.clone().add(0.5, 0.5, 0.5), Effect.STEP_SOUND,
+                                Material.COBBLESTONE.getId());
+                    }
                 }
             }
-        }.runTaskLater(plugin, 100L);
+        }.runTaskLater(plugin, 200L); // 10 seconds
     }
 
     private void groundSlam() {
@@ -296,7 +321,7 @@ public class IronGolemBoss {
                     }
                     for (Player p : nearbyPlayers(7)) {
                         double dist = p.getLocation().distance(loc);
-                        double dmg = Math.max(8, 35 - dist * 3);
+                        double dmg = Math.max(6, 28 - dist * 3);
                         BossDamage.apply(p, dmg, entity);
                         p.setVelocity(new Vector(0, 0.8, 0));
                     }

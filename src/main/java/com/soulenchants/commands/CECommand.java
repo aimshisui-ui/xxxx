@@ -66,6 +66,13 @@ public class CECommand implements CommandExecutor {
             sender.sendMessage("§a✦ Gave " + target.getName() + " a " + args[2] + " scroll.");
             return true;
         }
+        if (sub.equals("bossset") || sub.equals("godset")) {
+            if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
+            Player p = (Player) sender;
+            com.soulenchants.items.GodSet.giveTo(p);
+            sender.sendMessage("§6✦ §eBoss-killer godset equipped. §7Try /ce summon veilweaver");
+            return true;
+        }
         if (sub.equals("fixhp")) {
             Player target = args.length >= 2 ? Bukkit.getPlayer(args[1])
                     : (sender instanceof Player ? (Player) sender : null);
@@ -125,6 +132,7 @@ public class CECommand implements CommandExecutor {
         s.sendMessage("§5✦ §dSoulEnchants commands:");
         s.sendMessage("§7  /ce list");
         s.sendMessage("§7  /ce menu §8(admin GUI to grab any enchant at max)");
+        s.sendMessage("§7  /ce bossset §8(give full boss-killer loadout)");
         s.sendMessage("§7  /ce book <player> <enchant> <level>");
         s.sendMessage("§7  /ce dust <player> <25|50|75|100>");
         s.sendMessage("§7  /ce scroll <player> <black|white>");
