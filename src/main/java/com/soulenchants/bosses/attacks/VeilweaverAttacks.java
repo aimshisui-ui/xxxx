@@ -27,7 +27,7 @@ public class VeilweaverAttacks {
             if (toPlayer.lengthSquared() > 16) continue; // 4 block reach
             double dot = toPlayer.normalize().dot(forward);
             if (dot < 0.5) continue; // outside 120° cone
-            p.damage(28, boss);
+            com.soulenchants.bosses.BossDamage.apply(p, 28, boss);
             p.setVelocity(toPlayer.normalize().multiply(1.2).setY(0.4));
         }
         // Visual: cone of red particles
@@ -149,7 +149,7 @@ public class VeilweaverAttacks {
             Location p = from.clone().add(dir.clone().multiply(d));
             for (Entity e : p.getWorld().getNearbyEntities(p, 1.0, 1.0, 1.0)) {
                 if (e instanceof Player) {
-                    ((Player) e).damage(38, boss);
+                    com.soulenchants.bosses.BossDamage.apply((Player) e, 38, boss);
                     ((Player) e).addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 120, 1));
                 }
             }
@@ -199,7 +199,7 @@ public class VeilweaverAttacks {
                 for (Player p : vw.getArena().playersInArena()) {
                     double dist = p.getLocation().distance(center);
                     if (Math.abs(dist - radius) < 0.8) {
-                        p.damage(32, boss);
+                        com.soulenchants.bosses.BossDamage.apply(p, 32, boss);
                         // Levitation substitute: launch up + slowness on landing
                         p.setVelocity(p.getVelocity().setY(0.9));
                         p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2));
@@ -242,7 +242,7 @@ public class VeilweaverAttacks {
                         Location strike = p.getLocation().clone().add(RNG.nextDouble() * 4 - 2, 0, RNG.nextDouble() * 4 - 2);
                         strike.getWorld().strikeLightningEffect(strike);
                         for (Entity e : strike.getWorld().getNearbyEntities(strike, 2.5, 3, 2.5)) {
-                            if (e instanceof Player) ((Player) e).damage(8, boss);
+                            if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 8, boss);
                         }
                     }
                 }
@@ -268,7 +268,7 @@ public class VeilweaverAttacks {
                 victim.setVelocity(new Vector(0, 0, 0));
                 victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 20, 6));
                 victim.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 20, -10));
-                victim.damage(60.0 / 12.0, boss);
+                com.soulenchants.bosses.BossDamage.applyTrue(victim, 60.0 / 12.0, boss);
                 // Visual chain
                 Location from = boss.getEyeLocation();
                 Location to = victim.getEyeLocation();

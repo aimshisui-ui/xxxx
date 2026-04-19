@@ -31,7 +31,7 @@ public class ShatterBoltTracker extends BukkitRunnable {
                 Location impact = orb.getLocation();
                 for (Entity e : impact.getWorld().getNearbyEntities(impact, 1.5, 1.5, 1.5)) {
                     if (e instanceof Player) {
-                        ((Player) e).damage(14, vw.getEntity());
+                        com.soulenchants.bosses.BossDamage.apply((Player) e, 14, vw.getEntity());
                         ((Player) e).addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 1));
                         ((Player) e).addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0));
                     }

@@ -31,15 +31,15 @@ public class Veilweaver {
     private boolean usedFinalBind = false;
     private int ticks = 0;
 
-    // Attack cooldowns (in ticks). Offset so they don't all fire at once.
-    private int cdThreadLash = 24;
-    private int cdShatterBolt = 60;
-    private int cdMinionWeave = 500;
-    private int cdDimensionalRift = 160;
-    private int cdLoomLaser = 240;
-    private int cdEchoClones = 700;
-    private int cdRealityFracture = 120;
-    private int cdApocalypseWeave = 400;
+    // Attack cooldowns (in ticks). Smaller initial values = faster engagement.
+    private int cdThreadLash = 10;
+    private int cdShatterBolt = 30;
+    private int cdMinionWeave = 200;
+    private int cdDimensionalRift = 80;
+    private int cdLoomLaser = 120;
+    private int cdEchoClones = 500;
+    private int cdRealityFracture = 60;
+    private int cdApocalypseWeave = 200;
 
     private BukkitRunnable tickTask;
 
@@ -82,6 +82,17 @@ public class Veilweaver {
         if (entity.isDead()) { stop(false); return; }
         ticks++;
         arena.tickBorder(entity);
+
+        // Aggressive targeting — set/refresh hostile target every second
+        if (ticks % 20 == 0 && entity instanceof org.bukkit.entity.Monster) {
+            Player nearest = null;
+            double bestSq = Double.MAX_VALUE;
+            for (Player pl : arena.playersInArena()) {
+                double d = pl.getLocation().distanceSquared(entity.getLocation());
+                if (d < bestSq) { bestSq = d; nearest = pl; }
+            }
+            if (nearest != null) ((org.bukkit.entity.Monster) entity).setTarget(nearest);
+        }
 
         // Heal if no players in arena (anti-kite)
         if (ticks % 160 == 0 && arena.noPlayersInArena()) {

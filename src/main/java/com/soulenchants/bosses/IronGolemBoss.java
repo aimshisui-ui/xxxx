@@ -34,12 +34,12 @@ public class IronGolemBoss {
     private boolean usedReinforce = false;
     private int ticks = 0;
 
-    private int cdStomp = 160;
-    private int cdBoulder = 240;
-    private int cdRocket = 200;
-    private int cdMagnetic = 300;
-    private int cdIronWall = 400;
-    private int cdSlam = 360;
+    private int cdStomp = 60;
+    private int cdBoulder = 100;
+    private int cdRocket = 80;
+    private int cdMagnetic = 150;
+    private int cdIronWall = 200;
+    private int cdSlam = 180;
 
     private BukkitRunnable tickTask;
 
@@ -72,6 +72,17 @@ public class IronGolemBoss {
     public void tick() {
         if (entity.isDead()) { stop(false); return; }
         ticks++;
+
+        // Force hostile targeting every second
+        if (ticks % 20 == 0) {
+            Player nearest = null;
+            double bestSq = Double.MAX_VALUE;
+            for (Player pl : nearbyPlayers(30)) {
+                double d = pl.getLocation().distanceSquared(entity.getLocation());
+                if (d < bestSq) { bestSq = d; nearest = pl; }
+            }
+            if (nearest != null) entity.setTarget(nearest);
+        }
 
         // Constant ambient particles
         if (ticks % 4 == 0) {
@@ -161,7 +172,7 @@ public class IronGolemBoss {
             p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.STONE.getId());
         }
         for (Player p : nearbyPlayers(6)) {
-            p.damage(22, entity);
+            BossDamage.apply(p, 22, entity);
             p.setVelocity(new Vector(p.getVelocity().getX(), 1.0, p.getVelocity().getZ()));
             p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 1));
         }
@@ -194,7 +205,7 @@ public class IronGolemBoss {
             @Override public void run() {
                 if (t++ > 30 || entity.isDead()) { cancel(); return; }
                 if (entity.getLocation().distanceSquared(target.getLocation()) < 4) {
-                    target.damage(30, entity);
+                    BossDamage.apply(target, 30, entity);
                     target.setVelocity(new Vector(0, 0.6, 0));
                     cancel();
                 }
@@ -257,7 +268,7 @@ public class IronGolemBoss {
                     for (Player p : nearbyPlayers(7)) {
                         double dist = p.getLocation().distance(loc);
                         double dmg = Math.max(8, 35 - dist * 3);
-                        p.damage(dmg, entity);
+                        BossDamage.apply(p, dmg, entity);
                         p.setVelocity(new Vector(0, 0.8, 0));
                     }
                     cancel();

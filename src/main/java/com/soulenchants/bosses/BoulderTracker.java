@@ -29,7 +29,7 @@ public class BoulderTracker extends BukkitRunnable {
         if (boulder.isDead() || ticks > 100) {
             Location impact = boulder.getLocation();
             for (Entity e : impact.getWorld().getNearbyEntities(impact, 3, 3, 3)) {
-                if (e instanceof Player) ((Player) e).damage(16, source);
+                if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 16, source);
             }
             impact.getWorld().createExplosion(impact.getX(), impact.getY(), impact.getZ(), 0f, false);
             if (!boulder.isDead()) boulder.remove();
