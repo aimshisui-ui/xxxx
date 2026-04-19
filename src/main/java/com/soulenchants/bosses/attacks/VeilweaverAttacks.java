@@ -19,25 +19,46 @@ public class VeilweaverAttacks {
     // ── PHASE 1 ──────────────────────────────────────────────────────────────
 
     public static void threadLash(Veilweaver vw) {
-        LivingEntity boss = vw.getEntity();
-        Location loc = boss.getLocation();
-        Vector forward = loc.getDirection().setY(0).normalize();
-        for (Player p : vw.getArena().playersInArena()) {
-            Vector toPlayer = p.getLocation().toVector().subtract(loc.toVector()).setY(0);
-            if (toPlayer.lengthSquared() > 16) continue; // 4 block reach
-            double dot = toPlayer.normalize().dot(forward);
-            if (dot < 0.5) continue; // outside 120° cone
-            com.soulenchants.bosses.BossDamage.apply(p, 28, boss);
-            p.setVelocity(toPlayer.normalize().multiply(1.2).setY(0.4));
-        }
-        // Visual: cone of red particles
-        for (int i = 0; i < 20; i++) {
-            double angle = -Math.PI / 3 + (Math.PI * 2 / 3) * (i / 19.0);
-            Vector v = rotateY(forward, angle).multiply(2 + RNG.nextDouble() * 2);
-            Location p = loc.clone().add(v.getX(), 1, v.getZ());
-            p.getWorld().playEffect(p, Effect.STEP_SOUND, org.bukkit.Material.REDSTONE_BLOCK.getId());
-        }
-        loc.getWorld().playSound(loc, Sound.ENDERDRAGON_HIT, 1.5f, 1.5f);
+        final LivingEntity boss = vw.getEntity();
+        final Location loc = boss.getLocation();
+        final Vector forward = loc.getDirection().setY(0).normalize();
+        // Telegraph: 10-tick warning sweep with red particles before impact
+        loc.getWorld().playSound(loc, Sound.ZOMBIE_WOOD, 1.6f, 1.8f);
+        new org.bukkit.scheduler.BukkitRunnable() {
+            int t = 0;
+            @Override public void run() {
+                if (t++ >= 10) {
+                    // Impact: damage + heavier particle burst
+                    for (Player p : vw.getArena().playersInArena()) {
+                        Vector toPlayer = p.getLocation().toVector().subtract(loc.toVector()).setY(0);
+                        if (toPlayer.lengthSquared() > 16) continue;
+                        double dot = toPlayer.normalize().dot(forward);
+                        if (dot < 0.5) continue;
+                        com.soulenchants.bosses.BossDamage.apply(p, 28, boss);
+                        p.setVelocity(toPlayer.normalize().multiply(1.2).setY(0.4));
+                    }
+                    for (int i = 0; i < 40; i++) {
+                        double angle = -Math.PI / 3 + (Math.PI * 2 / 3) * (i / 39.0);
+                        double dist = 1 + RNG.nextDouble() * 3;
+                        Vector v = rotateY(forward, angle).multiply(dist);
+                        Location p = loc.clone().add(v.getX(), 1 + RNG.nextDouble() * 1.5, v.getZ());
+                        p.getWorld().playEffect(p, Effect.STEP_SOUND, org.bukkit.Material.REDSTONE_BLOCK.getId());
+                    }
+                    loc.getWorld().playSound(loc, Sound.ENDERDRAGON_HIT, 1.8f, 1.2f);
+                    cancel();
+                    return;
+                }
+                // Telegraph particles every 2 ticks
+                if (t % 2 == 0) {
+                    for (int i = 0; i < 10; i++) {
+                        double angle = -Math.PI / 3 + (Math.PI * 2 / 3) * (i / 9.0);
+                        Vector v = rotateY(forward, angle).multiply(1 + RNG.nextDouble() * 2.5);
+                        Location p = loc.clone().add(v.getX(), 0.8, v.getZ());
+                        p.getWorld().playEffect(p, Effect.WITCH_MAGIC, 0);
+                    }
+                }
+            }
+        }.runTaskTimer(vw.getPlugin(), 0L, 1L);
     }
 
     public static void shatterBolt(Veilweaver vw) {
@@ -79,10 +100,16 @@ public class VeilweaverAttacks {
         List<Player> players = vw.getArena().playersInArena();
         if (players.isEmpty()) return;
         Player target = players.get(RNG.nextInt(players.size()));
+        // Telegraph at current boss location (fracturing portal) before teleport
+        Location origin = boss.getLocation();
+        boss.getWorld().playSound(origin, Sound.PORTAL_TRIGGER, 1.2f, 1.5f);
+        for (int i = 0; i < 30; i++) origin.getWorld().playEffect(origin.clone().add(0, 0.5, 0), Effect.PORTAL, 0);
         // Teleport boss near target
         Location tp = target.getLocation().clone().add(target.getLocation().getDirection().multiply(-3));
         boss.teleport(tp);
-        boss.getWorld().playSound(tp, Sound.ENDERMAN_TELEPORT, 1.5f, 1.0f);
+        boss.getWorld().playSound(tp, Sound.ENDERMAN_TELEPORT, 1.8f, 0.9f);
+        // Burst at destination
+        for (int i = 0; i < 20; i++) tp.getWorld().playEffect(tp.clone().add(0, 1, 0), Effect.PORTAL, 0);
         // Pull players toward rift
         Location rift = boss.getLocation();
         for (Player p : players) {
@@ -171,6 +198,10 @@ public class VeilweaverAttacks {
             clone.getEquipment().setItemInHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.IRON_SWORD));
             vw.getEchoClones().add(clone);
             final Skeleton finalClone = clone;
+            // Spawn flair: portal burst + sound
+            for (int j = 0; j < 15; j++)
+                spawn.getWorld().playEffect(spawn.clone().add(0, 1, 0), Effect.PORTAL, 0);
+            spawn.getWorld().playSound(spawn, Sound.ENDERMAN_TELEPORT, 1.2f, 0.7f);
             // Despawn after 15s
             new BukkitRunnable() {
                 @Override public void run() { if (!finalClone.isDead()) finalClone.remove(); }

@@ -163,19 +163,42 @@ public class IronGolemBoss {
     // ── ATTACKS ──────────────────────────────────────────────────────────────
 
     private void seismicStomp() {
-        Location loc = entity.getLocation();
-        loc.getWorld().playSound(loc, Sound.EXPLODE, 2.0f, 0.6f);
-        // Visual ring
-        for (int i = 0; i < 32; i++) {
-            double a = (Math.PI * 2 * i) / 32.0;
-            Location p = loc.clone().add(Math.cos(a) * 5, 0.2, Math.sin(a) * 5);
-            p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.STONE.getId());
-        }
-        for (Player p : nearbyPlayers(6)) {
-            BossDamage.apply(p, 22, entity);
-            p.setVelocity(new Vector(p.getVelocity().getX(), 1.0, p.getVelocity().getZ()));
-            p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 1));
-        }
+        final Location loc = entity.getLocation();
+        // Telegraph: boss raises fist (small upward jump), ground crack particles for 15 ticks
+        entity.setVelocity(new org.bukkit.util.Vector(0, 0.6, 0));
+        loc.getWorld().playSound(loc, Sound.IRONGOLEM_THROW, 1.5f, 0.6f);
+        new BukkitRunnable() {
+            int t = 0;
+            @Override public void run() {
+                if (t < 15) {
+                    // Pre-shock dust ring
+                    double r = (t / 15.0) * 5.0;
+                    for (int i = 0; i < 20; i++) {
+                        double a = (Math.PI * 2 * i) / 20.0;
+                        Location p = loc.clone().add(Math.cos(a) * r, 0.15, Math.sin(a) * r);
+                        p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.STONE.getId());
+                    }
+                    t++;
+                    return;
+                }
+                // Impact
+                loc.getWorld().playSound(loc, Sound.EXPLODE, 2.0f, 0.5f);
+                loc.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 0f, false);
+                for (int r = 1; r <= 6; r++) {
+                    for (int i = 0; i < 24; i++) {
+                        double a = (Math.PI * 2 * i) / 24.0;
+                        Location p = loc.clone().add(Math.cos(a) * r, 0.2, Math.sin(a) * r);
+                        p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.STONE.getId());
+                    }
+                }
+                for (Player p : nearbyPlayers(6)) {
+                    BossDamage.apply(p, 22, entity);
+                    p.setVelocity(new org.bukkit.util.Vector(p.getVelocity().getX(), 1.0, p.getVelocity().getZ()));
+                    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 1));
+                }
+                cancel();
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private void boulderThrow() {
@@ -258,9 +281,15 @@ public class IronGolemBoss {
                 if (entity.isOnGround() || t > 40) {
                     Location loc = entity.getLocation();
                     loc.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 0f, false);
-                    for (int r = 1; r <= 6; r++) {
-                        for (int i = 0; i < 16; i++) {
-                            double a = (Math.PI * 2 * i) / 16.0;
+                    // Four lightning flashes around impact
+                    for (int i = 0; i < 4; i++) {
+                        double a = i * (Math.PI / 2);
+                        Location s = loc.clone().add(Math.cos(a) * 3, 0, Math.sin(a) * 3);
+                        s.getWorld().strikeLightningEffect(s);
+                    }
+                    for (int r = 1; r <= 7; r++) {
+                        for (int i = 0; i < 24; i++) {
+                            double a = (Math.PI * 2 * i) / 24.0;
                             Location p = loc.clone().add(Math.cos(a) * r, 0.2, Math.sin(a) * r);
                             p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.COBBLESTONE.getId());
                         }

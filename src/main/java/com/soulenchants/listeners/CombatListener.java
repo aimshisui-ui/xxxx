@@ -63,32 +63,11 @@ public class CombatListener implements Listener {
             if (ic > 0) e.setDamage(e.getDamage() * (1.0 - 0.20 * ic));
         }
 
-        // Lethal-hit enchants (Phoenix > Soul Shield priority)
+        // Lethal-hit save enchants (Phoenix, Soul Shield) via unified helper
         if (victim.getHealth() - e.getFinalDamage() > 0) return;
-        UUID vid = victim.getUniqueId();
-
-        // Phoenix — once per 10 min, survive lethal with full HP
-        int phoenix = maxArmor(victim, "phoenix");
-        if (phoenix > 0 && plugin.getCooldownManager().isReady("phoenix", vid)) {
-            plugin.getCooldownManager().set("phoenix", vid, 2 * 60 * 1000L);
+        if (com.soulenchants.bosses.LethalSave.trySave(victim, plugin)) {
             e.setCancelled(true);
-            victim.setHealth(victim.getMaxHealth());
-            victim.getWorld().strikeLightningEffect(victim.getLocation());
-            victim.sendMessage("§6✦ §e§lPhoenix rises! §7You survived death.");
-            return;
         }
-
-        int shield = maxArmor(victim, "soulshield");
-        if (shield <= 0) return;
-        if (!plugin.getCooldownManager().isReady("soulshield", vid)) return;
-        int cost = 200;
-        if (plugin.getSoulManager().get(victim) < cost) return;
-        plugin.getSoulManager().take(victim, cost);
-        plugin.getCooldownManager().set("soulshield", vid, 60_000L);
-        e.setCancelled(true);
-        victim.setHealth(Math.min(victim.getMaxHealth(), victim.getHealth() + 6));
-        victim.getWorld().strikeLightningEffect(victim.getLocation());
-        victim.sendMessage("§c✦ §4Soul Shield §4triggered! §7(-" + cost + " souls)");
     }
 
     private int maxArmor(Player p, String id) {
