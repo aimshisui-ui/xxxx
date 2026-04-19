@@ -2,6 +2,7 @@ package com.soulenchants;
 
 import com.soulenchants.bosses.IronGolemManager;
 import com.soulenchants.bosses.VeilweaverManager;
+import com.soulenchants.commands.BlessCommand;
 import com.soulenchants.commands.CECommand;
 import com.soulenchants.commands.SoulsCommand;
 import com.soulenchants.currency.SoulManager;
@@ -32,7 +33,6 @@ public class SoulEnchants extends JavaPlugin {
         this.enchantMenu = new EnchantMenuGUI(this);
         this.scoreboardManager = new ScoreboardManager(this);
 
-        getServer().getPluginManager().registerEvents(new DamageListener(this), this);
         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new EntityDeathListener(this), this);
         getServer().getPluginManager().registerEvents(new InventoryClickListener(this), this);
@@ -55,6 +55,7 @@ public class SoulEnchants extends JavaPlugin {
 
         getCommand("souls").setExecutor(new SoulsCommand(this));
         getCommand("ce").setExecutor(new CECommand(this));
+        getCommand("bless").setExecutor(new BlessCommand(this));
 
         getLogger().info("SoulEnchants enabled. " + EnchantRegistry.all().size() + " enchants registered.");
     }

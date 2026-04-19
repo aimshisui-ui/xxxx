@@ -14,6 +14,10 @@ commands:
     description: Custom Enchants admin/utility
     usage: /ce <give|book|dust|scroll|list>
     aliases: [customenchants]
+  bless:
+    description: Remove all negative potion effects from a player
+    usage: /bless [player]
+    aliases: [cleanse]
 
 permissions:
   soulenchants.admin:

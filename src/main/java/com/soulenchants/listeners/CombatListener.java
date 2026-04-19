@@ -101,9 +101,31 @@ public class CombatListener implements Listener {
         return max;
     }
 
+    /** On-hit procs only fire against bosses, boss minions, or players (PvP). */
+    private boolean isValidProcTarget(LivingEntity victim) {
+        if (victim instanceof Player) return true;
+        com.soulenchants.bosses.Veilweaver vw = plugin.getVeilweaverManager().getActive();
+        if (vw != null) {
+            if (vw.getEntity().getUniqueId().equals(victim.getUniqueId())) return true;
+            for (LivingEntity m : vw.getMinions())
+                if (m != null && m.getUniqueId().equals(victim.getUniqueId())) return true;
+            for (LivingEntity c : vw.getEchoClones())
+                if (c != null && c.getUniqueId().equals(victim.getUniqueId())) return true;
+        }
+        com.soulenchants.bosses.IronGolemBoss ig = plugin.getIronGolemManager().getActive();
+        if (ig != null && ig.getEntity().getUniqueId().equals(victim.getUniqueId())) return true;
+        return false;
+    }
+
     private void handleSwordEnchants(Player attacker, LivingEntity victim, EntityDamageByEntityEvent e) {
         ItemStack hand = attacker.getItemInHand();
         if (hand == null) return;
+        // Lock all proc-style enchants to boss / boss-minion / player targets.
+        if (!isValidProcTarget(victim)) return;
+
+        // Lifesteal (moved from DamageListener)
+        int ls = ItemUtil.getLevel(hand, "lifesteal");
+        if (ls > 0) new com.soulenchants.enchants.impl.LifestealEnchant().onHit(attacker, ls);
 
         // Bleed
         int bleed = ItemUtil.getLevel(hand, "bleed");
