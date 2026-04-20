@@ -2,9 +2,11 @@ package com.soulenchants.listeners;
 
 import com.soulenchants.SoulEnchants;
 import com.soulenchants.items.ItemUtil;
+import org.bukkit.Bukkit;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -50,9 +52,15 @@ public class CombatListener implements Listener {
             AOE_GUARD.set(false);
         }
     }
-    /** Per-victim Bleed stack tracking (Nordic-style: stacks decay 30s after last proc). */
+    /** Per-victim Bleed stack tracking. Cosmic-style: stacks count up to 20,
+     *  a DOT deals HP damage + HURT_FLESH sound every second until bleedUntil
+     *  expires, then stacks decay. `bleedAttacker` credits DOT damage back to
+     *  the original hitter so boss damage-maps still track contribution;
+     *  `bleedCrimsonTongue` carries the mythic-weapon heal-on-tick flag. */
     private final Map<UUID, Integer> bleedStacks = new HashMap<>();
-    private final Map<UUID, Long> bleedLastProc = new HashMap<>();
+    private final Map<UUID, Long> bleedUntil = new HashMap<>();
+    private final Map<UUID, UUID> bleedAttacker = new HashMap<>();
+    private final Map<UUID, Boolean> bleedCrimsonTongue = new HashMap<>();
     private final Map<UUID, Long> antiKbCd = new HashMap<>();
     private final Map<UUID, Long> lastCombatTick = new HashMap<>();
     /** Per-victim cooldown for Nature's Wrath proc (10s). */
@@ -63,7 +71,10 @@ public class CombatListener implements Listener {
     // (Bloodlust kill-streak tracking removed — bloodlust is now a chestplate
     // proc that heals on nearby Bleed ticks; no stack state needed.)
 
-    public CombatListener(SoulEnchants plugin) { this.plugin = plugin; }
+    public CombatListener(SoulEnchants plugin) {
+        this.plugin = plugin;
+        startBleedTicker();
+    }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onAttack(EntityDamageByEntityEvent e) {
@@ -184,15 +195,16 @@ public class CombatListener implements Listener {
         double specialMult = 1.0;   // Soul Strike — bypasses the cap (soul-cost)
         double flatAdd = 0.0;        // Soul Burn — flat add after multiplier
 
-        // Bleed (Nordic-style) — applies stacking SLOW. Deep Wounds boosts proc chance.
-        // Stacks reset to 0 when 30s passes without a proc. Each new proc bumps the
-        // stack count and re-applies Slow with duration = (stacks+1)*20 ticks at amp
-        // = min(stacks-1, 1). Bloodlust nearby gets a heal from each tick (handled in BLEED_TICK guard).
+        // Bleed (Cosmic-style) — high proc rate, stacks up to 20, refreshes a
+        // 6-second DOT that hits HP every second with a HURT_FLESH sound. Slow
+        // amp scales with stacks. Applies to bosses + custom mobs — isValidProcTarget
+        // above already gates out vanilla grinder mobs. Deep Wounds adds to proc.
         int bleed = ItemUtil.getLevel(hand, "bleed");
         if (bleed > 0) {
             int dw = ItemUtil.getLevel(hand, "deepwounds");
-            if (rng.nextDouble() < 0.006 * (bleed + dw)) {
-                applyBleedTick(victim, attacker, hand);
+            double procChance = 0.40 + 0.08 * bleed + 0.04 * dw;  // L1=48%, L6=88%, +12% per DW
+            if (rng.nextDouble() < procChance) {
+                applyBleedProc(victim, attacker, hand);
             }
         }
 
@@ -329,7 +341,7 @@ public class CombatListener implements Listener {
         // Headhunter — handled in onKill below
 
         // Drunk's strength buff is applied passively in tick task.
-        // Bloodlust is now a CHESTPLATE proc (heal-on-nearby-bleed-tick) — handled in applyBleedTick().
+        // Bloodlust is a CHESTPLATE proc (heal-on-nearby-bleed-tick) — handled by the global Bleed ticker.
 
         // Feather Weight (Nordic-style) — 20%/lvl chance to gain Haste burst
         int fw = ItemUtil.getLevel(hand, "featherweight");
@@ -881,7 +893,9 @@ public class CombatListener implements Listener {
         lastCombatTick.remove(id);
         naturesWrathCd.remove(id);
         bleedStacks.remove(id);
-        bleedLastProc.remove(id);
+        bleedUntil.remove(id);
+        bleedAttacker.remove(id);
+        bleedCrimsonTongue.remove(id);
     }
 
     @EventHandler
@@ -932,44 +946,112 @@ public class CombatListener implements Listener {
         }.runTaskTimer(plugin, 20L, 20L);
     }
 
-    /**
-     * Nordic-style Bleed proc — bumps the victim's stack counter (resets to 0 if
-     * 30s passed since last proc), applies Slow with duration scaled by stacks,
-     * and heals nearby players wearing Bloodlust chestplates.
-     */
-    private void applyBleedTick(LivingEntity victim, Player attacker, ItemStack weapon) {
+    /** Bleed proc — on hit. Decays stacks if 30s has passed with no refresh,
+     *  then adds one stack (capped 20), extends the DOT to now+6s, re-applies
+     *  Slow with amp scaled by stacks, and caches the attacker/weapon flags
+     *  the DOT ticker will need. */
+    private static final int BLEED_MAX_STACKS   = 20;
+    private static final long BLEED_DURATION_MS = 6_000L;
+    private static final long BLEED_DECAY_MS    = 30_000L;
+
+    private void applyBleedProc(LivingEntity victim, Player attacker, ItemStack weapon) {
         UUID id = victim.getUniqueId();
         long now = System.currentTimeMillis();
-        long last = bleedLastProc.getOrDefault(id, 0L);
-        if (now - last > 30_000L) {
-            bleedStacks.put(id, 0);
-        }
-        bleedLastProc.put(id, now);
-        int stacks = bleedStacks.getOrDefault(id, 0) + 1;
+        long until = bleedUntil.getOrDefault(id, 0L);
+        // Decay: if fully expired AND old enough, reset stacks
+        if (now > until && now - until > BLEED_DECAY_MS) bleedStacks.put(id, 0);
+
+        int stacks = Math.min(BLEED_MAX_STACKS, bleedStacks.getOrDefault(id, 0) + 1);
         bleedStacks.put(id, stacks);
-        int amp = Math.max(0, Math.min(stacks - 1, 1));
-        int dur = (stacks + 1) * 20;
+        bleedUntil.put(id, now + BLEED_DURATION_MS);
+        bleedAttacker.put(id, attacker != null ? attacker.getUniqueId() : null);
+        bleedCrimsonTongue.put(id, weapon != null && ItemUtil.getLevel(weapon, "mythic_held") == 1);
+
+        // Slow amp: 1 extra per 5 stacks, cap at 3 (Slow IV). Duration matches
+        // remaining bleed so the slow visibly tracks the DOT.
+        int amp = Math.min(3, stacks / 5);
+        int dur = (int)(BLEED_DURATION_MS / 50L);  // ticks
         BLEED_TICK.set(true);
-        try {
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, dur, amp), true);
-        } finally {
-            BLEED_TICK.set(false);
-        }
+        try { victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, dur, amp), true); }
+        finally { BLEED_TICK.set(false); }
         victim.getWorld().playEffect(victim.getEyeLocation(),
                 Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
-        // Bloodlust: heal 2 HP for any player in 7-block radius wearing it
-        for (Entity near : victim.getNearbyEntities(7, 7, 7)) {
-            if (!(near instanceof Player) || near == victim) continue;
-            Player healer = (Player) near;
-            int blvl = maxArmor(healer, "bloodlust");
-            if (blvl <= 0) continue;
-            healer.setHealth(Math.min(healer.getMaxHealth(), healer.getHealth() + 2.0));
-            healer.sendMessage("§4✦ §cBlood Lust §7— §a+2 HP");
+    }
+
+    /** One global 1-second ticker drives all active Bleeds: deals scaled HP
+     *  damage, credits the attacker, heals nearby Bloodlust wearers, and heals
+     *  the Crimson Tongue wielder. Cleans up expired / dead entries in-place. */
+    private void startBleedTicker() {
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (bleedUntil.isEmpty()) return;
+                long now = System.currentTimeMillis();
+                java.util.Iterator<Map.Entry<UUID, Long>> it = bleedUntil.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<UUID, Long> ent = it.next();
+                    UUID id = ent.getKey();
+                    // Expired — drop all state but keep the stack history around
+                    // briefly so a re-proc within 30s stacks on top.
+                    if (now > ent.getValue()) {
+                        if (now - ent.getValue() > BLEED_DECAY_MS) {
+                            bleedStacks.remove(id);
+                        }
+                        it.remove();
+                        bleedAttacker.remove(id);
+                        bleedCrimsonTongue.remove(id);
+                        continue;
+                    }
+                    LivingEntity victim = lookupLiving(id);
+                    if (victim == null || victim.isDead()) {
+                        it.remove();
+                        bleedStacks.remove(id);
+                        bleedAttacker.remove(id);
+                        bleedCrimsonTongue.remove(id);
+                        continue;
+                    }
+                    int stacks = bleedStacks.getOrDefault(id, 0);
+                    if (stacks <= 0) continue;
+
+                    double dmg = 0.5 + 0.15 * Math.max(0, stacks - 1);   // L1 stack = 0.5 HP, 20 stacks = 3.35 HP
+                    UUID atkId = bleedAttacker.get(id);
+                    Player attacker = atkId == null ? null : Bukkit.getPlayer(atkId);
+                    // aoeDamage routes through AOE_GUARD so the bleed tick doesn't
+                    // re-enter handleSwordEnchants and roll another Bleed proc.
+                    aoeDamage(victim, dmg, attacker);
+                    victim.getWorld().playSound(victim.getLocation(), Sound.HURT_FLESH, 0.5f, 1.2f);
+                    victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
+                            Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+
+                    // Crimson Tongue: attacker heals 1 HP per DOT tick (was per-proc,
+                    // now per-tick — matches the mythic weapon's flavor better)
+                    if (attacker != null && Boolean.TRUE.equals(bleedCrimsonTongue.get(id))) {
+                        attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + 1.0));
+                    }
+                    // Bloodlust: nearby players wearing the chestplate heal per tick
+                    for (Entity near : victim.getNearbyEntities(7, 7, 7)) {
+                        if (!(near instanceof Player) || near == victim) continue;
+                        Player healer = (Player) near;
+                        int blvl = maxArmor(healer, "bloodlust");
+                        if (blvl <= 0) continue;
+                        healer.setHealth(Math.min(healer.getMaxHealth(), healer.getHealth() + 1.0 * blvl));
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L);
+    }
+
+    /** Find a LivingEntity by UUID across all loaded worlds. 1.8.8 has no
+     *  Bukkit.getEntity(UUID). Cheap enough for the Bleed ticker since we only
+     *  call it once per bleeding entity per second. */
+    private static LivingEntity lookupLiving(UUID id) {
+        Player p = Bukkit.getPlayer(id);
+        if (p != null) return p;
+        for (org.bukkit.World w : Bukkit.getWorlds()) {
+            for (Entity e : w.getEntities()) {
+                if (e.getUniqueId().equals(id) && e instanceof LivingEntity) return (LivingEntity) e;
+            }
         }
-        // Crimson Tongue (mythic_held = 1) — heal attacker 1 HP per Bleed proc
-        if (attacker != null && weapon != null && ItemUtil.getLevel(weapon, "mythic_held") == 1) {
-            attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + 1.0));
-        }
+        return null;
     }
 
     /** Strip every negative potion effect from `p` — used by Blessed proc. */
