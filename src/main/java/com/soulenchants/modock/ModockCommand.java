@@ -9,13 +9,14 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 /**
- * /modock setspawn boss     (admin, in-world) — set Modock's spawn point in this phase
- * /modock setspawn player   (admin, in-world) — set the player arrival point in this phase
- * /modock give [player]     — admin: give a Modock spawner item
- * /modock summon            — admin: bypass the item, jump straight in
- * /modock abort             — admin: end the encounter, TP all back
- * /modock status            — current state
- * /modock tp <phase>        — admin: TP yourself to a phase world for setup
+ * /modock setspawn boss [phase]    set Modock's spawn (defaults to phase = current world)
+ * /modock setspawn player [phase]  set the player arrival point (same default)
+ * /modock spawns                   list every configured boss/player spawn
+ * /modock give [player]            give a Modock spawner item
+ * /modock summon                   admin: bypass the item, jump straight in
+ * /modock abort                    admin: end the encounter, TP all back
+ * /modock status                   current state
+ * /modock tp <phase>               admin: TP to a phase world for setup
  */
 public final class ModockCommand implements CommandExecutor {
 
@@ -80,16 +81,56 @@ public final class ModockCommand implements CommandExecutor {
                 p.sendMessage(ChatColor.RED + "No permission."); return true;
             }
             if (args.length < 2 || (!args[1].equalsIgnoreCase("boss") && !args[1].equalsIgnoreCase("player"))) {
-                p.sendMessage(ChatColor.RED + "Usage: /modock setspawn <boss|player>"); return true;
-            }
-            String phase = ModockSpawnConfig.phaseFor(p.getWorld().getName());
-            if (phase == null) {
-                p.sendMessage(ChatColor.RED + "Stand in a Modock phase world (modock_phase1/2/3) first.");
+                p.sendMessage(ChatColor.RED + "Usage: /modock setspawn <boss|player> [phase1|phase2|phase3]");
                 return true;
             }
+            // Optional 3rd arg lets you set any phase's spawn from any world.
+            // No 3rd arg = use your current world.
+            String phase;
+            if (args.length >= 3) {
+                phase = args[2].toLowerCase();
+                if (!phase.equals("phase1") && !phase.equals("phase2") && !phase.equals("phase3")) {
+                    p.sendMessage(ChatColor.RED + "Phase must be phase1, phase2, or phase3."); return true;
+                }
+            } else {
+                phase = ModockSpawnConfig.phaseFor(p.getWorld().getName());
+                if (phase == null) {
+                    p.sendMessage(ChatColor.RED + "Either pass a phase explicitly, or stand in a Modock phase world.");
+                    p.sendMessage(ChatColor.GRAY + "  /modock setspawn " + args[1].toLowerCase() + " phase1");
+                    return true;
+                }
+            }
             plugin.getModockManager().getSpawnCfg().setLocation(phase, args[1].toLowerCase(), p.getLocation());
-            p.sendMessage(ChatColor.GREEN + "✦ Set " + phase + "." + args[1].toLowerCase()
-                    + " spawn to your location.");
+            p.sendMessage(ChatColor.GREEN + "✦ Set " + ChatColor.AQUA + phase + "." + args[1].toLowerCase()
+                    + ChatColor.GREEN + " spawn to "
+                    + ChatColor.WHITE + "(" + p.getLocation().getBlockX() + ", "
+                    + p.getLocation().getBlockY() + ", " + p.getLocation().getBlockZ() + ")"
+                    + ChatColor.GRAY + " in " + p.getWorld().getName());
+            return true;
+        }
+
+        if (sub.equals("spawns")) {
+            sender.sendMessage(ChatColor.AQUA + "" + ChatColor.BOLD + "✦ Modock spawn configuration:");
+            for (String phase : new String[]{"phase1", "phase2", "phase3"}) {
+                ModockSpawnConfig.Pair pair = plugin.getModockManager().getSpawnCfg().get(phase);
+                String wn = ModockSpawnConfig.worldFor(phase);
+                org.bukkit.World w = Bukkit.getWorld(wn);
+                if (w == null) {
+                    sender.sendMessage(ChatColor.GRAY + "  " + phase + " " + ChatColor.RED + "(world '"
+                            + wn + "' NOT loaded)");
+                    continue;
+                }
+                if (pair == null) {
+                    sender.sendMessage(ChatColor.GRAY + "  " + phase + " " + ChatColor.YELLOW
+                            + "(no config — will fall back to world spawn)");
+                    continue;
+                }
+                sender.sendMessage(ChatColor.GRAY + "  " + ChatColor.AQUA + phase + ChatColor.GRAY + " in " + wn);
+                sender.sendMessage(ChatColor.GRAY + "    boss   " + ChatColor.WHITE
+                        + "(" + (int)pair.boss.getX() + ", " + (int)pair.boss.getY() + ", " + (int)pair.boss.getZ() + ")");
+                sender.sendMessage(ChatColor.GRAY + "    player " + ChatColor.WHITE
+                        + "(" + (int)pair.player.getX() + ", " + (int)pair.player.getY() + ", " + (int)pair.player.getZ() + ")");
+            }
             return true;
         }
 
@@ -107,7 +148,9 @@ public final class ModockCommand implements CommandExecutor {
             return true;
         }
 
-        sender.sendMessage(ChatColor.AQUA + "/modock status | give [player] | summon | abort | setspawn <boss|player> | tp <phase>");
+        sender.sendMessage(ChatColor.AQUA + "/modock status | spawns | give [player] | summon | abort");
+        sender.sendMessage(ChatColor.AQUA + "          setspawn <boss|player> [phase1|phase2|phase3]");
+        sender.sendMessage(ChatColor.AQUA + "          tp <phase1|phase2|phase3>");
         return true;
     }
 }

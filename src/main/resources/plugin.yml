@@ -48,7 +48,7 @@ commands:
     aliases: [guilds, g]
   modock:
     description: Modock — King of Atlantis (3-phase rift boss)
-    usage: /modock <status|give|summon|abort|setspawn|tp>
+    usage: /modock <status|spawns|give|summon|abort|setspawn|tp>
     aliases: [atlantis]
 
 permissions:
