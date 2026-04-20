@@ -56,9 +56,12 @@ public class CombatListener implements Listener {
      *  a DOT deals HP damage + HURT_FLESH sound every second until bleedUntil
      *  expires, then stacks decay. `bleedAttacker` credits DOT damage back to
      *  the original hitter so boss damage-maps still track contribution;
-     *  `bleedCrimsonTongue` carries the mythic-weapon heal-on-tick flag. */
+     *  `bleedCrimsonTongue` carries the mythic-weapon heal-on-tick flag.
+     *  `bleedProcCd` is a per-victim throttle so rapid hits can't refresh
+     *  Bleed every swing — without it, the 6s DOT visibly never lapses. */
     private final Map<UUID, Integer> bleedStacks = new HashMap<>();
     private final Map<UUID, Long> bleedUntil = new HashMap<>();
+    private final Map<UUID, Long> bleedProcCd = new HashMap<>();
     private final Map<UUID, UUID> bleedAttacker = new HashMap<>();
     private final Map<UUID, Boolean> bleedCrimsonTongue = new HashMap<>();
     private final Map<UUID, Long> antiKbCd = new HashMap<>();
@@ -195,17 +198,19 @@ public class CombatListener implements Listener {
         double specialMult = 1.0;   // Soul Strike — bypasses the cap (soul-cost)
         double flatAdd = 0.0;        // Soul Burn — flat add after multiplier
 
-        // Bleed — Cosmic-style mechanics (stacks + DOT + Slow scaling) but with
-        // a much lower proc rate. Cosmic's 48-88% was tuned for player-only
-        // targets; we apply to bosses + custom mobs which take many hits per
-        // fight, so 48% per-hit was effectively "always bleeding". Now 5-30%
-        // (L1=5%, L6=30%, +2.5% per Deep Wounds level) — meaningful proc, not
-        // constant. Stacks/DOT/decay logic in applyBleedProc unchanged.
+        // Bleed — Cosmic-style mechanics (stacks + DOT + Slow scaling) with
+        // tuned-down proc + per-victim throttle. Without the throttle, axe
+        // attack speed (~1.6/sec) refreshes the 6s DOT before it lapses so it
+        // visibly procs every swing. Now: 2.5%-15% per roll AND a 1.5s
+        // per-victim cooldown — at most one Bleed event per 1.5s per target.
         int bleed = ItemUtil.getLevel(hand, "bleed");
         if (bleed > 0) {
             int dw = ItemUtil.getLevel(hand, "deepwounds");
-            double procChance = 0.05 * bleed + 0.025 * dw;
-            if (rng.nextDouble() < procChance) {
+            double procChance = 0.025 * bleed + 0.012 * dw;  // L1=2.5%, L6=15%, +3.6% per DW
+            long now = System.currentTimeMillis();
+            long lastProc = bleedProcCd.getOrDefault(victim.getUniqueId(), 0L);
+            if (now - lastProc >= 1500L && rng.nextDouble() < procChance) {
+                bleedProcCd.put(victim.getUniqueId(), now);
                 applyBleedProc(victim, attacker, hand);
             }
         }
@@ -896,6 +901,7 @@ public class CombatListener implements Listener {
         naturesWrathCd.remove(id);
         bleedStacks.remove(id);
         bleedUntil.remove(id);
+        bleedProcCd.remove(id);
         bleedAttacker.remove(id);
         bleedCrimsonTongue.remove(id);
     }
@@ -934,18 +940,6 @@ public class CombatListener implements Listener {
             } catch (Throwable ignored) {}
             ally.playSound(ally.getLocation(), org.bukkit.Sound.LEVEL_UP, 1.0f, 1.5f);
         }
-    }
-
-    private void scheduleBleed(LivingEntity target, Player source, int level) {
-        new BukkitRunnable() {
-            int t = 0;
-            @Override public void run() {
-                if (t++ >= 3 || target.isDead()) { cancel(); return; }
-                target.damage(level * 1.5, source);
-                target.getWorld().playEffect(target.getLocation().add(0, 1, 0),
-                        Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
-            }
-        }.runTaskTimer(plugin, 20L, 20L);
     }
 
     /** Bleed proc — on hit. Decays stacks if 30s has passed with no refresh,
@@ -1014,6 +1008,7 @@ public class CombatListener implements Listener {
                     if (now > ent.getValue()) {
                         if (now - ent.getValue() > BLEED_DECAY_MS) {
                             bleedStacks.remove(id);
+                            bleedProcCd.remove(id);
                         }
                         it.remove();
                         bleedAttacker.remove(id);
@@ -1024,6 +1019,7 @@ public class CombatListener implements Listener {
                     if (victim == null || victim.isDead()) {
                         it.remove();
                         bleedStacks.remove(id);
+                        bleedProcCd.remove(id);
                         bleedAttacker.remove(id);
                         bleedCrimsonTongue.remove(id);
                         continue;
