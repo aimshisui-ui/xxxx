@@ -134,7 +134,25 @@ public class ScoreboardManager {
         // ── BOSS SECTION ────────────────
         Veilweaver vw = plugin.getVeilweaverManager().getActive();
         IronGolemBoss ig = plugin.getIronGolemManager().getActive();
-        if ((vw != null && !vw.getEntity().isDead()) || (ig != null && !ig.getEntity().isDead())) {
+        // Hollow King is a CustomMob, not a managed Boss class — find the live
+        // entity by scanning loaded worlds. ELITE-tier scan stays cheap because
+        // there's typically <=1 instance alive.
+        org.bukkit.entity.LivingEntity hk = null;
+        for (org.bukkit.World w : Bukkit.getWorlds()) {
+            for (org.bukkit.entity.Entity e : w.getEntities()) {
+                if (!(e instanceof org.bukkit.entity.LivingEntity)) continue;
+                if ("hollow_king".equals(com.soulenchants.mobs.CustomMob.idOf((org.bukkit.entity.LivingEntity) e))) {
+                    hk = (org.bukkit.entity.LivingEntity) e;
+                    break;
+                }
+            }
+            if (hk != null) break;
+        }
+
+        boolean anyBoss = (vw != null && !vw.getEntity().isDead())
+                       || (ig != null && !ig.getEntity().isDead())
+                       || (hk != null && !hk.isDead());
+        if (anyBoss) {
             lines.add(divRed);
             lines.add(ChatColor.RED + "" + ChatColor.BOLD + "▎ Boss");
         }
@@ -152,6 +170,12 @@ public class ScoreboardManager {
             lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
                     + (int) ig.getEntity().getHealth() + ChatColor.DARK_GRAY + "/"
                     + ChatColor.GRAY + (int) ig.getEntity().getMaxHealth());
+        }
+        if (hk != null && !hk.isDead()) {
+            lines.add(ChatColor.RED + " Hollow King " + ChatColor.DARK_RED + "[Elite]");
+            lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
+                    + (int) hk.getHealth() + ChatColor.DARK_GRAY + "/"
+                    + ChatColor.GRAY + (int) hk.getMaxHealth());
         }
 
         // ── RIFT SECTION ────────────────

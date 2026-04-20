@@ -49,8 +49,16 @@ public final class VoidRiftManager {
     private byte portalOldData;
     private Hologram portalHologram;
     private Hologram riftHologram;         // inside rift_world — status/timer
-    private int portalSecondsLeft;
-    private int activeSecondsLeft;
+    // Wall-clock end-times (System.currentTimeMillis()). Reading these against
+    // wall-clock keeps the displayed countdown accurate even when server TPS dips
+    // below 20 — counter-based timers (`activeSecondsLeft--`) drift on lag.
+    private long portalEndsAt;
+    private long activeEndsAt;
+    // Which active-phase warning thresholds (in seconds) we've already announced.
+    // Replaces the old `if (activeSecondsLeft == 300)` exact-match checks, which
+    // could miss a frame on lag and silently skip the warning.
+    private final java.util.Set<Integer> firedActiveWarnings = new java.util.HashSet<>();
+    private static final int[] ACTIVE_WARNING_THRESHOLDS = { 300, 60, 30, 10 };
     private BukkitTask portalTask;
     private BukkitTask activeTask;
     private final Set<UUID> trackedMobs = new HashSet<>();
@@ -84,7 +92,7 @@ public final class VoidRiftManager {
         this.portalLoc = at.getBlock().getLocation().clone();
         this.portalOld = portalLoc.getBlock().getType();
         this.portalOldData = portalLoc.getBlock().getData();
-        this.portalSecondsLeft = 15;
+        this.portalEndsAt = System.currentTimeMillis() + 15_000L;
 
         // Use purple stained glass as the visual marker — it's striking and
         // (unlike END_PORTAL) doesn't have any vanilla teleport semantics that
@@ -142,7 +150,9 @@ public final class VoidRiftManager {
     }
 
     private void startPortalCountdown() {
-        // Per-second tick — handles countdown + player TP + close transition
+        // Per-second tick — handles countdown + player TP + close transition.
+        // Reads remaining seconds from wall-clock (portalEndsAt), NOT from a
+        // counter, so server lag doesn't stretch the countdown.
         portalTask = new BukkitRunnable() {
             @Override public void run() {
                 if (state != State.PORTAL_OPEN) { cancel(); return; }
@@ -152,11 +162,11 @@ public final class VoidRiftManager {
                         sendToRift(p);
                     }
                 }
-                portalSecondsLeft--;
+                int left = portalSecondsLeft();
                 if (portalHologram != null) {
-                    portalHologram.updateLine(3, ChatColor.YELLOW + "" + ChatColor.BOLD + "Closes in " + portalSecondsLeft + "s");
+                    portalHologram.updateLine(3, ChatColor.YELLOW + "" + ChatColor.BOLD + "Closes in " + left + "s");
                 }
-                if (portalSecondsLeft <= 0) {
+                if (left <= 0) {
                     closePortal();
                     if (riftParticipants.isEmpty()) {
                         // Auto-close: nobody walked through. Don't waste anyone's time
@@ -239,7 +249,8 @@ public final class VoidRiftManager {
     // ── 2. Rift becomes active — spawn mobs, start the 10-min timer ─────
     private void beginActive() {
         state = State.ACTIVE;
-        this.activeSecondsLeft = 600;
+        this.activeEndsAt = System.currentTimeMillis() + 600_000L;
+        this.firedActiveWarnings.clear();
 
         World rift = Bukkit.getWorld(RiftWorld.NAME);
         if (rift == null) {
@@ -284,7 +295,7 @@ public final class VoidRiftManager {
                 ChatColor.RED + "⚠ PvP enabled",
                 ChatColor.RED + "⚠ Death = keep gear",
                 ChatColor.GRAY + "Threats remaining: " + ChatColor.WHITE + spawned,
-                ChatColor.YELLOW + "Timer: " + formatTime(activeSecondsLeft)
+                ChatColor.YELLOW + "Timer: " + formatTime(activeSecondsLeft())
         ));
 
         for (UUID u : riftParticipants) {
@@ -311,22 +322,42 @@ public final class VoidRiftManager {
 
                 if (trackedMobs.isEmpty()) { complete(totalSpawned); cancel(); return; }
 
-                activeSecondsLeft--;
+                int left = activeSecondsLeft();
                 if (riftHologram != null) {
                     riftHologram.updateLine(3, ChatColor.GRAY + "Threats remaining: " + ChatColor.WHITE + trackedMobs.size());
-                    riftHologram.updateLine(4, ChatColor.YELLOW + "Timer: " + formatTime(activeSecondsLeft));
+                    riftHologram.updateLine(4, ChatColor.YELLOW + "Timer: " + formatTime(left));
                 }
 
-                // Warnings
-                if (activeSecondsLeft == 300 || activeSecondsLeft == 60 || activeSecondsLeft == 30
-                        || activeSecondsLeft == 10) {
-                    broadcastRift(ChatColor.YELLOW + "⚠ " + formatTime(activeSecondsLeft) + " remaining — "
-                            + trackedMobs.size() + " threats left.");
+                // Threshold-crossing warnings — fire each threshold AT MOST once
+                // per rift, when wall-clock remaining drops to/below it. Set-tracked
+                // so we never miss or repeat a warning even if the tick fires twice
+                // in the same wall-clock second (catch-up tick).
+                for (int t : ACTIVE_WARNING_THRESHOLDS) {
+                    if (left <= t && firedActiveWarnings.add(t)) {
+                        broadcastRift(ChatColor.YELLOW + "⚠ " + formatTime(t) + " remaining — "
+                                + trackedMobs.size() + " threats left.");
+                    }
                 }
 
-                if (activeSecondsLeft <= 0) { fail("timer expired"); cancel(); }
+                if (left <= 0) { fail("timer expired"); cancel(); }
             }
         }.runTaskTimer(plugin, 20L, 20L);
+    }
+
+    /** Wall-clock remaining seconds in PORTAL_OPEN, ceil-rounded so the display
+     *  shows "15s" for the first second instead of immediately ticking to "14s". */
+    private int portalSecondsLeft() {
+        if (state != State.PORTAL_OPEN) return 0;
+        long remainMs = portalEndsAt - System.currentTimeMillis();
+        return remainMs <= 0 ? 0 : (int) ((remainMs + 999) / 1000);
+    }
+
+    /** Wall-clock remaining seconds in ACTIVE, ceil-rounded. Same drift-resistance
+     *  rationale as portalSecondsLeft. */
+    private int activeSecondsLeft() {
+        if (state != State.ACTIVE) return 0;
+        long remainMs = activeEndsAt - System.currentTimeMillis();
+        return remainMs <= 0 ? 0 : (int) ((remainMs + 999) / 1000);
     }
 
     private LivingEntity spawnOne(RiftSpawnConfig.Entry e, World rift) {
@@ -416,6 +447,9 @@ public final class VoidRiftManager {
         }
         trackedMobs.clear();
         riftParticipants.clear();
+        firedActiveWarnings.clear();
+        portalEndsAt = 0L;
+        activeEndsAt = 0L;
         state = State.IDLE;
         portalLoc = null;
         opener = null;
@@ -449,21 +483,21 @@ public final class VoidRiftManager {
 
     public String status() {
         if (state == State.IDLE) return "idle";
-        int t = state == State.PORTAL_OPEN ? portalSecondsLeft : activeSecondsLeft;
+        int t = state == State.PORTAL_OPEN ? portalSecondsLeft() : activeSecondsLeft();
         return state.name().toLowerCase() + " — " + formatTime(t) + " · "
                 + trackedMobs.size() + " mobs · " + riftParticipants.size() + " participants";
     }
 
     /** Compact label for the scoreboard. */
     public String shortStatus() {
-        if (state == State.PORTAL_OPEN) return portalSecondsLeft + "s left";
-        if (state == State.ACTIVE)      return formatTime(activeSecondsLeft) + " · " + trackedMobs.size() + " mobs";
+        if (state == State.PORTAL_OPEN) return portalSecondsLeft() + "s left";
+        if (state == State.ACTIVE)      return formatTime(activeSecondsLeft()) + " · " + trackedMobs.size() + " mobs";
         return "idle";
     }
 
     public String timerLabel() {
-        if (state == State.PORTAL_OPEN) return portalSecondsLeft + "s";
-        if (state == State.ACTIVE) return formatTime(activeSecondsLeft);
+        if (state == State.PORTAL_OPEN) return portalSecondsLeft() + "s";
+        if (state == State.ACTIVE) return formatTime(activeSecondsLeft());
         return "—";
     }
 

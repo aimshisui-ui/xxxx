@@ -59,10 +59,21 @@ public class MobListener implements Listener {
     public void onMobHurt(EntityDamageEvent e) {
         if (!(e.getEntity() instanceof LivingEntity)) return;
         LivingEntity v = (LivingEntity) e.getEntity();
-        if (CustomMob.idOf(v) == null) return;
+        String mid = CustomMob.idOf(v);
+        if (mid == null) return;
         for (MobAbility ab : resolved(v)) {
             try { ab.onHurt(v, e); }
             catch (Throwable t) { plugin.getLogger().warning("[mob ability] " + t.getMessage()); }
+        }
+        // Live HP-bar refresh for ELITE-tier mobs (Hollow King + future bosses).
+        // Vanilla nametag only updates on chunk-network-resync, so without an
+        // explicit setCustomName call after damage the bar visibly lags.
+        // Defer one tick so the damage event has fully applied before we read HP.
+        CustomMob def = MobRegistry.get(mid);
+        if (def != null && def.tier == CustomMob.Tier.ELITE) {
+            new BukkitRunnable() {
+                @Override public void run() { CustomMob.refreshHpBar(v, def); }
+            }.runTaskLater(plugin, 1L);
         }
     }
 
@@ -150,6 +161,12 @@ public class MobListener implements Listener {
                         for (MobAbility ab : rs) {
                             try { ab.onTick(le); }
                             catch (Throwable t) { plugin.getLogger().warning("[mob tick] " + t.getMessage()); }
+                        }
+                        // Passive HP-bar refresh for ELITE mobs — covers regen/heal
+                        // ticks where no damage event fires. Damage-driven refresh
+                        // in onMobHurt above handles the responsive case.
+                        if (def.tier == CustomMob.Tier.ELITE) {
+                            CustomMob.refreshHpBar(le, def);
                         }
                     }
                 }

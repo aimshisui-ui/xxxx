@@ -210,6 +210,29 @@ public class CustomMob {
         RESOLVED.put(le.getUniqueId(), runtime);
     }
 
+    /** Build a "[NAME] [▮▮▮▯▯▯] HP/MAX" nametag and stamp it onto the entity.
+     *  Mirrors the bar style used by Veilweaver/IronGolem so all bosses + ELITE
+     *  custom mobs display the same way. Cheap enough to call every 5 ticks or
+     *  on every damage event (≤80b nametag-render distance keeps it scoped). */
+    public static void refreshHpBar(LivingEntity le, CustomMob def) {
+        if (le == null || def == null || le.isDead()) return;
+        try {
+            double pct = Math.max(0.0, Math.min(1.0, le.getHealth() / le.getMaxHealth()));
+            int filled = (int) Math.round(pct * 20);
+            org.bukkit.ChatColor barColor = pct > 0.66 ? org.bukkit.ChatColor.GREEN
+                                          : pct > 0.33 ? org.bukkit.ChatColor.YELLOW
+                                                       : org.bukkit.ChatColor.RED;
+            StringBuilder bar = new StringBuilder(barColor.toString());
+            for (int i = 0; i < 20; i++) {
+                if (i == filled) bar.append(org.bukkit.ChatColor.DARK_GRAY);
+                bar.append('▮');
+            }
+            le.setCustomName(def.tier.color + def.tier.label + " " + def.displayName
+                    + " " + bar + " §c" + (int) le.getHealth() + "§7/§c" + (int) le.getMaxHealth());
+            le.setCustomNameVisible(true);
+        } catch (Throwable ignored) {}
+    }
+
     public static String idOf(LivingEntity le) {
         if (le == null) return null;
         // Fast path: metadata (set on every spawn, in-memory only)
