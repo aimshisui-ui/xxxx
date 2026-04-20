@@ -91,6 +91,30 @@ public final class RiftCommand implements CommandExecutor {
             sender.sendMessage(ChatColor.YELLOW + "✦ Active rift aborted.");
             return true;
         }
+        if (sub.equals("loadchunks")) {
+            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage(ChatColor.RED + "No permission."); return true; }
+            World rift = Bukkit.getWorld(RiftWorld.NAME);
+            if (rift == null) { sender.sendMessage(ChatColor.RED + "rift_world isn't loaded."); return true; }
+            int radius = 256;
+            if (args.length >= 2) {
+                try { radius = Integer.parseInt(args[1]); }
+                catch (NumberFormatException ex) { sender.sendMessage(ChatColor.RED + "Bad radius: " + args[1]); return true; }
+            }
+            Location spawn = rift.getSpawnLocation();
+            int loaded = RiftChunkHolder.hold(rift, spawn.getBlockX(), spawn.getBlockZ(), radius);
+            sender.sendMessage(ChatColor.GREEN + "✦ Held " + loaded + " chunks in " + rift.getName()
+                    + " (radius " + radius + ").");
+            sender.sendMessage(ChatColor.GRAY + "  /rift releasechunks to unpin. "
+                    + "Set view-distance=16 in server.properties + restart for max screenshot range.");
+            return true;
+        }
+        if (sub.equals("releasechunks")) {
+            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage(ChatColor.RED + "No permission."); return true; }
+            int prev = RiftChunkHolder.heldCount();
+            RiftChunkHolder.release();
+            sender.sendMessage(ChatColor.YELLOW + "✦ Released " + prev + " held chunks.");
+            return true;
+        }
 
         // From here on, must be a player
         if (!(sender instanceof Player)) { sender.sendMessage(ChatColor.RED + "Player only."); return true; }

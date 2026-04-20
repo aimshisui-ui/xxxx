@@ -154,6 +154,8 @@ public class SoulEnchants extends JavaPlugin {
         getCommand("rift").setExecutor(
                 new com.soulenchants.rifts.RiftCommand(this, riftSpawnConfig, voidRiftManager,
                         hologramManager, hologramGUI));
+        // Chunk-pin listener for /rift loadchunks (one-shot screenshot helper)
+        getServer().getPluginManager().registerEvents(new com.soulenchants.rifts.RiftChunkHolder(), this);
 
         // Recipe GUI
         this.recipeGUI = new com.soulenchants.gui.RecipeGUI();
