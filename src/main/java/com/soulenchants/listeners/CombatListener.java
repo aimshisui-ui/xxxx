@@ -974,8 +974,25 @@ public class CombatListener implements Listener {
         BLEED_TICK.set(true);
         try { victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, dur, amp), true); }
         finally { BLEED_TICK.set(false); }
-        victim.getWorld().playEffect(victim.getEyeLocation(),
-                Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+        // On-proc burst — bigger than the tick burst to punctuate the initial hit
+        spawnBloodBurst(victim, stacks + 2);
+    }
+
+    /** Redstone-block step-sound particle burst around a victim. Cosmic uses
+     *  the same `sendWorldEffect(2001, REDSTONE_BLOCK)` trick — it's the
+     *  bright red crumble particle, which reads as blood. Count scales with
+     *  stacks so a max-stack victim looks like they're fountaining. */
+    private static void spawnBloodBurst(LivingEntity victim, int intensity) {
+        Location base = victim.getLocation().add(0, 1.0, 0);
+        org.bukkit.World w = victim.getWorld();
+        int particles = Math.min(12, 3 + intensity / 2);
+        for (int i = 0; i < particles; i++) {
+            double dx = (Math.random() - 0.5) * 0.9;
+            double dy = (Math.random() - 0.2) * 0.9;
+            double dz = (Math.random() - 0.5) * 0.9;
+            w.playEffect(base.clone().add(dx, dy, dz),
+                    Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+        }
     }
 
     /** One global 1-second ticker drives all active Bleeds: deals scaled HP
@@ -1019,8 +1036,11 @@ public class CombatListener implements Listener {
                     // re-enter handleSwordEnchants and roll another Bleed proc.
                     aoeDamage(victim, dmg, attacker);
                     victim.getWorld().playSound(victim.getLocation(), Sound.HURT_FLESH, 0.5f, 1.2f);
-                    victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
-                            Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+                    // Blood burst — cluster of redstone-block step-sound particles at the
+                    // victim's hitbox. Count scales with stacks so a heavy-stack target
+                    // visibly fountains. Little vertical spread + a small horizontal
+                    // spread to read as a splatter, not a column.
+                    spawnBloodBurst(victim, stacks);
 
                     // Crimson Tongue: attacker heals 1 HP per DOT tick (was per-proc,
                     // now per-tick — matches the mythic weapon's flavor better)
