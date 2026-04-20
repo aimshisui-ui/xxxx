@@ -29,9 +29,22 @@ public class QuestEventListener implements Listener {
         boolean hk = "hollow_king".equals(customId);
         if (vw || ig || hk) {
             plugin.getQuestManager().onEvent(killer, QuestEvent.bossKilled(e.getEntity()));
-            if (hk && plugin.getGuildManager() != null) {
-                com.soulenchants.guilds.Guild g = plugin.getGuildManager().getByMember(killer.getUniqueId());
-                if (g != null) plugin.getGuildManager().awardPoints(g, 250L, "hollow king kill");
+            if (hk) {
+                long pts = 0L;
+                if (plugin.getGuildManager() != null) {
+                    com.soulenchants.guilds.Guild g = plugin.getGuildManager().getByMember(killer.getUniqueId());
+                    if (g != null) {
+                        plugin.getGuildManager().awardPoints(g, 250L, "hollow king kill");
+                        pts = 250L;
+                    }
+                }
+                // Hollow King doesn't track per-player damage like Veilweaver/IronGolem,
+                // so the FX shows killer-only credit. Souls reward is hard-coded here
+                // to match the loot drop balance — bump if we tune the boss config.
+                long hkSouls = 1500L;
+                com.soulenchants.bosses.BossKillRewardFX.play(plugin, killer, null,
+                        "The Hollow King", org.bukkit.ChatColor.RED,
+                        hkSouls, 0L, pts, e.getEntity().getLocation());
             }
             return;
         }

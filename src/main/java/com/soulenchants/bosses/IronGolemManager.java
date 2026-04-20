@@ -117,28 +117,43 @@ public class IronGolemManager {
                 ChatColor.GOLD, b.getDamageDealt(),
                 IronGolemBoss.MAX_HP);
 
-        awardGuildPointsByDamage(b.getDamageDealt(), IronGolemBoss.MAX_HP, 350L, "ironheart kill");
+        long killerGuildPts = awardGuildPointsByDamage(b.getDamageDealt(), IronGolemBoss.MAX_HP, 350L,
+                "ironheart kill", killer);
+
+        com.soulenchants.bosses.BossKillRewardFX.play(plugin, killer, top,
+                "Ironheart Colossus", ChatColor.GOLD,
+                killer != null ? souls : 0L,
+                top != null && top != killer ? souls / 2 : 0L,
+                killerGuildPts,
+                b.getEntity().getLocation());
 
         b.stop(true);
         active = null;
     }
 
-    /** See VeilweaverManager.awardGuildPointsByDamage — same proportional rule. */
-    private void awardGuildPointsByDamage(java.util.Map<java.util.UUID, Double> dmgMap,
-                                          double bossMaxHp, long basePoints, String reason) {
-        if (plugin.getGuildManager() == null || dmgMap == null || dmgMap.isEmpty()) return;
+    /** See VeilweaverManager.awardGuildPointsByDamage — returns the killer's
+     *  guild's award (0 if none) for the cinematic display. */
+    private long awardGuildPointsByDamage(java.util.Map<java.util.UUID, Double> dmgMap,
+                                          double bossMaxHp, long basePoints, String reason,
+                                          Player killer) {
+        if (plugin.getGuildManager() == null || dmgMap == null || dmgMap.isEmpty()) return 0L;
         java.util.Map<com.soulenchants.guilds.Guild, Double> byGuild = new java.util.HashMap<>();
         for (java.util.Map.Entry<java.util.UUID, Double> e : dmgMap.entrySet()) {
             com.soulenchants.guilds.Guild g = plugin.getGuildManager().getByMember(e.getKey());
             if (g == null) continue;
             byGuild.merge(g, e.getValue(), Double::sum);
         }
+        com.soulenchants.guilds.Guild killerGuild = killer == null ? null
+                : plugin.getGuildManager().getByMember(killer.getUniqueId());
+        long killerGuildPts = 0L;
         for (java.util.Map.Entry<com.soulenchants.guilds.Guild, Double> e : byGuild.entrySet()) {
             double pct = e.getValue() / bossMaxHp;
             if (pct < 0.10) continue;
             long pts = Math.max(1L, (long) (basePoints * Math.min(1.0, pct)));
             plugin.getGuildManager().awardPoints(e.getKey(), pts, reason);
+            if (killerGuild != null && e.getKey().equals(killerGuild)) killerGuildPts = pts;
         }
+        return killerGuildPts;
     }
 
     private ItemStack ironHeart() {

@@ -119,6 +119,12 @@ public class CombatListener implements Listener {
         return false;
     }
 
+    /** Hard cap on summed offensive bonus — final dmg can be at most 3x base
+     *  from stacked enchants (Witherbane + Demonslayer + Slayer + Executioner +
+     *  Reaver + Crit + ...). Soul Strike is a soul-cost ability and bypasses the
+     *  cap by design. Soul Burn's flat add stays additive after the multiplier. */
+    private static final double OFFENSIVE_BONUS_CAP = 2.00;
+
     private void handleSwordEnchants(Player attacker, LivingEntity victim, EntityDamageByEntityEvent e) {
         ItemStack hand = attacker.getItemInHand();
         if (hand == null) return;
@@ -132,6 +138,19 @@ public class CombatListener implements Listener {
             double heal = Math.min(e.getDamage() * 0.05 * ls, 5.0);
             attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
         }
+
+        // ──────────────────────────────────────────────────────────────
+        // ADDITIVE OFFENSIVE BONUS POOL
+        //
+        // Every "type slayer" / "situational damage" enchant contributes to a
+        // single accumulator that's capped at OFFENSIVE_BONUS_CAP. Previously
+        // these multiplied serially, so a max stack hit ~8x base on bosses.
+        // Now: final = base * (1 + min(sum, CAP)) * specialMult + flatAdd
+        // ──────────────────────────────────────────────────────────────
+        double baseDmg = e.getDamage();
+        double offBonus = 0.0;
+        double specialMult = 1.0;   // Soul Strike — bypasses the cap (soul-cost)
+        double flatAdd = 0.0;        // Soul Burn — flat add after multiplier
 
         // Bleed (Nordic-style) — applies stacking SLOW. Deep Wounds boosts proc chance.
         // Stacks reset to 0 when 30s passes without a proc. Each new proc bumps the
@@ -159,22 +178,30 @@ public class CombatListener implements Listener {
         if (ven > 0 && rng.nextDouble() < 0.04 * ven)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 40 * ven, 0));
 
-        // Wither Bane
+        // Wither Bane → additive
         int wb = ItemUtil.getLevel(hand, "witherbane");
-        if (wb > 0 && isWitherFamily(victim)) e.setDamage(e.getDamage() * (1.0 + 0.35 * wb));
+        if (wb > 0 && isWitherFamily(victim)) offBonus += 0.35 * wb;
 
-        // Demon Slayer
+        // Demon Slayer → additive
         int demon = ItemUtil.getLevel(hand, "demonslayer");
-        if (demon > 0 && isNetherMob(victim)) e.setDamage(e.getDamage() * (1.0 + 0.30 * demon));
+        if (demon > 0 && isNetherMob(victim)) offBonus += 0.30 * demon;
 
-        // Beast Slayer
+        // Beast Slayer → additive
         int beast = ItemUtil.getLevel(hand, "beastslayer");
-        if (beast > 0 && isArthropod(victim)) e.setDamage(e.getDamage() * (1.0 + 0.25 * beast));
+        if (beast > 0 && isArthropod(victim)) offBonus += 0.25 * beast;
 
-        // Executioner
+        // Executioner → additive
         int exec = ItemUtil.getLevel(hand, "executioner");
         if (exec > 0 && victim.getHealth() / victim.getMaxHealth() < 0.30)
-            e.setDamage(e.getDamage() * (1.0 + 0.25 * exec));
+            offBonus += 0.25 * exec;
+
+        // Slayer (was in PvEDamageListener — moved here for melee so it joins the cap).
+        int slayer = ItemUtil.getLevel(hand, "slayer");
+        if (slayer > 0 && isBossOrMinionTarget(victim)) offBonus += 0.25 * slayer;
+
+        // Holy Smite (was in PvEDamageListener — moved here for melee).
+        int holy = ItemUtil.getLevel(hand, "holysmite");
+        if (holy > 0 && isUndead(victim)) offBonus += 0.30 * holy;
 
         // Cleave (Nordic-style) — flat 5% chance to deal a fixed 3 dmg to all valid
         // proc targets in (level)-block radius. Recursion-guarded so the splash
@@ -211,11 +238,11 @@ public class CombatListener implements Listener {
         if (curse > 0 && rng.nextDouble() < 0.03 * curse)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
 
-        // Soul Burn — heavy proc nerf (was 12%/lvl)
+        // Soul Burn — flat add (stays additive AFTER multiplier so the cap doesn't eat it)
         int sb = ItemUtil.getLevel(hand, "soulburn");
         if (sb > 0 && rng.nextDouble() < 0.05 * sb) {
             victim.setFireTicks(60 * sb);
-            e.setDamage(e.getDamage() + (1.0 * sb));
+            flatAdd += 1.0 * sb;
         }
 
         // Phantom Strike — heavy proc nerf (was 4%/lvl)
@@ -243,10 +270,10 @@ public class CombatListener implements Listener {
         if (bb > 0 && rng.nextDouble() < 0.04 * bb)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 60 * bb, 0));
 
-        // Critical Strike — heavy proc nerf (was 5%/lvl)
+        // Critical Strike — proc-gated, contributes +50% to additive pool
         int crit = ItemUtil.getLevel(hand, "criticalstrike");
         if (crit > 0 && rng.nextDouble() < 0.02 * crit) {
-            e.setDamage(e.getDamage() * 1.5);
+            offBonus += 0.50;
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
         }
@@ -294,11 +321,11 @@ public class CombatListener implements Listener {
 
         // ─── AXE enchants (PvE/PvP, fire whether wielding sword OR axe) ───
 
-        // Reaver — bonus dmg scaled to attacker's missing HP. PvE/burst utility.
+        // Reaver → additive (scales with attacker's missing HP)
         int reaver = ItemUtil.getLevel(hand, "reaver");
         if (reaver > 0) {
             double missingPct = 1.0 - (attacker.getHealth() / attacker.getMaxHealth());
-            e.setDamage(e.getDamage() * (1.0 + 0.08 * reaver * missingPct));
+            offBonus += 0.08 * reaver * missingPct;
         }
         // Skullcrush — proc Nausea + Weakness II on player hits
         int skull = ItemUtil.getLevel(hand, "skullcrush");
@@ -333,7 +360,7 @@ public class CombatListener implements Listener {
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.PACKED_ICE.getId());
         }
-        // Wraithcleave — bonus dmg if victim is alone (no other LivingEntities in 8b)
+        // Wraithcleave → additive (only if victim is alone)
         int wc = ItemUtil.getLevel(hand, "wraithcleave");
         if (wc > 0) {
             boolean alone = true;
@@ -343,14 +370,14 @@ public class CombatListener implements Listener {
                     alone = false; break;
                 }
             }
-            if (alone) e.setDamage(e.getDamage() * (1.0 + 0.25 * wc));
+            if (alone) offBonus += 0.25 * wc;
         }
         // Rending Blow — Wither III for 5s
         int rb = ItemUtil.getLevel(hand, "rendingblow");
         if (rb > 0 && rng.nextDouble() < 0.04 * rb) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 100, 2));
         }
-        // Executioner's Mark — bonus dmg if victim has any debuff active
+        // Executioner's Mark → additive (when victim has any debuff)
         int em = ItemUtil.getLevel(hand, "executionersmark");
         if (em > 0) {
             boolean hasDebuff = victim.hasPotionEffect(PotionEffectType.SLOW)
@@ -360,15 +387,15 @@ public class CombatListener implements Listener {
                     || victim.hasPotionEffect(PotionEffectType.SLOW_DIGGING)
                     || victim.hasPotionEffect(PotionEffectType.CONFUSION)
                     || victim.hasPotionEffect(PotionEffectType.BLINDNESS);
-            if (hasDebuff) e.setDamage(e.getDamage() * (1.0 + 0.15 * em));
+            if (hasDebuff) offBonus += 0.15 * em;
         }
 
-        // Soul Strike — proc nerf (15% → 5%) + cost bump (30 → 100 souls)
+        // Soul Strike — bypass-cap special multiplier (rare proc + soul cost = self-throttled)
         int ss = ItemUtil.getLevel(hand, "soulstrike");
         if (ss > 0 && rng.nextDouble() < 0.05) {
             int cost = 100;
             if (plugin.getSoulManager().take(attacker, cost)) {
-                e.setDamage(e.getDamage() * (1.5 + 0.5 * ss));
+                specialMult *= (1.5 + 0.5 * ss);
                 attacker.getWorld().strikeLightningEffect(victim.getLocation());
                 attacker.sendMessage("§4✦ Soul Strike! §7(-" + cost + ")");
             }
@@ -403,6 +430,37 @@ public class CombatListener implements Listener {
             }
             attacker.getWorld().playSound(attacker.getLocation(), org.bukkit.Sound.FIREWORK_BLAST, 1.0f, 0.4f);
         }
+
+        // ──────────────────────────────────────────────────────────────
+        // FINAL DAMAGE APPLICATION
+        // base * (1 + min(offBonus, CAP)) * specialMult + flatAdd
+        // ──────────────────────────────────────────────────────────────
+        double cappedBonus = Math.min(offBonus, OFFENSIVE_BONUS_CAP);
+        double finalDmg = baseDmg * (1.0 + cappedBonus) * specialMult + flatAdd;
+        if (finalDmg != baseDmg) e.setDamage(finalDmg);
+    }
+
+    /** Is `target` an active boss or one of their tracked minions? Used for Slayer
+     *  bonus eligibility. Mirrors PvEDamageListener.isBossOrMinion but lives here
+     *  so the additive pool can read it without crossing listener boundaries. */
+    private boolean isBossOrMinionTarget(LivingEntity target) {
+        com.soulenchants.bosses.Veilweaver vw = plugin.getVeilweaverManager().getActive();
+        if (vw != null) {
+            if (target.getUniqueId().equals(vw.getEntity().getUniqueId())) return true;
+            for (LivingEntity m : vw.getMinions())
+                if (m != null && m.getUniqueId().equals(target.getUniqueId())) return true;
+            for (LivingEntity c : vw.getEchoClones())
+                if (c != null && c.getUniqueId().equals(target.getUniqueId())) return true;
+        }
+        com.soulenchants.bosses.IronGolemBoss ig = plugin.getIronGolemManager().getActive();
+        if (ig != null && ig.getEntity().getUniqueId().equals(target.getUniqueId())) return true;
+        return false;
+    }
+
+    private boolean isUndead(LivingEntity ent) {
+        EntityType t = ent.getType();
+        return t == EntityType.ZOMBIE || t == EntityType.SKELETON
+                || t == EntityType.PIG_ZOMBIE || t == EntityType.WITHER;
     }
 
     private void handleArmorOnHit(Player victim, EntityDamageByEntityEvent e) {
