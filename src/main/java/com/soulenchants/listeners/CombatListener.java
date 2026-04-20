@@ -57,11 +57,10 @@ public class CombatListener implements Listener {
      *  expires, then stacks decay. `bleedAttacker` credits DOT damage back to
      *  the original hitter so boss damage-maps still track contribution;
      *  `bleedCrimsonTongue` carries the mythic-weapon heal-on-tick flag.
-     *  `bleedProcCd` is a per-victim throttle so rapid hits can't refresh
-     *  Bleed every swing — without it, the 6s DOT visibly never lapses. */
+     *  Re-procs are blocked while bleedUntil is in the future + 2s grace, so
+     *  the DOT always visibly ends before another can start. */
     private final Map<UUID, Integer> bleedStacks = new HashMap<>();
     private final Map<UUID, Long> bleedUntil = new HashMap<>();
-    private final Map<UUID, Long> bleedProcCd = new HashMap<>();
     private final Map<UUID, UUID> bleedAttacker = new HashMap<>();
     private final Map<UUID, Boolean> bleedCrimsonTongue = new HashMap<>();
     private final Map<UUID, Long> antiKbCd = new HashMap<>();
@@ -198,19 +197,21 @@ public class CombatListener implements Listener {
         double specialMult = 1.0;   // Soul Strike — bypasses the cap (soul-cost)
         double flatAdd = 0.0;        // Soul Burn — flat add after multiplier
 
-        // Bleed — Cosmic-style mechanics (stacks + DOT + Slow scaling) with
-        // tuned-down proc + per-victim throttle. Without the throttle, axe
-        // attack speed (~1.6/sec) refreshes the 6s DOT before it lapses so it
-        // visibly procs every swing. Now: 2.5%-15% per roll AND a 1.5s
-        // per-victim cooldown — at most one Bleed event per 1.5s per target.
+        // Bleed — proc forbidden while the victim is ALREADY bleeding. This
+        // breaks the chain that came from prior tunings: a 6s DOT with rapid
+        // re-rolls almost always got refreshed before it lapsed, so the DOT
+        // visibly never ended. Now Bleed is a discrete event: hit until the
+        // victim bleeds, watch the DOT play out, then a re-proc is possible.
+        // Proc rate is also way down so even fresh victims rarely roll it.
         int bleed = ItemUtil.getLevel(hand, "bleed");
         if (bleed > 0) {
             int dw = ItemUtil.getLevel(hand, "deepwounds");
-            double procChance = 0.025 * bleed + 0.012 * dw;  // L1=2.5%, L6=15%, +3.6% per DW
+            double procChance = 0.015 * bleed + 0.008 * dw;  // L1=1.5%, L6=9%, +2.4% per DW3
             long now = System.currentTimeMillis();
-            long lastProc = bleedProcCd.getOrDefault(victim.getUniqueId(), 0L);
-            if (now - lastProc >= 1500L && rng.nextDouble() < procChance) {
-                bleedProcCd.put(victim.getUniqueId(), now);
+            long activeUntil = bleedUntil.getOrDefault(victim.getUniqueId(), 0L);
+            // Lockout = entire active DOT window + 2s grace after it ends
+            boolean inLockout = now < activeUntil + 2_000L;
+            if (!inLockout && rng.nextDouble() < procChance) {
                 applyBleedProc(victim, attacker, hand);
             }
         }
@@ -901,7 +902,6 @@ public class CombatListener implements Listener {
         naturesWrathCd.remove(id);
         bleedStacks.remove(id);
         bleedUntil.remove(id);
-        bleedProcCd.remove(id);
         bleedAttacker.remove(id);
         bleedCrimsonTongue.remove(id);
     }
@@ -1008,7 +1008,6 @@ public class CombatListener implements Listener {
                     if (now > ent.getValue()) {
                         if (now - ent.getValue() > BLEED_DECAY_MS) {
                             bleedStacks.remove(id);
-                            bleedProcCd.remove(id);
                         }
                         it.remove();
                         bleedAttacker.remove(id);
@@ -1019,7 +1018,6 @@ public class CombatListener implements Listener {
                     if (victim == null || victim.isDead()) {
                         it.remove();
                         bleedStacks.remove(id);
-                        bleedProcCd.remove(id);
                         bleedAttacker.remove(id);
                         bleedCrimsonTongue.remove(id);
                         continue;
