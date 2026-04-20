@@ -195,14 +195,16 @@ public class CombatListener implements Listener {
         double specialMult = 1.0;   // Soul Strike — bypasses the cap (soul-cost)
         double flatAdd = 0.0;        // Soul Burn — flat add after multiplier
 
-        // Bleed (Cosmic-style) — high proc rate, stacks up to 20, refreshes a
-        // 6-second DOT that hits HP every second with a HURT_FLESH sound. Slow
-        // amp scales with stacks. Applies to bosses + custom mobs — isValidProcTarget
-        // above already gates out vanilla grinder mobs. Deep Wounds adds to proc.
+        // Bleed — Cosmic-style mechanics (stacks + DOT + Slow scaling) but with
+        // a much lower proc rate. Cosmic's 48-88% was tuned for player-only
+        // targets; we apply to bosses + custom mobs which take many hits per
+        // fight, so 48% per-hit was effectively "always bleeding". Now 5-30%
+        // (L1=5%, L6=30%, +2.5% per Deep Wounds level) — meaningful proc, not
+        // constant. Stacks/DOT/decay logic in applyBleedProc unchanged.
         int bleed = ItemUtil.getLevel(hand, "bleed");
         if (bleed > 0) {
             int dw = ItemUtil.getLevel(hand, "deepwounds");
-            double procChance = 0.40 + 0.08 * bleed + 0.04 * dw;  // L1=48%, L6=88%, +12% per DW
+            double procChance = 0.05 * bleed + 0.025 * dw;
             if (rng.nextDouble() < procChance) {
                 applyBleedProc(victim, attacker, hand);
             }
