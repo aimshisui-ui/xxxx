@@ -42,6 +42,10 @@ commands:
     description: Per-player blacklist for custom mob drops
     usage: /lootfilter [togglemessage]
     aliases: [lootft, lootfilters, ftloot]
+  guild:
+    description: Guild management (max 10 players, friendly-fire blocked)
+    usage: /guild <create|invite|join|leave|disband|vault|info|top>
+    aliases: [guilds, g]
 
 permissions:
   soulenchants.admin:

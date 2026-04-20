@@ -125,9 +125,13 @@ public class CombatListener implements Listener {
         // Lock all proc-style enchants to boss / boss-minion / player targets.
         if (!isValidProcTarget(victim)) return;
 
-        // Lifesteal (moved from DamageListener)
+        // Lifesteal (moved from DamageListener) — heal capped at 5 HP per hit
+        // so it can't stack ridiculously with Blood Fury / Soul Drain.
         int ls = ItemUtil.getLevel(hand, "lifesteal");
-        if (ls > 0) new com.soulenchants.enchants.impl.LifestealEnchant().onHit(attacker, ls);
+        if (ls > 0) {
+            double heal = Math.min(e.getDamage() * 0.05 * ls, 5.0);
+            attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
+        }
 
         // Bleed (Nordic-style) — applies stacking SLOW. Deep Wounds boosts proc chance.
         // Stacks reset to 0 when 30s passes without a proc. Each new proc bumps the
@@ -307,10 +311,12 @@ public class CombatListener implements Listener {
         if (ham > 0 && rng.nextDouble() < 0.03 * ham) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 3));
         }
-        // Blood Fury — heal 25%/lvl of damage dealt while below 30% HP
+        // Blood Fury — heal 25%/lvl of damage dealt while below 30% HP. Cap at
+        // 5 HP per hit so it doesn't combo with Lifesteal/Soul Drain into
+        // perma-sustain.
         int bf = ItemUtil.getLevel(hand, "bloodfury");
         if (bf > 0 && attacker.getHealth() < attacker.getMaxHealth() * 0.30) {
-            double heal = e.getDamage() * (0.25 * bf);
+            double heal = Math.min(e.getDamage() * (0.25 * bf), 5.0);
             attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
         }
         // Shieldbreaker — proc TRUE bonus damage (ignores armor)
@@ -780,9 +786,9 @@ public class CombatListener implements Listener {
     }
 
     /**
-     * Lifebloom (Nordic-style) — on the wearer's death, fully heal every other
-     * player within 20 blocks. 100s cooldown to prevent farm-cycles. Fires from
-     * the leggings slot only.
+     * Lifebloom (Nordic-style) — on the wearer's death, fully heal every
+     * GUILDMATE within 20 blocks. Wearer must be in a guild for the proc to
+     * fire at all. 100s cooldown to prevent farm-cycles.
      */
     @EventHandler
     public void onLifebloomDeath(org.bukkit.event.entity.PlayerDeathEvent e) {
@@ -791,12 +797,16 @@ public class CombatListener implements Listener {
         if (legs == null) return;
         int lvl = ItemUtil.getLevel(legs, "lifebloom");
         if (lvl <= 0) return;
+        com.soulenchants.guilds.Guild g = plugin.getGuildManager() == null ? null
+                : plugin.getGuildManager().getByMember(victim.getUniqueId());
+        if (g == null) return;                          // not in a guild → no proc
         if (!plugin.getCooldownManager().isReady("lifebloom", victim.getUniqueId())) return;
         plugin.getCooldownManager().set("lifebloom", victim.getUniqueId(), 100_000L);
         int range = 20;
         for (Entity near : victim.getNearbyEntities(range, range, range)) {
             if (!(near instanceof Player) || near == victim) continue;
             Player ally = (Player) near;
+            if (!g.isMember(ally.getUniqueId())) continue; // guildmates only
             ally.setHealth(ally.getMaxHealth());
             try {
                 ally.sendTitle("§a§l** LIFEBLOOM **",

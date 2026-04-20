@@ -40,6 +40,7 @@ public class SoulEnchants extends JavaPlugin {
     private com.soulenchants.loot.LootFilterManager lootFilterManager;
     private com.soulenchants.gui.LootFilterGUI lootFilterGUI;
     private com.soulenchants.scoreboard.PvPStats pvpStats;
+    private com.soulenchants.guilds.GuildManager guildManager;
 
     @Override
     public void onEnable() {
@@ -162,6 +163,12 @@ public class SoulEnchants extends JavaPlugin {
         this.pvpStats = new com.soulenchants.scoreboard.PvPStats(getDataFolder());
         getServer().getPluginManager().registerEvents(pvpStats, this);
 
+        // Guild system — friendly fire, ally-aware procs, vault, leaderboard
+        this.guildManager = new com.soulenchants.guilds.GuildManager(this, getDataFolder());
+        this.guildManager.start();
+        getServer().getPluginManager().registerEvents(new com.soulenchants.guilds.GuildListener(this), this);
+        getCommand("guild").setExecutor(new com.soulenchants.guilds.GuildCommand(this));
+
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
         for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
@@ -180,6 +187,7 @@ public class SoulEnchants extends JavaPlugin {
         if (soulManager != null) soulManager.save();
         if (lootFilterManager != null) lootFilterManager.save();
         if (pvpStats != null) pvpStats.save();
+        if (guildManager != null) { guildManager.stop(); guildManager.save(); }
         if (veilweaverManager != null && veilweaverManager.getActive() != null)
             veilweaverManager.getActive().stop(false);
         if (ironGolemManager != null && ironGolemManager.getActive() != null)
@@ -210,4 +218,5 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.loot.LootFilterManager getLootFilterManager() { return lootFilterManager; }
     public com.soulenchants.gui.LootFilterGUI getLootFilterGUI() { return lootFilterGUI; }
     public com.soulenchants.scoreboard.PvPStats getPvPStats() { return pvpStats; }
+    public com.soulenchants.guilds.GuildManager getGuildManager() { return guildManager; }
 }

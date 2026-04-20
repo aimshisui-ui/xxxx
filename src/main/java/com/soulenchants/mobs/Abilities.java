@@ -587,7 +587,7 @@ public final class Abilities {
             final int cdTicks = spec.geti("cooldown_ticks", 700);
             return new MobAbility() {
                 int cd = 6;
-                @Override public void onTick(LivingEntity e) {
+                @Override public void onTick(final LivingEntity e) {
                     if (cd-- > 0) return;
                     cd = cdTicks / 20;
                     Player current = null;
@@ -598,6 +598,44 @@ public final class Abilities {
                         if (d < bestSq) { bestSq = d; current = (Player) n; }
                     }
                     if (current == null) return;
+                    // 1.5s telegraph: title + circling flame ring around the FIRST target.
+                    final Player firstTarget = current;
+                    try {
+                        firstTarget.sendTitle("§5§l✦ CHAIN LIGHTNING ✦", "§dBreak from your party — fast");
+                    } catch (Throwable ignored) {}
+                    e.getWorld().playSound(e.getLocation(), Sound.WITHER_SHOOT, 1.5f, 1.4f);
+                    final com.soulenchants.SoulEnchants pl = (com.soulenchants.SoulEnchants)
+                            org.bukkit.Bukkit.getPluginManager().getPlugin("SoulEnchants");
+                    if (pl != null) {
+                        new BukkitRunnable() {
+                            int t = 0;
+                            @Override public void run() {
+                                if (t++ >= 15 || firstTarget.isDead() || !firstTarget.isOnline()) {
+                                    cancel();
+                                    return;
+                                }
+                                Location c = firstTarget.getLocation();
+                                for (int i = 0; i < 16; i++) {
+                                    double a = i * (Math.PI * 2 / 16);
+                                    Location p = c.clone().add(Math.cos(a) * 1.6, 0.2, Math.sin(a) * 1.6);
+                                    p.getWorld().playEffect(p, Effect.MOBSPAWNER_FLAMES, 0);
+                                }
+                            }
+                        }.runTaskTimer(pl, 0L, 2L);
+                        // Delay the actual damage chain until AFTER the telegraph (30 ticks)
+                        new BukkitRunnable() {
+                            @Override public void run() {
+                                if (e.isDead() || firstTarget.isDead() || !firstTarget.isOnline()) return;
+                                fireChain(e, firstTarget, damage, chains, range);
+                            }
+                        }.runTaskLater(pl, 30L);
+                    }
+                    return; // damage now scheduled; skip the inline burst below
+                }
+
+                /** Helper: actually run the chain hops + damage + visual trail. */
+                private void fireChain(LivingEntity e, Player firstTarget, double damage, int chains, int range) {
+                    Player current = firstTarget;
                     java.util.Set<java.util.UUID> hit = new java.util.HashSet<>();
                     double curDmg = damage;
                     Location lastLoc = e.getLocation();

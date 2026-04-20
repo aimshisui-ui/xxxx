@@ -335,24 +335,52 @@ public class IronGolemBoss {
     }
 
     private void rocketCharge() {
-        Player target = pickTarget();
+        final Player target = pickTarget();
         if (target == null) return;
-        Vector dir = target.getLocation().toVector().subtract(entity.getLocation().toVector()).normalize().multiply(2.5);
-        dir.setY(0.4);
-        entity.setVelocity(dir);
-        entity.getWorld().playSound(entity.getLocation(), Sound.GHAST_FIREBALL, 2.0f, 0.7f);
-        // Damage target if reached within 30 ticks
+        // 1.5s telegraph — paint a red flame line from boss to target so the
+        // player can sidestep BEFORE the dash. Boss roots in place for windup.
+        final Location origin = entity.getLocation().clone();
+        com.soulenchants.bosses.BossEffects.titleNearby(origin, 30,
+                "§6§l✦ ROCKET CHARGE ✦", "§eStep sideways — fast");
+        entity.getWorld().playSound(origin, Sound.GHAST_CHARGE, 2.0f, 0.7f);
         new BukkitRunnable() {
             int t = 0;
             @Override public void run() {
-                if (t++ > 30 || entity.isDead()) { cancel(); return; }
-                if (entity.getLocation().distanceSquared(target.getLocation()) < 4) {
-                    BossDamage.apply(target, "irongolem", "charge", 340, entity);
-                    target.setVelocity(new Vector(0, 0.6, 0));
+                if (t++ >= 30 || entity.isDead()) {
+                    if (entity.isDead()) { cancel(); return; }
+                    Vector dir = target.getLocation().toVector().subtract(entity.getLocation().toVector()).normalize().multiply(2.5);
+                    dir.setY(0.4);
+                    entity.setVelocity(dir);
+                    entity.getWorld().playSound(entity.getLocation(), Sound.GHAST_FIREBALL, 2.0f, 0.7f);
+                    // Apply damage when boss reaches target (within 30 ticks)
+                    new BukkitRunnable() {
+                        int n = 0;
+                        @Override public void run() {
+                            if (n++ > 30 || entity.isDead()) { cancel(); return; }
+                            if (entity.getLocation().distanceSquared(target.getLocation()) < 4) {
+                                BossDamage.apply(target, "irongolem", "charge", 340, entity);
+                                target.setVelocity(new Vector(0, 0.6, 0));
+                                cancel();
+                            }
+                        }
+                    }.runTaskTimer(plugin, 1L, 1L);
                     cancel();
+                    return;
+                }
+                // Paint flame trail from boss → target's CURRENT position every 2 ticks
+                if (t % 2 == 0) {
+                    Location to = target.getLocation();
+                    Vector path = to.toVector().subtract(origin.toVector());
+                    double dist = path.length();
+                    if (dist < 0.1) return;
+                    path.normalize();
+                    for (double d = 0; d < dist; d += 0.6) {
+                        Location p = origin.clone().add(path.clone().multiply(d));
+                        p.getWorld().playEffect(p, Effect.MOBSPAWNER_FLAMES, 0);
+                    }
                 }
             }
-        }.runTaskTimer(plugin, 1L, 1L);
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private void magneticPull() {
@@ -418,9 +446,22 @@ public class IronGolemBoss {
 
     private void groundSlam() {
         entity.setVelocity(new Vector(0, 1.5, 0));
+        com.soulenchants.bosses.BossEffects.titleNearby(entity.getLocation(), 30,
+                "§6§l✦ GROUND SLAM ✦", "§eGet out of the ring");
         new BukkitRunnable() {
             int t = 0;
             @Override public void run() {
+                // While airborne, paint the landing-zone ring directly under the boss
+                // so players can see the kill zone and scatter before impact.
+                if (t < 15 && t % 2 == 0) {
+                    Location ground = entity.getLocation();
+                    int rays = 28;
+                    for (int i = 0; i < rays; i++) {
+                        double a = i * (Math.PI * 2 / rays);
+                        Location p = ground.clone().add(Math.cos(a) * 7.0, 0.1, Math.sin(a) * 7.0);
+                        p.getWorld().playEffect(p, Effect.MOBSPAWNER_FLAMES, 0);
+                    }
+                }
                 if (t++ < 15) return;
                 if (entity.isOnGround() || t > 40) {
                     Location loc = entity.getLocation();
