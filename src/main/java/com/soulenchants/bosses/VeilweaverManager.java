@@ -120,7 +120,31 @@ public class VeilweaverManager {
                 org.bukkit.ChatColor.DARK_PURPLE, vw.getDamageDealt(),
                 Veilweaver.MAX_HP);
 
+        awardGuildPointsByDamage(vw.getDamageDealt(), Veilweaver.MAX_HP, 500L, "veilweaver kill");
+
         vw.stop(true);
         active = null;
+    }
+
+    /** Award guild points proportional to each guild's contribution. Each guild
+     *  receives points scaled by (their members' summed damage / boss maxHp).
+     *  Top contributors share `basePoints`; only guilds with ≥10% contribution
+     *  get rewarded so trivial scratch-hits don't farm points.
+     */
+    private void awardGuildPointsByDamage(java.util.Map<java.util.UUID, Double> dmgMap,
+                                          double bossMaxHp, long basePoints, String reason) {
+        if (plugin.getGuildManager() == null || dmgMap == null || dmgMap.isEmpty()) return;
+        java.util.Map<com.soulenchants.guilds.Guild, Double> byGuild = new java.util.HashMap<>();
+        for (java.util.Map.Entry<java.util.UUID, Double> e : dmgMap.entrySet()) {
+            com.soulenchants.guilds.Guild g = plugin.getGuildManager().getByMember(e.getKey());
+            if (g == null) continue;
+            byGuild.merge(g, e.getValue(), Double::sum);
+        }
+        for (java.util.Map.Entry<com.soulenchants.guilds.Guild, Double> e : byGuild.entrySet()) {
+            double pct = e.getValue() / bossMaxHp;
+            if (pct < 0.10) continue;
+            long pts = Math.max(1L, (long) (basePoints * Math.min(1.0, pct)));
+            plugin.getGuildManager().awardPoints(e.getKey(), pts, reason);
+        }
     }
 }

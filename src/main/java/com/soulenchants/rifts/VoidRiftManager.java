@@ -356,6 +356,8 @@ public final class VoidRiftManager {
         broadcastRift(ChatColor.GREEN + "" + ChatColor.BOLD + "✦ RIFT CLEARED ✦");
         broadcastRift(ChatColor.GRAY + "  All " + totalSpawned + " threats slain. Rewards granted.");
         // Distribute rewards: souls + a Boss loot box, to anyone still inside
+        // Dedupe guilds so a 5-stack guild doesn't quintuple-collect.
+        java.util.Set<com.soulenchants.guilds.Guild> guildsRewarded = new java.util.HashSet<>();
         for (UUID u : new ArrayList<>(riftParticipants)) {
             Player p = Bukkit.getPlayer(u);
             if (p == null || !p.isOnline()) continue;
@@ -366,6 +368,12 @@ public final class VoidRiftManager {
                 p.getInventory().addItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS))
                         .values().forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
             } catch (Throwable ignored) {}
+            if (plugin.getGuildManager() != null) {
+                com.soulenchants.guilds.Guild g = plugin.getGuildManager().getByMember(u);
+                if (g != null && guildsRewarded.add(g)) {
+                    plugin.getGuildManager().awardPoints(g, 750L, "void rift clear");
+                }
+            }
         }
         // 10-second grace, then expel
         Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {

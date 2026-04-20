@@ -74,6 +74,7 @@ public class QuestManager {
         // Advance to next tutorial step
         profile.setTutorialStep(p.getUniqueId(), stepIdx + 1);
         plugin.getSoulManager().add(p, q.soulReward);
+        awardGuildPoints(p, 25L, "tutorial: " + q.id);
         for (ItemStack it : q.itemRewards) {
             java.util.Map<Integer, ItemStack> leftover = p.getInventory().addItem(it);
             for (ItemStack lo : leftover.values()) p.getWorld().dropItemNaturally(p.getLocation(), lo);
@@ -130,7 +131,14 @@ public class QuestManager {
         p.sendMessage(ChatColor.GREEN + "✦ Claimed " + ChatColor.WHITE + q.name
                 + ChatColor.GREEN + " — " + ChatColor.YELLOW + "+" + q.soulReward + " souls");
         p.playSound(p.getLocation(), Sound.LEVEL_UP, 1f, 1.4f);
+        awardGuildPoints(p, 50L, "daily: " + q.id);
         return true;
+    }
+
+    private void awardGuildPoints(Player p, long amount, String reason) {
+        if (plugin.getGuildManager() == null) return;
+        com.soulenchants.guilds.Guild g = plugin.getGuildManager().getByMember(p.getUniqueId());
+        if (g != null) plugin.getGuildManager().awardPoints(g, amount, reason);
     }
 
     private void notifyProgress(Player p, Quest q, int progress) {

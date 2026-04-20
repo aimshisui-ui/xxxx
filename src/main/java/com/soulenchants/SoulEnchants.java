@@ -26,6 +26,7 @@ public class SoulEnchants extends JavaPlugin {
     private com.soulenchants.gui.GodMenuGUI godMenu;
     private com.soulenchants.shop.ShopFeatured shopFeatured;
     private com.soulenchants.shop.ShopGUI shopGUI;
+    private com.soulenchants.shop.LootBoxRevealGUI lootBoxRevealGUI;
     private com.soulenchants.quests.QuestManager questManager;
     private com.soulenchants.quests.QuestGUI questGUI;
     private com.soulenchants.mobs.MobListener mobListener;
@@ -71,7 +72,9 @@ public class SoulEnchants extends JavaPlugin {
         this.shopFeatured.maybeRoll();
         this.shopGUI = new com.soulenchants.shop.ShopGUI(this, shopFeatured);
         getServer().getPluginManager().registerEvents(shopGUI, this);
-        getServer().getPluginManager().registerEvents(new com.soulenchants.shop.LootBoxListener(), this);
+        this.lootBoxRevealGUI = new com.soulenchants.shop.LootBoxRevealGUI(this);
+        getServer().getPluginManager().registerEvents(lootBoxRevealGUI, this);
+        getServer().getPluginManager().registerEvents(new com.soulenchants.shop.LootBoxListener(this), this);
 
         com.soulenchants.quests.QuestRegistry.register();
         this.questManager = new com.soulenchants.quests.QuestManager(this);
@@ -223,6 +226,7 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.gui.GodMenuGUI getGodMenu() { return godMenu; }
     public com.soulenchants.shop.ShopFeatured getShopFeatured() { return shopFeatured; }
     public com.soulenchants.shop.ShopGUI getShopGUI() { return shopGUI; }
+    public com.soulenchants.shop.LootBoxRevealGUI getLootBoxRevealGUI() { return lootBoxRevealGUI; }
     public com.soulenchants.quests.QuestManager getQuestManager() { return questManager; }
     public com.soulenchants.quests.QuestGUI getQuestGUI() { return questGUI; }
     public com.soulenchants.config.LootConfig getLootConfig() { return lootConfig; }

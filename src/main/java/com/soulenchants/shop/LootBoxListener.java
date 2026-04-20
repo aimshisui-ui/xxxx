@@ -1,5 +1,6 @@
 package com.soulenchants.shop;
 
+import com.soulenchants.SoulEnchants;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -13,10 +14,15 @@ import java.util.List;
 
 /**
  * Right-click-to-open loot boxes. Consumes 1 from the stack, rolls the
- * item(s) per {@link LootBox#roll}, and either inserts into inventory or
- * drops at feet if full.
+ * item(s) per {@link LootBox#roll}, and hands them to {@link LootBoxRevealGUI}
+ * for the spin-and-reveal animation. Falls back to instant-deliver if the
+ * GUI rejects (e.g. another reveal is already in progress for this player).
  */
 public class LootBoxListener implements Listener {
+
+    private final SoulEnchants plugin;
+
+    public LootBoxListener(SoulEnchants plugin) { this.plugin = plugin; }
 
     @EventHandler
     public void onUse(PlayerInteractEvent e) {
@@ -34,17 +40,21 @@ public class LootBoxListener implements Listener {
         if (hand.getAmount() > 1) hand.setAmount(hand.getAmount() - 1);
         else p.setItemInHand(null);
 
-        // Roll and deliver
         List<ItemStack> rolled = LootBox.roll(kind);
-        p.sendMessage(kind.color + "✦ " + ChatColor.BOLD + kind.label + " Loot Box" + ChatColor.RESET
-                + ChatColor.GRAY + " opened. Contents:");
-        p.playSound(p.getLocation(), Sound.LEVEL_UP, 1f, 1.2f);
-        for (ItemStack s : rolled) {
-            String name = (s.getItemMeta() != null && s.getItemMeta().hasDisplayName())
-                    ? s.getItemMeta().getDisplayName() : s.getType().name();
-            p.sendMessage(ChatColor.GRAY + "  ▸ " + ChatColor.WHITE + s.getAmount() + "× " + name);
-            java.util.Map<Integer, ItemStack> leftover = p.getInventory().addItem(s);
+
+        // Hand off to the reveal animation. If it can't open (another reveal
+        // already running for this player), refund the box rather than
+        // silently eating the open — fairer than instant-deliver because the
+        // player explicitly wants the animation.
+        boolean opened = plugin.getLootBoxRevealGUI() != null
+                && plugin.getLootBoxRevealGUI().open(p, kind, rolled);
+        if (!opened) {
+            // Refund: give the box back, do not consume the roll
+            ItemStack refund = LootBox.item(kind);
+            java.util.Map<Integer, ItemStack> leftover = p.getInventory().addItem(refund);
             for (ItemStack lo : leftover.values()) p.getWorld().dropItemNaturally(p.getLocation(), lo);
+            p.sendMessage(ChatColor.GRAY + "✦ Finish opening your current loot box first.");
+            p.playSound(p.getLocation(), Sound.NOTE_BASS, 0.5f, 0.7f);
         }
     }
 }
