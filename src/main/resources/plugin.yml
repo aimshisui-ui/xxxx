@@ -46,6 +46,10 @@ commands:
     description: Guild management (max 10 players, friendly-fire blocked)
     usage: /guild <create|invite|join|leave|disband|vault|info|top>
     aliases: [guilds, g]
+  modock:
+    description: Modock — King of Atlantis (3-phase rift boss)
+    usage: /modock <status|give|summon|abort|setspawn|tp>
+    aliases: [atlantis]
 
 permissions:
   soulenchants.admin:

@@ -44,6 +44,8 @@ public class SoulEnchants extends JavaPlugin {
     private com.soulenchants.guilds.GuildManager guildManager;
     private com.soulenchants.listeners.ClarityTask clarityTask;
     private com.soulenchants.sets.SetManager setManager;
+    private com.soulenchants.modock.ModockSpawnConfig modockSpawnConfig;
+    private com.soulenchants.modock.ModockManager modockManager;
 
     @Override
     public void onEnable() {
@@ -58,6 +60,14 @@ public class SoulEnchants extends JavaPlugin {
             t.printStackTrace();
         }
         System.err.println(">>> SE: RiftWorld.ensure returned");
+        // Modock arena worlds — load all 3 phases up-front so first-time access
+        // doesn't pause the server thread mid-fight.
+        try {
+            com.soulenchants.modock.ModockWorlds.ensureAll(this);
+        } catch (Throwable t) {
+            System.err.println(">>> SE: ModockWorlds.ensureAll threw: " + t);
+            t.printStackTrace();
+        }
         EnchantRegistry.registerDefaults();
         this.soulManager = new SoulManager(this, getDataFolder());
         this.veilweaverManager = new VeilweaverManager(this);
@@ -189,8 +199,15 @@ public class SoulEnchants extends JavaPlugin {
         this.setManager.start();
         getServer().getPluginManager().registerEvents(new com.soulenchants.sets.SetBonusListener(this), this);
 
+        // Modock — three-phase Atlantis boss across modock_phase1/2/3
+        this.modockSpawnConfig = new com.soulenchants.modock.ModockSpawnConfig(this);
+        this.modockManager = new com.soulenchants.modock.ModockManager(this, modockSpawnConfig);
+        getServer().getPluginManager().registerEvents(new com.soulenchants.modock.ModockSpawner(this), this);
+        if (getCommand("modock") != null)
+            getCommand("modock").setExecutor(new com.soulenchants.modock.ModockCommand(this));
+
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
-        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift"}) {
+        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
         }
 
@@ -214,6 +231,8 @@ public class SoulEnchants extends JavaPlugin {
             veilweaverManager.getActive().stop(false);
         if (ironGolemManager != null && ironGolemManager.getActive() != null)
             ironGolemManager.getActive().stop(false);
+        if (modockManager != null && modockManager.getActive() != null)
+            modockManager.getActive().stop(false);
         getLogger().info("SoulEnchants disabled, data saved.");
     }
 
@@ -243,4 +262,5 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.scoreboard.PvPStats getPvPStats() { return pvpStats; }
     public com.soulenchants.guilds.GuildManager getGuildManager() { return guildManager; }
     public com.soulenchants.sets.SetManager getSetManager() { return setManager; }
+    public com.soulenchants.modock.ModockManager getModockManager() { return modockManager; }
 }
