@@ -122,7 +122,10 @@ public class CombatListener implements Listener {
         return false;
     }
 
-    /** On-hit procs only fire against bosses, boss minions, or players (PvP). */
+    /** On-hit procs fire against players (PvP), active bosses, their minions,
+     *  and any custom mob (Hollow King + cave roster, rift encounter adds).
+     *  Vanilla mobs (zombie, skeleton etc in the overworld) are excluded so
+     *  proc-style enchants don't farm mob grinders. */
     private boolean isValidProcTarget(LivingEntity victim) {
         if (victim instanceof Player) return true;
         com.soulenchants.bosses.Veilweaver vw = plugin.getVeilweaverManager().getActive();
@@ -134,7 +137,14 @@ public class CombatListener implements Listener {
                 if (c != null && c.getUniqueId().equals(victim.getUniqueId())) return true;
         }
         com.soulenchants.bosses.IronGolemBoss ig = plugin.getIronGolemManager().getActive();
-        if (ig != null && ig.getEntity().getUniqueId().equals(victim.getUniqueId())) return true;
+        if (ig != null) {
+            if (ig.getEntity().getUniqueId().equals(victim.getUniqueId())) return true;
+            if (ig.getMinions() != null && ig.getMinions().isOurMinion(victim)) return true;
+        }
+        // Any custom mob counts — covers Hollow King + the cave roster spawned
+        // inside void rifts. CustomMob.idOf returns null for vanilla mobs so
+        // regular mob grinders stay unaffected.
+        if (com.soulenchants.mobs.CustomMob.idOf(victim) != null) return true;
         return false;
     }
 
@@ -349,9 +359,11 @@ public class CombatListener implements Listener {
             double missingPct = 1.0 - (attacker.getHealth() / attacker.getMaxHealth());
             offBonus += 0.08 * reaver * missingPct;
         }
-        // Skullcrush — proc Nausea + Weakness II on player hits
+        // Skullcrush — proc Nausea + Weakness II. Previously player-only; now
+        // fires against bosses + minions too (victim is already gated by
+        // isValidProcTarget at the top of this method).
         int skull = ItemUtil.getLevel(hand, "skullcrush");
-        if (skull > 0 && victim instanceof Player && rng.nextDouble() < 0.04 * skull) {
+        if (skull > 0 && rng.nextDouble() < 0.04 * skull) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 60 * skull, 0));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS,  60 * skull, 1));
         }
@@ -467,7 +479,8 @@ public class CombatListener implements Listener {
 
     /** Is `target` an active boss or one of their tracked minions? Used for Slayer
      *  bonus eligibility. Mirrors PvEDamageListener.isBossOrMinion but lives here
-     *  so the additive pool can read it without crossing listener boundaries. */
+     *  so the additive pool can read it without crossing listener boundaries.
+     *  Includes Iron Golem sentinels + any custom mob (Hollow King, cave roster). */
     private boolean isBossOrMinionTarget(LivingEntity target) {
         com.soulenchants.bosses.Veilweaver vw = plugin.getVeilweaverManager().getActive();
         if (vw != null) {
@@ -478,7 +491,11 @@ public class CombatListener implements Listener {
                 if (c != null && c.getUniqueId().equals(target.getUniqueId())) return true;
         }
         com.soulenchants.bosses.IronGolemBoss ig = plugin.getIronGolemManager().getActive();
-        if (ig != null && ig.getEntity().getUniqueId().equals(target.getUniqueId())) return true;
+        if (ig != null) {
+            if (ig.getEntity().getUniqueId().equals(target.getUniqueId())) return true;
+            if (ig.getMinions() != null && ig.getMinions().isOurMinion(target)) return true;
+        }
+        if (com.soulenchants.mobs.CustomMob.idOf(target) != null) return true;
         return false;
     }
 
