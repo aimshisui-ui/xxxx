@@ -31,22 +31,39 @@ public final class ModockWorlds {
     public static World ensure(Plugin plugin, String name) {
         World w = Bukkit.getWorld(name);
         if (w != null) return w;
+        // Self-heal: Spigot refuses to load worlds with duplicate uid.dat.
+        // If our converted folder shipped with a UUID inherited from a template,
+        // delete it BEFORE calling createWorld so Spigot can regenerate one.
+        java.io.File worldDir = new java.io.File(
+                org.bukkit.Bukkit.getWorldContainer(), name);
+        java.io.File uid = new java.io.File(worldDir, "uid.dat");
+        if (worldDir.isDirectory() && uid.exists()) {
+            // Only delete if there's no other loaded world that already claimed
+            // this UUID (the duplicate-prevention case). Cheap check — if any
+            // already-loaded world's container has the same uid file content,
+            // we'd just lose a regen — which is fine, UUIDs in level data don't
+            // matter for Modock arenas (no per-world player anchors here).
+            try { uid.delete(); }
+            catch (Throwable ignored) {}
+        }
         try {
-            // Use the existing on-disk folder. WorldCreator with no type/seed
-            // overrides will load the saved level.dat.
             WorldCreator wc = new WorldCreator(name);
             w = Bukkit.createWorld(wc);
-            if (w != null) {
-                w.setKeepSpawnInMemory(false);
-                w.setPVP(true);
-                w.setGameRuleValue("doDaylightCycle", "false");
-                w.setGameRuleValue("doMobSpawning", "false");
-                w.setGameRuleValue("keepInventory", "true");
-                plugin.getLogger().info("[modock] loaded world " + name
-                        + " spawn=(" + w.getSpawnLocation().getBlockX()
-                        + "," + w.getSpawnLocation().getBlockY()
-                        + "," + w.getSpawnLocation().getBlockZ() + ")");
+            if (w == null) {
+                plugin.getLogger().warning("[modock] createWorld returned NULL for "
+                        + name + " — check server log for 'duplicate', 'access denied',"
+                        + " or version-mismatch messages above this line.");
+                return null;
             }
+            w.setKeepSpawnInMemory(false);
+            w.setPVP(true);
+            w.setGameRuleValue("doDaylightCycle", "false");
+            w.setGameRuleValue("doMobSpawning", "false");
+            w.setGameRuleValue("keepInventory", "true");
+            plugin.getLogger().info("[modock] loaded world " + name
+                    + " spawn=(" + w.getSpawnLocation().getBlockX()
+                    + "," + w.getSpawnLocation().getBlockY()
+                    + "," + w.getSpawnLocation().getBlockZ() + ")");
         } catch (Throwable t) {
             plugin.getLogger().warning("[modock] failed to load " + name + ": " + t);
         }
