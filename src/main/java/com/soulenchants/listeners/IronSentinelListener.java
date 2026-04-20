@@ -31,8 +31,8 @@ public class IronSentinelListener implements Listener {
         if (!(e.getEntity() instanceof Player)) return;
         if (!IronGolemMinions.ACTIVE_UUIDS.contains(e.getDamager().getUniqueId())) return;
         Player victim = (Player) e.getEntity();
-        // Bonus 8 real damage on top of weapon damage so they hit hard through armor
-        e.setDamage(e.getDamage() + 8);
+        // Bonus 24 real damage on top of weapon damage so they hit hard through armor
+        e.setDamage(e.getDamage() + 24);
         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     60, 1, false, true), true);
         victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 80, 0, false, true), true);
         if (Math.random() < 0.15)

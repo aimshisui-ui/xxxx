@@ -141,6 +141,59 @@ public final class LootRecipes {
                         "veil_thread", "veil_essence", "veil_thread",
                         "veil_thread", "veil_thread", "veil_thread")));
 
+        // ── CAVE RIFT recipes ─────────────────────────────────────────
+
+        // Shardheart Blade: 4 Pale Shard + Echo Shard + Diamond Sword + 3 Glowstone
+        ShapedRecipe r7 = new ShapedRecipe(BossLootItems.shardheartBlade());
+        r7.shape("PEP", "PSP", "GGG");
+        r7.setIngredient('P', Material.QUARTZ);              // Pale Shard
+        r7.setIngredient('E', Material.PRISMARINE_SHARD);    // Echo Shard
+        r7.setIngredient('S', Material.DIAMOND_SWORD);
+        r7.setIngredient('G', Material.GLOWSTONE_DUST);
+        Bukkit.addRecipe(r7);
+        ENTRIES.add(new RecipeEntry("Shardheart Blade", BossLootItems.shardheartBlade(),
+                new String[]{"PEP", "PSP", "GGG"},
+                new Material[]{Material.QUARTZ, Material.PRISMARINE_SHARD, Material.QUARTZ,
+                        Material.QUARTZ, Material.DIAMOND_SWORD, Material.QUARTZ,
+                        Material.GLOWSTONE_DUST, Material.GLOWSTONE_DUST, Material.GLOWSTONE_DUST},
+                Arrays.asList("pale_shard", "echo_shard", "pale_shard",
+                        "pale_shard", null, "pale_shard",
+                        null, null, null)));
+
+        // Dripstone Cuirass: 4 Dripstone Tear + Hollow Fragment + Diamond Chest + 2 Pale Shard
+        ShapedRecipe r8 = new ShapedRecipe(BossLootItems.dripstoneCuirass());
+        r8.shape("DHD", "DCD", "PDP");
+        r8.setIngredient('D', Material.PRISMARINE_CRYSTALS); // Dripstone Tear
+        r8.setIngredient('H', Material.BONE);                // Hollow Fragment
+        r8.setIngredient('C', Material.DIAMOND_CHESTPLATE);
+        r8.setIngredient('P', Material.QUARTZ);              // Pale Shard
+        Bukkit.addRecipe(r8);
+        ENTRIES.add(new RecipeEntry("Dripstone Cuirass", BossLootItems.dripstoneCuirass(),
+                new String[]{"DHD", "DCD", "PDP"},
+                new Material[]{Material.PRISMARINE_CRYSTALS, Material.BONE, Material.PRISMARINE_CRYSTALS,
+                        Material.PRISMARINE_CRYSTALS, Material.DIAMOND_CHESTPLATE, Material.PRISMARINE_CRYSTALS,
+                        Material.QUARTZ, Material.PRISMARINE_CRYSTALS, Material.QUARTZ},
+                Arrays.asList("dripstone_tear", "hollow_fragment", "dripstone_tear",
+                        "dripstone_tear", null, "dripstone_tear",
+                        "pale_shard", "dripstone_tear", "pale_shard")));
+
+        // Void-Spun Boots: 4 Void Essence + 2 Dripstone Tear + Diamond Boots + 2 Echo Shard
+        ShapedRecipe r9 = new ShapedRecipe(BossLootItems.voidSpunBoots());
+        r9.shape("VEV", "VBV", "DED");
+        r9.setIngredient('V', Material.ENDER_PEARL);         // Void Essence
+        r9.setIngredient('E', Material.PRISMARINE_SHARD);    // Echo Shard
+        r9.setIngredient('B', Material.DIAMOND_BOOTS);
+        r9.setIngredient('D', Material.PRISMARINE_CRYSTALS); // Dripstone Tear
+        Bukkit.addRecipe(r9);
+        ENTRIES.add(new RecipeEntry("Void-Spun Boots", BossLootItems.voidSpunBoots(),
+                new String[]{"VEV", "VBV", "DED"},
+                new Material[]{Material.ENDER_PEARL, Material.PRISMARINE_SHARD, Material.ENDER_PEARL,
+                        Material.ENDER_PEARL, Material.DIAMOND_BOOTS, Material.ENDER_PEARL,
+                        Material.PRISMARINE_CRYSTALS, Material.PRISMARINE_SHARD, Material.PRISMARINE_CRYSTALS},
+                Arrays.asList("void_essence", "echo_shard", "void_essence",
+                        "void_essence", null, "void_essence",
+                        "dripstone_tear", "echo_shard", "dripstone_tear")));
+
         Bukkit.getLogger().info("[SoulEnchants] " + ENTRIES.size() + " custom recipes registered.");
     }
 

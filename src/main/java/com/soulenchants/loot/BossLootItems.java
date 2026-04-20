@@ -342,8 +342,6 @@ public final class BossLootItems {
                 DIVIDER,
                 ChatColor.GRAY + "" + ChatColor.ITALIC + "Reforged from Colossal scrap.",
                 "",
-                ChatColor.GOLD + "» Pre-enchanted: Armored III, Vital II",
-                "",
                 LootRarity.EPIC.getColor() + "» Epic — Crafted"
         )));
         m.spigot().setUnbreakable(true);
@@ -367,8 +365,6 @@ public final class BossLootItems {
         m.setLore(new ArrayList<>(Arrays.asList(
                 DIVIDER,
                 ChatColor.GRAY + "" + ChatColor.ITALIC + "A blade rewoven from the Veil.",
-                "",
-                ChatColor.GOLD + "» Pre-enchanted: Soul Burn II, Phantom Strike II",
                 "",
                 LootRarity.EPIC.getColor() + "» Epic — Crafted"
         )));
@@ -394,8 +390,6 @@ public final class BossLootItems {
                 DIVIDER,
                 ChatColor.GRAY + "" + ChatColor.ITALIC + "Strung with Veil thread,",
                 ChatColor.GRAY + "" + ChatColor.ITALIC + "fletched with eternal embers.",
-                "",
-                ChatColor.GOLD + "» Power V, Flame I, Infinity",
                 "",
                 LootRarity.EPIC.getColor() + "» Epic — Crafted"
         )));
@@ -461,5 +455,209 @@ public final class BossLootItems {
                 ChatColor.GRAY + "  Up to +10 cap"
         );
         return tag(it, "veil_sigil");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  CAVE RIFT — reagents, crafted gear, boss drops
+    // ─────────────────────────────────────────────────────────────────────
+
+    public static ItemStack paleShard(int n) {
+        return tag(make(Material.QUARTZ, n, LootRarity.COMMON,
+                "Pale Shard",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "A splinter of light from a",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "place where light long since died.",
+                "",
+                ChatColor.YELLOW + "» Crafting reagent"
+        ), "pale_shard");
+    }
+
+    public static ItemStack echoShard(int n) {
+        return tag(make(Material.PRISMARINE_SHARD, n, LootRarity.COMMON,
+                "Echo Shard",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "It hums with the voices",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "of those who never returned.",
+                "",
+                ChatColor.YELLOW + "» Crafting reagent"
+        ), "echo_shard");
+    }
+
+    public static ItemStack dripstoneTear(int n) {
+        return tag(make(Material.PRISMARINE_CRYSTALS, n, LootRarity.COMMON,
+                "Dripstone Tear",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "The mountain weeps. This is",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "what catches in your hand.",
+                "",
+                ChatColor.YELLOW + "» Crafting reagent"
+        ), "dripstone_tear");
+    }
+
+    public static ItemStack hollowFragment(int n) {
+        return tag(make(Material.BONE, n, LootRarity.UNCOMMON,
+                "Hollow Fragment",
+                ChatColor.LIGHT_PURPLE + "" + ChatColor.ITALIC + "Bone of the king's court,",
+                ChatColor.LIGHT_PURPLE + "" + ChatColor.ITALIC + "still whispering its old name.",
+                "",
+                ChatColor.YELLOW + "» Crafting reagent"
+        ), "hollow_fragment");
+    }
+
+    public static ItemStack voidEssence(int n) {
+        return tag(make(Material.ENDER_PEARL, n, LootRarity.RARE,
+                "Void Essence",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "Bottled silence — the kind",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "between heartbeats.",
+                "",
+                ChatColor.YELLOW + "» Crafting reagent"
+        ), "void_essence");
+    }
+
+    // ── Boss drop ──
+    public static ItemStack crownOfTheHollow() {
+        ItemStack it = make(Material.GOLD_HELMET, 1, LootRarity.BOSS,
+                "Crown of the Hollow",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "Worn by a king forgotten",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "by every mouth that ever",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "spoke his name.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Permanent Night Vision while worn",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "+4 max HP",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Souls drained from kills heal you (10%)"
+        );
+        ItemMeta m = it.getItemMeta();
+        try { m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 4, true); } catch (Throwable ignored) {}
+        try { m.addEnchant(Enchantment.DURABILITY, 3, true); } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        return tag(it, "crown_of_the_hollow");
+    }
+
+    // ── Crafted gear ──
+    public static ItemStack shardheartBlade() {
+        ItemStack it = make(Material.DIAMOND_SWORD, 1, LootRarity.EPIC,
+                "Shardheart Blade",
+                ChatColor.AQUA + "" + ChatColor.ITALIC + "Forged from the pulse of",
+                ChatColor.AQUA + "" + ChatColor.ITALIC + "light still trapped within",
+                ChatColor.AQUA + "" + ChatColor.ITALIC + "the crystal's heart.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Consecutive hits build damage"
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.DAMAGE_ALL, 6, true);
+            m.addEnchant(Enchantment.FIRE_ASPECT, 2, true);
+            m.addEnchant(Enchantment.LOOT_BONUS_MOBS, 3, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        return tag(it, "shardheart_blade");
+    }
+
+    public static ItemStack dripstoneCuirass() {
+        ItemStack it = make(Material.DIAMOND_CHESTPLATE, 1, LootRarity.EPIC,
+                "Dripstone Cuirass",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "The mountain's bones, hammered",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "flat and bound tight with",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "sinew of old echoes.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Reflects 25% melee damage"
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 5, true);
+            m.addEnchant(Enchantment.THORNS, 2, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        return tag(it, "dripstone_cuirass");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  MYTHIC SWORDS — 0.005% drop from the Hollow King.
+    //  Sharp 6 + a custom enchant + roguelike permanent buffs the wearer
+    //  gets for HOLDING the sword (passive aura via tick task).
+    // ─────────────────────────────────────────────────────────────────
+
+    /** "Crimson Tongue" — Bleed-themed Mythic. Stacks bleed FAST and lifesteals.
+     *  While held: +1 Strength tier and +1 Speed tier above whatever you already have. */
+    public static ItemStack crimsonTongue() {
+        ItemStack it = make(Material.DIAMOND_SWORD, 1, LootRarity.MYTHIC,
+                "Crimson Tongue",
+                ChatColor.DARK_RED + "" + ChatColor.ITALIC + "A blade that drinks before it",
+                ChatColor.DARK_RED + "" + ChatColor.ITALIC + "kills, and remembers every taste.",
+                "",
+                ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "    ✦ MYTHIC AURA ✦",
+                ChatColor.GRAY + "  Held: " + ChatColor.WHITE + "+1 Strength tier",
+                ChatColor.GRAY + "  Held: " + ChatColor.WHITE + "+1 Speed tier",
+                ChatColor.GRAY + "  Bleed proc: " + ChatColor.WHITE + "+1 ❤"
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.DAMAGE_ALL, 6, true);
+            m.addEnchant(Enchantment.FIRE_ASPECT, 2, true);
+            m.addEnchant(Enchantment.LOOT_BONUS_MOBS, 3, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        // Custom-enchant NBT — these proc through CombatListener/AXE checks; we want
+        // them to proc on this SWORD specifically (slot restriction is for book apply,
+        // not for proc reading).
+        it = ItemUtil.addEnchant(it, "bleed", 6);
+        it = ItemUtil.addEnchant(it, "deepwounds", 3);
+        // Mythic-tier "held" aura tag — picked up by BerserkTickTask
+        it = ItemUtil.addEnchant(it, "mythic_held", 1);
+        return tag(it, "crimson_tongue");
+    }
+
+    /** "Wraithcleaver" — Cleave-themed Mythic. Wide-arc area pressure.
+     *  While held: +1 Haste tier and +1 Strength tier above whatever you already have. */
+    public static ItemStack wraithcleaver() {
+        ItemStack it = make(Material.DIAMOND_SWORD, 1, LootRarity.MYTHIC,
+                "Wraithcleaver",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "Each swing carries the weight",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "of every door the king ever closed.",
+                "",
+                ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "    ✦ MYTHIC AURA ✦",
+                ChatColor.GRAY + "  Held: " + ChatColor.WHITE + "+1 Haste tier",
+                ChatColor.GRAY + "  Held: " + ChatColor.WHITE + "+1 Strength tier",
+                ChatColor.GRAY + "  Cleave proc: " + ChatColor.WHITE + "+1 ❤"
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.DAMAGE_ALL, 6, true);
+            m.addEnchant(Enchantment.KNOCKBACK, 2, true);
+            m.addEnchant(Enchantment.LOOT_BONUS_MOBS, 3, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "cleave", 7);
+        it = ItemUtil.addEnchant(it, "earthshaker", 3);
+        it = ItemUtil.addEnchant(it, "soulburn", 3);
+        // Mythic-tier "held" aura tag — picked up by BerserkTickTask
+        it = ItemUtil.addEnchant(it, "mythic_held", 2);
+        return tag(it, "wraithcleaver");
+    }
+
+    public static ItemStack voidSpunBoots() {
+        ItemStack it = make(Material.DIAMOND_BOOTS, 1, LootRarity.EPIC,
+                "Void-Spun Boots",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "Woven from the silence",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "between heartbeats.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Step lightly — no fall damage <16 blocks"
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.PROTECTION_FALL, 4, true);
+            m.addEnchant(Enchantment.DEPTH_STRIDER, 3, true);
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 4, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        return tag(it, "void_spun_boots");
     }
 }

@@ -15,7 +15,7 @@ public class Veilweaver {
 
     public enum Phase { ONE, TWO, THREE }
 
-    public static final double MAX_HP = 7500.0;
+    public static final double MAX_HP = 15000.0;
     public static final String NBT_VEILWEAVER = "se_veilweaver";
 
     private final SoulEnchants plugin;
@@ -28,22 +28,25 @@ public class Veilweaver {
     private final List<LivingEntity> echoClones = new ArrayList<>();
     private final VeilweaverCrystals crystals;
 
-    private boolean invulnerable = false;
+    /** Self-expiring invuln. Compared against System.currentTimeMillis().
+     *  No abandoned BukkitRunnables, no stuck-on bug. */
+    private long invulnerableUntil = 0L;
     private boolean usedFinalBind = false;
     private int ticks = 0;
     private int idleTicks = 0;
     private boolean despawnAnnounced = false;
     private int despawnAt = -1;
 
-    // Attack cooldowns (in ticks). Smaller initial values = faster engagement.
-    private int cdThreadLash = 10;
-    private int cdShatterBolt = 30;
-    private int cdMinionWeave = 200;
-    private int cdDimensionalRift = 80;
-    private int cdLoomLaser = 120;
-    private int cdEchoClones = 500;
-    private int cdRealityFracture = 60;
-    private int cdApocalypseWeave = 200;
+    // Attack cooldowns (in ticks). Wider gaps so attacks land like punctuation,
+    // not a stream — players need recovery time between hits.
+    private int cdThreadLash = 40;
+    private int cdShatterBolt = 80;
+    private int cdMinionWeave = 400;
+    private int cdDimensionalRift = 160;
+    private int cdLoomLaser = 220;
+    private int cdEchoClones = 800;
+    private int cdRealityFracture = 140;
+    private int cdApocalypseWeave = 400;
 
     private BukkitRunnable tickTask;
 
@@ -62,7 +65,8 @@ public class Veilweaver {
     public VeilweaverCrystals getCrystals() { return crystals; }
 
     private void configureEntity() {
-        com.soulenchants.util.BossHealthHack.apply(entity, MAX_HP);
+        double hp = com.soulenchants.bosses.BossDamage.bossHpOverride("veilweaver", MAX_HP);
+        com.soulenchants.util.BossHealthHack.apply(entity, hp);
         entity.setRemoveWhenFarAway(false);
         entity.setCanPickupItems(false);
         // Note: 1.8.8 has no Attribute API. Damage/armor scaling done via damage events;
@@ -102,6 +106,22 @@ public class Veilweaver {
                 if (d < bestSq) { bestSq = d; nearest = pl; }
             }
             if (nearest != null) ((org.bukkit.entity.Monster) entity).setTarget(nearest);
+        }
+
+        // Melee enforcer — vanilla wither-skeleton AI swings ~once every 2-3s
+        // and gets distracted by ability casts. Every 24t (1.2s), if a player
+        // is within 3 blocks, force a swing + apply solid melee damage. Counts
+        // as the boss's own attack so all our damage hooks fire.
+        if (ticks % 24 == 0) {
+            Player closest = null; double bestSq = Double.MAX_VALUE;
+            for (Player pl : entity.getWorld().getPlayers()) {
+                double d = pl.getLocation().distanceSquared(entity.getLocation());
+                if (d < bestSq) { bestSq = d; closest = pl; }
+            }
+            if (closest != null && bestSq <= 9.0) {                       // 3-block reach
+                entity.getWorld().playSound(entity.getLocation(), Sound.HURT_FLESH, 1.0f, 0.8f);
+                com.soulenchants.bosses.BossDamage.apply(closest, "veilweaver", "melee", 110, entity);
+            }
         }
 
         // Heal if no players in arena (anti-kite)
@@ -163,12 +183,12 @@ public class Veilweaver {
             VeilweaverAttacks.finalThreadBind(this);
         }
 
-        if (invulnerable) return;
+        if (System.currentTimeMillis() < invulnerableUntil) return;
 
         runAttacks();
     }
 
-    private int nextAttackAt = 30;
+    private int nextAttackAt = 80;
     private final Random rng = new Random();
 
     /** Weighted random attack picker. Cheap moves dominate, signature moves still happen. */
@@ -183,7 +203,7 @@ public class Veilweaver {
         if (cdApocalypseWeave > 0) cdApocalypseWeave--;
 
         if (--nextAttackAt > 0) return;
-        nextAttackAt = 35 + rng.nextInt(25); // ~1.75-3s between picks
+        nextAttackAt = 90 + rng.nextInt(50); // ~4.5-7s between picks (was ~1.75-3s)
 
         java.util.List<String> pool = new java.util.ArrayList<>();
         if (cdThreadLash <= 0)  for (int i = 0; i < 7; i++) pool.add("lash");    // very common
@@ -201,23 +221,20 @@ public class Veilweaver {
         if (pool.isEmpty()) return;
 
         switch (pool.get(rng.nextInt(pool.size()))) {
-            case "lash":     cdThreadLash = 24 + rng.nextInt(8); VeilweaverAttacks.threadLash(this); break;
-            case "bolt":     cdShatterBolt = 60;                 VeilweaverAttacks.shatterBolt(this); break;
-            case "minion":   cdMinionWeave = 500;                VeilweaverAttacks.minionWeave(this); break;
-            case "rift":     cdDimensionalRift = 160;            VeilweaverAttacks.dimensionalRift(this); break;
-            case "laser":    cdLoomLaser = 240;                  VeilweaverAttacks.loomLaser(this); break;
-            case "clones":   cdEchoClones = 700;                 VeilweaverAttacks.echoClones(this); break;
-            case "fracture": cdRealityFracture = 120;            VeilweaverAttacks.realityFracture(this); break;
-            case "apoc":     cdApocalypseWeave = 400;            VeilweaverAttacks.apocalypseWeave(this); break;
+            case "lash":     cdThreadLash = 70 + rng.nextInt(30); VeilweaverAttacks.threadLash(this); break;       // 3.5-5s
+            case "bolt":     cdShatterBolt = 160;                  VeilweaverAttacks.shatterBolt(this); break;      // 8s
+            case "minion":   cdMinionWeave = 900;                  VeilweaverAttacks.minionWeave(this); break;      // 45s
+            case "rift":     cdDimensionalRift = 320;              VeilweaverAttacks.dimensionalRift(this); break;  // 16s
+            case "laser":    cdLoomLaser = 420;                    VeilweaverAttacks.loomLaser(this); break;        // 21s
+            case "clones":   cdEchoClones = 1200;                  VeilweaverAttacks.echoClones(this); break;       // 60s
+            case "fracture": cdRealityFracture = 260;              VeilweaverAttacks.realityFracture(this); break;  // 13s
+            case "apoc":     cdApocalypseWeave = 800;              VeilweaverAttacks.apocalypseWeave(this); break;  // 40s
         }
     }
 
     private void transitionTo(Phase next) {
-        invulnerable = true;
-        // Schedule invuln-clear FIRST so any later exception can't strand us in invuln.
-        new BukkitRunnable() {
-            @Override public void run() { invulnerable = false; }
-        }.runTaskLater(plugin, 60L);
+        // 3-second self-expiring invuln. No scheduled task = no stuck-on bug.
+        invulnerableUntil = System.currentTimeMillis() + 3000L;
         phase = next;
         Location loc = entity.getLocation();
         loc.getWorld().createExplosion(loc.getX(), loc.getY() + 1, loc.getZ(), 0f, false);
@@ -299,7 +316,8 @@ public class Veilweaver {
         return list;
     }
 
-    public boolean isInvulnerable() { return invulnerable; }
+    public boolean isInvulnerable() { return System.currentTimeMillis() < invulnerableUntil; }
+    public void forceClearInvuln() { this.invulnerableUntil = 0L; }
     public Phase getPhase() { return phase; }
     public LivingEntity getEntity() { return entity; }
     public VeilweaverArena getArena() { return arena; }

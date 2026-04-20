@@ -18,6 +18,7 @@ import java.util.*;
 
 public class BerserkTickTask extends BukkitRunnable {
 
+    private static final java.util.Random RNG = new java.util.Random();
     private final SoulEnchants plugin;
     private final BerserkEnchant berserk = new BerserkEnchant();
     private final Map<UUID, Location> lastLoc = new HashMap<>();
@@ -26,6 +27,10 @@ public class BerserkTickTask extends BukkitRunnable {
     // When set, skip applying Drunk's Slow/MF while this helmet is the one worn.
     // Cleared automatically when helmet is unequipped or replaced with a different one.
     private final Map<UUID, ItemStack> blessedHelmetSnapshot = new HashMap<>();
+    /** Per-player tracking of last amp we wrote for each mythic-aura potion type.
+     *  Lets us detect if the currently-active effect is "ours" (so we strip our
+     *  bonus to find the underlying base) vs an external source we should stack on. */
+    private final Map<UUID, Map<String, Integer>> auraApplied = new HashMap<>();
 
     public BerserkTickTask(SoulEnchants plugin) { this.plugin = plugin; }
 
@@ -36,6 +41,7 @@ public class BerserkTickTask extends BukkitRunnable {
         lastLoc.remove(id);
         stillTicks.remove(id);
         blessedHelmetSnapshot.remove(id);
+        auraApplied.remove(id);
     }
 
     /** Called by /bless. Records the currently worn helmet so we can suppress its negatives. */
@@ -67,7 +73,7 @@ public class BerserkTickTask extends BukkitRunnable {
         boolean drunkBlessed = snapshot != null && helmet != null && snapshot.isSimilar(helmet);
 
         int berserkLvl=0, implants=0, speed=0, adren=0, vital=0,
-            aquatic=0, lifebloom=0, overshield=0;
+            aquatic=0, overshield=0;
         for (ItemStack a : allArmor) {
             if (a == null) continue;
             berserkLvl = Math.max(berserkLvl, ItemUtil.getLevel(a, "berserk"));
@@ -76,14 +82,13 @@ public class BerserkTickTask extends BukkitRunnable {
             adren      = Math.max(adren,      ItemUtil.getLevel(a, "adrenaline"));
             vital      = Math.max(vital,      ItemUtil.getLevel(a, "vital"));
             aquatic    = Math.max(aquatic,    ItemUtil.getLevel(a, "aquatic"));
-            lifebloom  = Math.max(lifebloom,  ItemUtil.getLevel(a, "lifebloom"));
             overshield = Math.max(overshield, ItemUtil.getLevel(a, "overshield"));
         }
         int drunk        = helmet == null ? 0 : ItemUtil.getLevel(helmet, "drunk");
         int nightvision  = helmet == null ? 0 : ItemUtil.getLevel(helmet, "nightvision");
         int saturation   = helmet == null ? 0 : ItemUtil.getLevel(helmet, "saturation");
+        int clarity      = helmet == null ? 0 : ItemUtil.getLevel(helmet, "clarity");
         int depthstrider = boots  == null ? 0 : ItemUtil.getLevel(boots, "depthstrider");
-        int haste        = boots  == null ? 0 : ItemUtil.getLevel(boots, "haste");
         int jumpboost    = boots  == null ? 0 : ItemUtil.getLevel(boots, "jumpboost");
         int firewalker   = boots  == null ? 0 : ItemUtil.getLevel(boots, "firewalker");
 
@@ -91,13 +96,11 @@ public class BerserkTickTask extends BukkitRunnable {
 
         if (berserkLvl > 0) berserk.onTick(p, berserkLvl);
 
-        // Implants now only regens when HP is below 50%, and gives Regen I (not amp lvl-1).
-        // Lifebloom retains its standing-still gate.
+        // Implants only regens when HP is below 50%. Lifebloom is now a death-trigger
+        // enchant (heals allies on YOUR death) and no longer ticks here.
         boolean lowHp = p.getHealth() < (p.getMaxHealth() * 0.5);
-        boolean lifebloomActive = lifebloom > 0 && isStanding(p, id);
-        if ((implants > 0 && lowHp) || lifebloomActive) {
-            int amp = lifebloomActive ? Math.max(0, lifebloom - 1) : 0;
-            p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 40, amp, true, false), true);
+        if (implants > 0 && lowHp) {
+            p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 40, 0, true, false), true);
             applyThisTick.add(PotionEffectType.REGENERATION);
         }
 
@@ -109,10 +112,8 @@ public class BerserkTickTask extends BukkitRunnable {
             p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, finalSpeed - 1, true, false), true);
             applyThisTick.add(PotionEffectType.SPEED);
         }
-        if (haste > 0) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, 40, haste - 1, true, false), true);
-            applyThisTick.add(PotionEffectType.FAST_DIGGING);
-        }
+        // Haste is now a pickaxe enchant fired on block break (BlockBreakListener) —
+        // no longer a permanent boots-tick effect.
         if (jumpboost > 0) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 40, jumpboost - 1, true, false), true);
             applyThisTick.add(PotionEffectType.JUMP);
@@ -134,9 +135,32 @@ public class BerserkTickTask extends BukkitRunnable {
             p.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 60, 0, true, false), true);
             applyThisTick.add(PotionEffectType.WATER_BREATHING);
         }
-        if (overshield > 0) {
-            p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 60, overshield - 1, true, false), true);
-            applyThisTick.add(PotionEffectType.ABSORPTION);
+        // Clarity — strip POISON / BLINDNESS proportional to level.
+        // L1 ≈ 33% strip-per-tick, L2 ≈ 66%, L3 = full immunity.
+        if (clarity > 0) {
+            boolean strip = clarity >= 3 || RNG.nextDouble() < 0.33 * clarity;
+            if (strip) {
+                if (p.hasPotionEffect(PotionEffectType.POISON))    p.removePotionEffect(PotionEffectType.POISON);
+                if (p.hasPotionEffect(PotionEffectType.BLINDNESS)) p.removePotionEffect(PotionEffectType.BLINDNESS);
+            }
+        }
+        // Overshield is no longer a passive Absorption tick — it's been moved to a
+        // chance-on-hit proc in CombatListener with a long cooldown.
+
+        // Mythic held-sword aura (Crimson Tongue / Wraithcleaver). Stacks +1 tier
+        // ON TOP of the player's current effect amp (drunk, external potions, etc.).
+        ItemStack held = p.getItemInHand();
+        int mythicLvl = held == null ? 0 : ItemUtil.getLevel(held, "mythic_held");
+        if (mythicLvl == 1) {
+            stackAura(p, PotionEffectType.INCREASE_DAMAGE, applyThisTick);
+            stackAura(p, PotionEffectType.SPEED, applyThisTick);
+        } else if (mythicLvl == 2) {
+            stackAura(p, PotionEffectType.FAST_DIGGING, applyThisTick);
+            stackAura(p, PotionEffectType.INCREASE_DAMAGE, applyThisTick);
+        } else {
+            // Not holding a mythic anymore — drop our memory so the strip logic
+            // (below) actually clears the lingering aura effect.
+            auraApplied.remove(id);
         }
 
         // Drunk: Strength is always applied; Slow + Mining Fatigue are suppressed if blessed.
@@ -160,8 +184,10 @@ public class BerserkTickTask extends BukkitRunnable {
         }
         applied.put(id, applyThisTick);
 
-        // Vital — self-correcting
-        double expectedMax = 20.0 + (vital * 2.0);
+        // Vital + tier bonus + Heart-of-the-Forge stacks — all combined, self-correcting
+        int tierHp  = plugin.getSoulManager().getTier(p).getBonusMaxHp();
+        int heartHp = plugin.getLootProfile().bonusHpFor(p);
+        double expectedMax = 20.0 + (vital * 2.0) + tierHp + heartHp;
         if (Math.abs(p.getMaxHealth() - expectedMax) > 0.01) {
             p.setMaxHealth(expectedMax);
             if (p.getHealth() > expectedMax) p.setHealth(expectedMax);
@@ -180,6 +206,40 @@ public class BerserkTickTask extends BukkitRunnable {
         int count = stillTicks.getOrDefault(id, 0);
         stillTicks.put(id, still ? count + 1 : 0);
         return still && count >= 2;
+    }
+
+    /**
+     * Apply +1 amp on top of the player's current effect amp for `type`. If the
+     * existing effect matches our last-applied amp we treat it as ours (so we
+     * don't infinitely re-stack), otherwise we treat it as external and bump on
+     * top. Adds the type to `applyThisTick` so the cleanup pass keeps it alive.
+     */
+    private void stackAura(Player p, PotionEffectType type, java.util.Set<PotionEffectType> applyThisTick) {
+        UUID id = p.getUniqueId();
+        PotionEffect existing = null;
+        for (PotionEffect pe : p.getActivePotionEffects()) {
+            if (pe.getType().equals(type)) { existing = pe; break; }
+        }
+        Map<String, Integer> myMap = auraApplied.get(id);
+        Integer ourLast = (myMap == null) ? null : myMap.get(type.getName());
+        int base;
+        if (existing == null) {
+            base = -1;
+        } else if (ourLast != null && existing.getAmplifier() == ourLast) {
+            // Our prior bonus is still showing — strip our +1 to find the underlying base
+            base = ourLast - 1;
+        } else {
+            // External source (or higher than our last) — stack on top
+            base = existing.getAmplifier();
+        }
+        int newAmp = Math.max(0, base + 1);
+        p.addPotionEffect(new PotionEffect(type, 40, newAmp, true, false), true);
+        if (myMap == null) {
+            myMap = new HashMap<>();
+            auraApplied.put(id, myMap);
+        }
+        myMap.put(type.getName(), newAmp);
+        applyThisTick.add(type);
     }
 
     private boolean hasMagnetism(Player p) {

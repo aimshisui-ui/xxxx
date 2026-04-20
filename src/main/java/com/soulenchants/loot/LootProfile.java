@@ -52,6 +52,12 @@ public final class LootProfile {
         return getHeartStacks(p.getUniqueId()) * 2;
     }
 
+    /** Admin reset — wipes heart-of-the-forge stacks (removes the permanent +HP buff). */
+    public void clearHearts(UUID id) {
+        cfg.set("hearts." + id, 0);
+        save();
+    }
+
     public int bonusSoulsFor(OfflinePlayer p) {
         return getSigilStacks(p.getUniqueId());
     }

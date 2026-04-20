@@ -33,6 +33,14 @@ public class BlockBreakListener implements Listener {
         boolean autosmelt = ItemUtil.getLevel(tool, "autosmelt") > 0;
         boolean telepathy = ItemUtil.getLevel(tool, "telepathy") > 0;
 
+        // Haste (Nordic-style) — pickaxe enchant. Mining a block gives a 5s
+        // Haste(level) buff so chain-mining feels snappy.
+        int haste = ItemUtil.getLevel(tool, "haste");
+        if (haste > 0 && tool.getType().name().endsWith("_PICKAXE")) {
+            p.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.FAST_DIGGING, 100, haste - 1, true, false), true);
+        }
+
         // Book drop chance from ores
         String matKey = block.getType().name().toLowerCase();
         double dropChance = plugin.getConfig().getDouble("drops." + matKey, 0.0);

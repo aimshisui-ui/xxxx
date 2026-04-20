@@ -111,9 +111,9 @@ public final class IronGolemMinions {
             z.setCustomNameVisible(true);
             z.setRemoveWhenFarAway(false);
             z.setBaby(false);
-            // Permanent passive boosts — Strength III + Speed I
+            // Permanent passive boosts — Strength V + Speed I (doubled output)
             z.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 2, false, false));
+                    org.bukkit.potion.PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 4, false, false));
             z.addPotionEffect(new org.bukkit.potion.PotionEffect(
                     org.bukkit.potion.PotionEffectType.SPEED, Integer.MAX_VALUE, 0, false, false));
             equipSentinel(z);

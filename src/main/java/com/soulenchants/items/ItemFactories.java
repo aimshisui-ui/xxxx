@@ -34,6 +34,13 @@ public class ItemFactories {
         List<String> lore = new ArrayList<>();
         lore.add(DIVIDER);
         lore.add(ChatColor.GRAY + "" + ChatColor.ITALIC + e.getDescription());
+        // Concrete effect at THIS level
+        String effect = com.soulenchants.enchants.EnchantEffects.describe(e.getId(), level);
+        if (effect != null) {
+            lore.add("");
+            lore.add(ChatColor.LIGHT_PURPLE + "At " + CustomEnchant.roman(level) + ": "
+                    + ChatColor.WHITE + effect);
+        }
         lore.add("");
         lore.add(ChatColor.GRAY + "Success Rate: " + ChatColor.WHITE + successRate + "%");
         lore.add(ChatColor.GRAY + "Destroy Rate: " + ChatColor.WHITE + destroyRate + "%");

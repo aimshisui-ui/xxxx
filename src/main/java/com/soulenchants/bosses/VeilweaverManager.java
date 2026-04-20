@@ -26,7 +26,32 @@ public class VeilweaverManager {
         if (active != null && !active.getEntity().isDead()) return false;
         active = new Veilweaver(plugin, loc);
         active.start();
+        announceSpawn(loc);
         return true;
+    }
+
+    /** Cinematic spawn announce — global broadcast + sound + title for nearby players. */
+    private void announceSpawn(Location loc) {
+        String div = "§5" + org.bukkit.ChatColor.STRIKETHROUGH + "                                          ";
+        org.bukkit.Bukkit.broadcastMessage("");
+        org.bukkit.Bukkit.broadcastMessage(div);
+        org.bukkit.Bukkit.broadcastMessage("§5§l        ✦ THE VEILWEAVER MANIFESTS ✦");
+        org.bukkit.Bukkit.broadcastMessage("");
+        org.bukkit.Bukkit.broadcastMessage("§8§o  \"She has not woken in an age. She is waking now.\"");
+        org.bukkit.Bukkit.broadcastMessage("");
+        org.bukkit.Bukkit.broadcastMessage("§7  Coordinates  §f" + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ()
+                + "§8  (" + loc.getWorld().getName() + ")");
+        org.bukkit.Bukkit.broadcastMessage("§c  ⚔ Bring company. Bring blades. Bring everything.");
+        org.bukkit.Bukkit.broadcastMessage(div);
+        org.bukkit.Bukkit.broadcastMessage("");
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            p.playSound(p.getLocation(), org.bukkit.Sound.WITHER_SPAWN, 0.7f, 0.3f);
+            p.playSound(p.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 0.5f, 0.6f);
+            // Title only for players in the same world, within 80 blocks
+            if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distanceSquared(loc) <= 80 * 80) {
+                try { p.sendTitle("§5§l✦ The Veilweaver ✦", "§d§oShe has woken."); } catch (Throwable ignored) {}
+            }
+        }
     }
 
     public Veilweaver getActive() {
@@ -77,9 +102,18 @@ public class VeilweaverManager {
         if (pool.isEmpty()) pool.addAll(EnchantRegistry.all());
         CustomEnchant chosen = pool.get(rng.nextInt(pool.size()));
         vw.getEntity().getWorld().dropItemNaturally(vw.getEntity().getLocation(),
-                ItemFactories.book(chosen, Math.max(1, chosen.getMaxLevel() / 2)));
+                // Random level between 1 and maxLevel inclusive (uniform)
+                ItemFactories.book(chosen, 1 + rng.nextInt(chosen.getMaxLevel())));
         // Full boss loot table
         com.soulenchants.loot.BossLootTable.dropVeilweaver(vw.getEntity().getLocation());
+        // Config-driven extra drops from /ce loot editor
+        if (plugin.getLootConfig() != null) {
+            java.util.Random r = new java.util.Random();
+            for (com.soulenchants.mobs.DropSpec ds : plugin.getLootConfig().bossDrops("veilweaver")) {
+                org.bukkit.inventory.ItemStack it = ds.roll(r);
+                if (it != null) vw.getEntity().getWorld().dropItemNaturally(vw.getEntity().getLocation(), it);
+            }
+        }
 
         com.soulenchants.bosses.BossDeathBroadcast.broadcast(plugin,
                 org.bukkit.ChatColor.DARK_PURPLE + "" + org.bukkit.ChatColor.BOLD + "The Veilweaver",

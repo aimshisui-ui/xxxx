@@ -29,21 +29,27 @@ public class GodMenuGUI implements Listener {
     private static final String TITLE_BOSS_EGGS  = ChatColor.GOLD      + "» Boss Spawn Eggs";
     private static final String TITLE_GODSET     = ChatColor.GOLD      + "» Godset Items";
     private static final String TITLE_RECIPES    = ChatColor.AQUA      + "» Recipe Book";
+    private static final String TITLE_CONSUMABLE = ChatColor.DARK_PURPLE + "» Consumables";
+    private static final String TITLE_BOXES      = ChatColor.GOLD      + "» Loot Boxes";
 
     private final SoulEnchants plugin;
 
     public GodMenuGUI(SoulEnchants plugin) { this.plugin = plugin; }
 
     public void openHub(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, TITLE_HUB);
-        inv.setItem(10, button(Material.BOOK,           ChatColor.LIGHT_PURPLE + "Enchants",        "All custom enchant books"));
-        inv.setItem(11, button(Material.DIAMOND_CHESTPLATE, ChatColor.GOLD     + "Godset",          "/ce bossset loadout"));
-        inv.setItem(12, button(Material.DIAMOND_SWORD,  ChatColor.DARK_BLUE    + "Boss Loot",       "Every named boss drop"));
-        inv.setItem(13, button(Material.IRON_BLOCK,     ChatColor.GREEN        + "Reagents",        "Crafting materials"));
-        inv.setItem(14, button(Material.MONSTER_EGG,    ChatColor.GOLD         + "Boss Spawn",      "Summon Veilweaver / Colossus"));
-        inv.setItem(15, button(Material.WORKBENCH,      ChatColor.AQUA         + "Recipes",         "All custom recipes"));
-        inv.setItem(16, button(Material.GOLDEN_APPLE,   ChatColor.DARK_PURPLE  + "Consumables",     "Permanent buff items"));
-        inv.setItem(22, button(Material.BARRIER,        ChatColor.RED          + "Close",           ""));
+        Inventory inv = Bukkit.createInventory(null, 36, TITLE_HUB);
+        inv.setItem(10, button(Material.BOOK,               ChatColor.LIGHT_PURPLE + "Enchants",        "All custom enchant books"));
+        inv.setItem(11, button(Material.DIAMOND_CHESTPLATE, ChatColor.GOLD         + "Godset",          "/ce bossset loadout"));
+        inv.setItem(12, button(Material.DIAMOND_SWORD,      ChatColor.DARK_BLUE    + "Boss Loot",       "Every named boss drop"));
+        inv.setItem(13, button(Material.IRON_BLOCK,         ChatColor.GREEN        + "Reagents",        "Crafting materials"));
+        inv.setItem(14, button(Material.MONSTER_EGG,        ChatColor.GOLD         + "Boss Spawn",      "Summon Veilweaver / Colossus"));
+        inv.setItem(15, button(Material.WORKBENCH,          ChatColor.AQUA         + "Recipes",         "All custom recipes"));
+        inv.setItem(16, button(Material.GOLDEN_APPLE,       ChatColor.DARK_PURPLE  + "Consumables",     "Dust, scrolls, permanent buffs"));
+        inv.setItem(19, button(Material.CHEST,              ChatColor.GOLD         + "Loot Boxes",      "Bronze, Silver, Gold, Boss"));
+        inv.setItem(20, button(Material.SKULL_ITEM,         ChatColor.LIGHT_PURPLE + "Custom Mobs",     "60 unique mobs — /mob list"));
+        inv.setItem(21, button(Material.GOLD_INGOT,         ChatColor.YELLOW       + "Shop",            "Open the Quartermaster"));
+        inv.setItem(22, button(Material.WRITTEN_BOOK,       ChatColor.AQUA         + "Quests",          "Tutorial + Daily quest log"));
+        inv.setItem(31, button(Material.BARRIER,            ChatColor.RED          + "Close",           ""));
         p.openInventory(inv);
     }
 
@@ -88,9 +94,28 @@ public class GodMenuGUI implements Listener {
     }
 
     public void openConsumables(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, ChatColor.DARK_PURPLE + "» Consumables");
+        Inventory inv = Bukkit.createInventory(null, 36, TITLE_CONSUMABLE);
+        // Permanent-buff items
         inv.setItem(10, BossLootItems.heartOfTheForge());
         inv.setItem(11, BossLootItems.veilSigil());
+        // Magic dust (success rates)
+        inv.setItem(13, com.soulenchants.items.ItemFactories.dust(25));
+        inv.setItem(14, com.soulenchants.items.ItemFactories.dust(50));
+        inv.setItem(15, com.soulenchants.items.ItemFactories.dust(75));
+        inv.setItem(16, com.soulenchants.items.ItemFactories.dust(100));
+        // Scrolls
+        inv.setItem(19, com.soulenchants.items.ItemFactories.whiteScroll());
+        inv.setItem(20, com.soulenchants.items.ItemFactories.blackScroll());
+        inv.setItem(31, backButton());
+        p.openInventory(inv);
+    }
+
+    public void openLootBoxes(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 27, TITLE_BOXES);
+        inv.setItem(10, com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BRONZE));
+        inv.setItem(12, com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.SILVER));
+        inv.setItem(14, com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD));
+        inv.setItem(16, com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS));
         inv.setItem(22, backButton());
         p.openInventory(inv);
     }
@@ -154,9 +179,13 @@ public class GodMenuGUI implements Listener {
                 case 12: openLoot(p); return;
                 case 13: openReagents(p); return;
                 case 14: openBossEggs(p); return;
-                case 15: openRecipeBook(p); return;
+                case 15: p.closeInventory(); plugin.getRecipeGUI().openList(p); return;
                 case 16: openConsumables(p); return;
-                case 22: p.closeInventory(); return;
+                case 19: openLootBoxes(p); return;
+                case 20: p.closeInventory(); p.performCommand("mob list"); return;
+                case 21: p.closeInventory(); p.performCommand("shop"); return;
+                case 22: p.closeInventory(); p.performCommand("quests"); return;
+                case 31: p.closeInventory(); return;
                 default: return;
             }
         }
@@ -193,7 +222,8 @@ public class GodMenuGUI implements Listener {
             || title.equals(TITLE_BOSS_EGGS)
             || title.equals(TITLE_GODSET)
             || title.equals(TITLE_RECIPES)
-            || title.equals(ChatColor.DARK_PURPLE + "» Consumables");
+            || title.equals(TITLE_CONSUMABLE)
+            || title.equals(TITLE_BOXES);
     }
 
     private ItemStack button(Material mat, String name, String... lore) {

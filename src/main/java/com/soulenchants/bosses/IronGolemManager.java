@@ -31,7 +31,31 @@ public class IronGolemManager {
         if (active != null && !active.getEntity().isDead()) return false;
         active = new IronGolemBoss(plugin, loc);
         active.start();
+        announceSpawn(loc);
         return true;
+    }
+
+    /** Cinematic spawn announce — global broadcast + sound + title for nearby players. */
+    private void announceSpawn(Location loc) {
+        String div = "§6" + org.bukkit.ChatColor.STRIKETHROUGH + "                                          ";
+        org.bukkit.Bukkit.broadcastMessage("");
+        org.bukkit.Bukkit.broadcastMessage(div);
+        org.bukkit.Bukkit.broadcastMessage("§6§l        ✦ THE IRONHEART COLOSSUS RISES ✦");
+        org.bukkit.Bukkit.broadcastMessage("");
+        org.bukkit.Bukkit.broadcastMessage("§8§o  \"Iron remembers every blow it took to forge it.\"");
+        org.bukkit.Bukkit.broadcastMessage("");
+        org.bukkit.Bukkit.broadcastMessage("§7  Coordinates  §f" + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ()
+                + "§8  (" + loc.getWorld().getName() + ")");
+        org.bukkit.Bukkit.broadcastMessage("§c  ⚔ Bring company. Bring blades. Bring everything.");
+        org.bukkit.Bukkit.broadcastMessage(div);
+        org.bukkit.Bukkit.broadcastMessage("");
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            p.playSound(p.getLocation(), org.bukkit.Sound.IRONGOLEM_DEATH, 0.8f, 0.5f);
+            p.playSound(p.getLocation(), org.bukkit.Sound.ANVIL_LAND, 0.6f, 0.4f);
+            if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distanceSquared(loc) <= 80 * 80) {
+                try { p.sendTitle("§6§l✦ Ironheart Colossus ✦", "§e§oThe forge wakes."); } catch (Throwable ignored) {}
+            }
+        }
     }
 
     public IronGolemBoss getActive() {
@@ -73,11 +97,20 @@ public class IronGolemManager {
         if (pool.isEmpty()) pool.addAll(EnchantRegistry.all());
         CustomEnchant chosen = pool.get(rng.nextInt(pool.size()));
         b.getEntity().getWorld().dropItemNaturally(b.getEntity().getLocation(),
-                ItemFactories.book(chosen, Math.max(1, chosen.getMaxLevel() / 2)));
+                // Random level between 1 and maxLevel inclusive (uniform)
+                ItemFactories.book(chosen, 1 + rng.nextInt(chosen.getMaxLevel())));
         // Drop the unique "Iron Heart" item
         b.getEntity().getWorld().dropItemNaturally(b.getEntity().getLocation(), ironHeart());
         // Full boss loot table
         com.soulenchants.loot.BossLootTable.dropIronGolem(b.getEntity().getLocation());
+        // Config-driven extra drops from /ce loot editor
+        if (plugin.getLootConfig() != null) {
+            java.util.Random r = new java.util.Random();
+            for (com.soulenchants.mobs.DropSpec ds : plugin.getLootConfig().bossDrops("irongolem")) {
+                org.bukkit.inventory.ItemStack it = ds.roll(r);
+                if (it != null) b.getEntity().getWorld().dropItemNaturally(b.getEntity().getLocation(), it);
+            }
+        }
 
         com.soulenchants.bosses.BossDeathBroadcast.broadcast(plugin,
                 ChatColor.GOLD + "" + ChatColor.BOLD + "Ironheart Colossus",

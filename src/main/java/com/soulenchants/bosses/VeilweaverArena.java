@@ -32,15 +32,9 @@ public class VeilweaverArena {
     public Location getCenter() { return center.clone(); }
 
     public void spawn() {
-        double y = center.getY();
-        for (int i = 0; i < 6; i++) {
-            double angle = (Math.PI * 2 * i) / 6.0;
-            double x = center.getX() + Math.cos(angle) * ORB_RADIUS;
-            double z = center.getZ() + Math.sin(angle) * ORB_RADIUS;
-            Location orbLoc = new Location(center.getWorld(), x, y + 3.5, z);
-            EnderCrystal orb = (EnderCrystal) center.getWorld().spawnEntity(orbLoc, org.bukkit.entity.EntityType.ENDER_CRYSTAL);
-            loomOrbs.add(orb);
-        }
+        // Loom orbs disabled — they read as "extra crystals" alongside the
+        // proper shield crystals and confused the encounter. The arena border
+        // particle effect (tickBorder) is enough to mark the fight zone.
     }
 
     public void tickBorder(LivingEntity boss) {

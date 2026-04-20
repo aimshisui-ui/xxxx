@@ -18,6 +18,30 @@ commands:
     description: Remove all negative potion effects from a player
     usage: /bless [player]
     aliases: [cleanse]
+  boss:
+    description: Boss control (list/kill)
+    usage: /boss <list|kill>
+    aliases: [bosses]
+  shop:
+    description: Open the Quartermaster shop
+    usage: /shop [refresh]
+    aliases: [quartermaster]
+  quests:
+    description: Open the quest log
+    usage: /quests [status|reset]
+    aliases: [quest]
+  mob:
+    description: Custom mob registry / spawn
+    usage: /mob <list|spawn|killall>
+    aliases: [mobs]
+  rift:
+    description: Toggle travel between main world and rift_world
+    usage: /rift [tp|setspawn]
+    aliases: [riftworld]
+  lootfilter:
+    description: Per-player blacklist for custom mob drops
+    usage: /lootfilter [togglemessage]
+    aliases: [lootft, lootfilters, ftloot]
 
 permissions:
   soulenchants.admin:

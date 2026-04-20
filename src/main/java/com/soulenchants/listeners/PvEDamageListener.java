@@ -45,34 +45,8 @@ public class PvEDamageListener implements Listener {
         }
     }
 
-    /** Player taking damage from boss/wither — Blessed reduction */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerHurt(EntityDamageEvent e) {
-        if (!(e.getEntity() instanceof Player)) return;
-        Player victim = (Player) e.getEntity();
-
-        boolean fromBoss = false;
-        boolean fromWither = e.getCause() == EntityDamageEvent.DamageCause.WITHER;
-        if (e instanceof EntityDamageByEntityEvent) {
-            Entity damager = ((EntityDamageByEntityEvent) e).getDamager();
-            if (damager instanceof LivingEntity && isBossOrMinion((LivingEntity) damager)) fromBoss = true;
-            if (damager instanceof Projectile) {
-                Projectile proj = (Projectile) damager;
-                if (proj.getShooter() instanceof LivingEntity
-                        && isBossOrMinion((LivingEntity) proj.getShooter())) fromBoss = true;
-            }
-        }
-        if (!fromBoss && !fromWither) return;
-
-        int blessed = 0;
-        for (ItemStack a : victim.getInventory().getArmorContents()) {
-            if (a == null) continue;
-            blessed = Math.max(blessed, ItemUtil.getLevel(a, "blessed"));
-        }
-        if (blessed > 0) {
-            e.setDamage(e.getDamage() * (1.0 - 0.15 * blessed)); // -15/30/45%
-        }
-    }
+    // Blessed is now a SWORD enchant that strips your own debuffs on hit (Nordic-style).
+    // The old chestplate damage-reduction is removed.
 
     private boolean isBossOrMinion(LivingEntity entity) {
         Veilweaver vw = plugin.getVeilweaverManager().getActive();

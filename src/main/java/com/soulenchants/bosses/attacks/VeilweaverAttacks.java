@@ -24,6 +24,7 @@ public class VeilweaverAttacks {
         final Vector forward = loc.getDirection().setY(0).normalize();
         // Telegraph: 10-tick warning sweep with red particles before impact
         loc.getWorld().playSound(loc, Sound.ZOMBIE_WOOD, 1.6f, 1.8f);
+        // No title — threadLash fires often enough that titles would spam the screen.
         new org.bukkit.scheduler.BukkitRunnable() {
             int t = 0;
             @Override public void run() {
@@ -34,7 +35,7 @@ public class VeilweaverAttacks {
                         if (toPlayer.lengthSquared() > 16) continue;
                         double dot = toPlayer.normalize().dot(forward);
                         if (dot < 0.5) continue;
-                        com.soulenchants.bosses.BossDamage.apply(p, 45, boss);
+                        com.soulenchants.bosses.BossDamage.apply(p, "veilweaver", "cleave", 300, boss);
                         p.setVelocity(toPlayer.normalize().multiply(1.2).setY(0.4));
                     }
                     for (int i = 0; i < 40; i++) {
@@ -65,8 +66,18 @@ public class VeilweaverAttacks {
         LivingEntity boss = vw.getEntity();
         List<Player> players = vw.nearbyPlayers(25);
         if (players.isEmpty()) return;
+        // Cinematic wind-up — vortex above the boss before the volley
+        com.soulenchants.bosses.BossEffects.vortex(vw.getPlugin(),
+                boss.getEyeLocation().add(0, 1.5, 0), 1.5, 3.0, Effect.MOBSPAWNER_FLAMES, 8);
+        com.soulenchants.bosses.BossEffects.roar(boss.getLocation());
+        // Announce — title to nearby players + chat broadcast
+        com.soulenchants.bosses.BossEffects.titleNearby(boss.getLocation(), 30,
+                "§5§l✦ SHATTER VOLLEY ✦", "§dThree bolts inbound");
         for (int i = 0; i < 3; i++) {
             Player target = players.get(RNG.nextInt(players.size()));
+            // Heavy particle cannon — bright + thick + 8-tick visible
+            com.soulenchants.bosses.BossEffects.particleCannon(vw.getPlugin(),
+                    boss.getEyeLocation(), target.getEyeLocation(), Effect.WITCH_MAGIC, 8);
             Snowball orb = boss.getWorld().spawn(boss.getEyeLocation(), Snowball.class);
             orb.setShooter(boss);
             Vector vel = target.getEyeLocation().toVector().subtract(boss.getEyeLocation().toVector()).normalize().multiply(1.6);
@@ -83,10 +94,14 @@ public class VeilweaverAttacks {
         for (int i = 0; i < count; i++) {
             Location spawn = boss.getLocation().clone().add(RNG.nextDouble() * 4 - 2, 0, RNG.nextDouble() * 4 - 2);
             Silverfish s = (Silverfish) boss.getWorld().spawnEntity(spawn, EntityType.SILVERFISH);
-            s.setMaxHealth(20);
-            s.setHealth(20);
-            s.setCustomName("§5Threadling");
-            s.setCustomNameVisible(false);
+            s.setMaxHealth(60);                     // was 20 — 3x tankier
+            s.setHealth(60);
+            s.setCustomName(org.bukkit.ChatColor.LIGHT_PURPLE + "Threadling");
+            s.setCustomNameVisible(true);
+            s.setRemoveWhenFarAway(false);
+            // Permanent buffs: Strength II for damage, Speed I to chase
+            s.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 1, false, false));
+            s.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 0, false, false));
             new de.tr7zw.changeme.nbtapi.NBTEntity(s).setBoolean("se_vw_minion", true);
             vw.getMinions().add(s);
         }
@@ -98,6 +113,9 @@ public class VeilweaverAttacks {
     public static void dimensionalRift(Veilweaver vw) {
         LivingEntity boss = vw.getEntity();
         List<Player> players = vw.nearbyPlayers(25);
+        com.soulenchants.bosses.BossEffects.titleNearby(boss.getLocation(), 30,
+                "§5§l✦ DIMENSIONAL RIFT ✦", "§dShe steps between worlds");
+        com.soulenchants.bosses.BossEffects.roar(boss.getLocation());
         if (players.isEmpty()) return;
         Player target = players.get(RNG.nextInt(players.size()));
         // Telegraph at current boss location (fracturing portal) before teleport
@@ -117,12 +135,21 @@ public class VeilweaverAttacks {
             Vector pull = rift.toVector().subtract(p.getLocation().toVector()).normalize().multiply(1.5);
             p.setVelocity(pull);
         }
-        // Spawn 1-2 endermen as adds
+        // Spawn 1-2 custom voidstalker endermen as adds
         int adds = 1 + RNG.nextInt(2);
+        com.soulenchants.mobs.CustomMob voidstalker =
+                com.soulenchants.mobs.MobRegistry.get("voidstalker");
         for (int i = 0; i < adds; i++) {
-            Enderman e = (Enderman) boss.getWorld().spawnEntity(rift, EntityType.ENDERMAN);
-            if (!players.isEmpty()) e.setTarget(players.get(RNG.nextInt(players.size())));
-            vw.getMinions().add(e);
+            org.bukkit.entity.LivingEntity e;
+            if (voidstalker != null) {
+                e = voidstalker.spawn(rift);
+            } else {
+                e = (org.bukkit.entity.LivingEntity) boss.getWorld().spawnEntity(rift, EntityType.ENDERMAN);
+            }
+            if (e instanceof Enderman && !players.isEmpty()) {
+                ((Enderman) e).setTarget(players.get(RNG.nextInt(players.size())));
+            }
+            if (e != null) vw.getMinions().add(e);
         }
         // Visual rift
         new BukkitRunnable() {
@@ -143,12 +170,18 @@ public class VeilweaverAttacks {
         List<Player> players = vw.nearbyPlayers(25);
         if (players.isEmpty()) return;
         final Player target = players.get(RNG.nextInt(players.size()));
-        target.sendTitle("§5✦", "§dLoom Laser locked on you!");
-        // Channel for 50 ticks (2.5s)
+        target.sendTitle("§4§l✦ LOOM LASER ✦", "§c§lBREAK LINE OF SIGHT");
+        boss.getWorld().playSound(boss.getLocation(), Sound.WITHER_SHOOT, 2.0f, 0.4f);
+        // Telegraph at the target's feet so onlookers know who's the target
+        com.soulenchants.bosses.BossEffects.telegraph(vw.getPlugin(), target.getLocation(), 2.0, 30);
+        // Helical particle cannon during the channel
+        com.soulenchants.bosses.BossEffects.particleCannon(vw.getPlugin(),
+                boss.getEyeLocation(), target.getEyeLocation(), Effect.WITCH_MAGIC, 30);
+        // Faster channel — 1.5s (was 2.5s) — less reaction time
         new BukkitRunnable() {
             int t = 0;
             @Override public void run() {
-                if (t++ >= 50) {
+                if (t++ >= 30) {
                     fireLaser(vw, target);
                     cancel();
                     return;
@@ -158,9 +191,11 @@ public class VeilweaverAttacks {
                 Vector dir = to.toVector().subtract(from.toVector());
                 double dist = dir.length();
                 dir.normalize();
-                for (double d = 0; d < dist; d += 0.5) {
+                // Denser channel beam for visibility
+                for (double d = 0; d < dist; d += 0.3) {
                     Location p = from.clone().add(dir.clone().multiply(d));
                     p.getWorld().playEffect(p, Effect.PORTAL, 0);
+                    if (t % 5 == 0) p.getWorld().playEffect(p, Effect.WITCH_MAGIC, 0);
                 }
             }
         }.runTaskTimer(vw.getPlugin(), 0L, 1L);
@@ -172,15 +207,23 @@ public class VeilweaverAttacks {
         Location to = target.getEyeLocation();
         Vector dir = to.toVector().subtract(from.toVector()).normalize();
         double dist = from.distance(to);
-        for (double d = 0; d < dist; d += 1.0) {
+        // PIERCING beam: hits every player along the path AND extends 6 blocks past the target
+        java.util.Set<java.util.UUID> hitOnce = new java.util.HashSet<>();
+        for (double d = 0; d < dist + 6; d += 0.6) {
             Location p = from.clone().add(dir.clone().multiply(d));
-            for (Entity e : p.getWorld().getNearbyEntities(p, 1.0, 1.0, 1.0)) {
-                if (e instanceof Player) {
-                    com.soulenchants.bosses.BossDamage.apply((Player) e, 60, boss);
-                    ((Player) e).addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 120, 1));
-                }
-            }
+            // Heavier visual: obsidian particles + lightning flash at impact arc
             p.getWorld().playEffect(p, Effect.STEP_SOUND, org.bukkit.Material.OBSIDIAN.getId());
+            if (((int)(d * 2)) % 3 == 0) p.getWorld().playEffect(p, Effect.MOBSPAWNER_FLAMES, 0);
+            for (Entity e : p.getWorld().getNearbyEntities(p, 1.2, 1.5, 1.2)) {
+                if (!(e instanceof Player)) continue;
+                if (!hitOnce.add(e.getUniqueId())) continue;  // each player taken only once
+                Player victim = (Player) e;
+                com.soulenchants.bosses.BossDamage.apply(victim, "veilweaver", "loom_laser", 510, boss);
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 120, 2));   // Wither III, 6s
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2));      // Slow III, 3s
+                victim.sendTitle("§4§l✦", "§cThe loom finds you.");
+                victim.getWorld().strikeLightningEffect(victim.getLocation());
+            }
         }
         boss.getWorld().playSound(boss.getLocation(), Sound.WITHER_HURT, 2.0f, 0.5f);
     }
@@ -191,11 +234,19 @@ public class VeilweaverAttacks {
             Location spawn = boss.getLocation().clone().add(RNG.nextDouble() * 6 - 3, 0, RNG.nextDouble() * 6 - 3);
             Skeleton clone = (Skeleton) boss.getWorld().spawnEntity(spawn, EntityType.SKELETON);
             clone.setSkeletonType(Skeleton.SkeletonType.WITHER);
-            clone.setMaxHealth(80);
-            clone.setHealth(80);
-            clone.setCustomName("§8Echo of the Veilweaver");
+            clone.setMaxHealth(220);                // was 80 — much tankier
+            clone.setHealth(220);
+            clone.setCustomName(org.bukkit.ChatColor.DARK_PURPLE + "Echo of the Veilweaver");
             clone.setCustomNameVisible(true);
-            clone.getEquipment().setItemInHand(new org.bukkit.inventory.ItemStack(org.bukkit.Material.IRON_SWORD));
+            clone.setRemoveWhenFarAway(false);
+            // Diamond sword + permanent Strength III for serious melee threat
+            org.bukkit.inventory.ItemStack sword = new org.bukkit.inventory.ItemStack(org.bukkit.Material.DIAMOND_SWORD);
+            try { sword.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.DAMAGE_ALL, 4); } catch (Throwable ignored) {}
+            try { sword.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.FIRE_ASPECT, 1); } catch (Throwable ignored) {}
+            clone.getEquipment().setItemInHand(sword);
+            clone.getEquipment().setItemInHandDropChance(0f);
+            clone.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 2, false, false));
+            clone.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 0, false, false));
             new de.tr7zw.changeme.nbtapi.NBTEntity(clone).setBoolean("se_vw_clone", true);
             vw.getEchoClones().add(clone);
             final Skeleton finalClone = clone;
@@ -216,6 +267,9 @@ public class VeilweaverAttacks {
     public static void realityFracture(Veilweaver vw) {
         LivingEntity boss = vw.getEntity();
         Location center = boss.getLocation();
+        com.soulenchants.bosses.BossEffects.titleNearby(center, 30,
+                "§4§l✦ REALITY FRACTURE ✦", "§cJump between the rings");
+        com.soulenchants.bosses.BossEffects.roar(center);
         new BukkitRunnable() {
             int ring = 0;
             @Override public void run() {
@@ -231,7 +285,7 @@ public class VeilweaverAttacks {
                 for (Player p : vw.nearbyPlayers(25)) {
                     double dist = p.getLocation().distance(center);
                     if (Math.abs(dist - radius) < 0.8) {
-                        com.soulenchants.bosses.BossDamage.apply(p, 55, boss);
+                        com.soulenchants.bosses.BossDamage.apply(p, "veilweaver", "shatter_ring", 240, boss);
                         // Levitation substitute: launch up + slowness on landing
                         p.setVelocity(p.getVelocity().setY(0.9));
                         p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2));
@@ -247,6 +301,8 @@ public class VeilweaverAttacks {
         Location center = boss.getLocation();
         boss.setVelocity(new Vector(0, 1.5, 0));
         boss.getWorld().playSound(center, Sound.WITHER_DEATH, 2.0f, 0.7f);
+        com.soulenchants.bosses.BossEffects.titleNearby(center, 40,
+                "§4§l✦ APOCALYPSE WEAVE ✦", "§c§lHIDE — she is invulnerable for 4s");
         // Set invulnerable for 4 seconds via reflection-free flag handled in damage listener
         ApocalypseInvuln.setUntil(vw, System.currentTimeMillis() + 4000);
         // Spiral of bolts
@@ -274,7 +330,7 @@ public class VeilweaverAttacks {
                         Location strike = p.getLocation().clone().add(RNG.nextDouble() * 4 - 2, 0, RNG.nextDouble() * 4 - 2);
                         strike.getWorld().strikeLightningEffect(strike);
                         for (Entity e : strike.getWorld().getNearbyEntities(strike, 2.5, 3, 2.5)) {
-                            if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 14, boss);
+                            if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, "veilweaver", "lightning", 66, boss);
                         }
                     }
                 }
@@ -287,20 +343,21 @@ public class VeilweaverAttacks {
         Player victim = vw.getTopDamager();
         if (victim == null) return;
         victim.sendTitle("§4✦ THREAD BIND ✦", "§cKill the boss before the bind completes!");
-        org.bukkit.Bukkit.broadcastMessage("§5✦ §dThe Veilweaver binds " + victim.getName() + " in threads of fate!");
-        // Damage every 0.5s for 6 seconds = 12 ticks * 10 = 120 ticks
+        // Heavy ramping damage over 6s. 12 raw per tick × 12 ticks = 144 raw total.
+        // With Prot IV armor (~75% reduction) ≈ 36 actual — survivable at full HP
+        // godset (~25 HP) with luck on Phoenix/Overshield/Guardians procs.
+        // No more guaranteed instakill at the end.
         new BukkitRunnable() {
             int t = 0;
             @Override public void run() {
                 if (t++ >= 12 || boss.isDead() || victim.isDead()) {
-                    if (!victim.isDead() && t >= 12) victim.setHealth(0);
                     cancel();
                     return;
                 }
                 victim.setVelocity(new Vector(0, 0, 0));
                 victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 20, 6));
                 victim.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 20, -10));
-                com.soulenchants.bosses.BossDamage.applyTrue(victim, 70.0 / 12.0, boss);
+                com.soulenchants.bosses.BossDamage.apply(victim, "veilweaver", "thread_bind_tick", 36, boss);
                 // Visual chain
                 Location from = boss.getEyeLocation();
                 Location to = victim.getEyeLocation();

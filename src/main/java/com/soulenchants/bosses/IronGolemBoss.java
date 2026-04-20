@@ -23,6 +23,8 @@ public class IronGolemBoss {
 
     public enum Phase { ONE, TWO }
 
+    // Mid-late game tier. Less brutal than endgame Hollow King (25k) or
+    // late-game Veilweaver (15k). Solid wall of HP without being absurd.
     public static final double MAX_HP = 8000.0;
     public static final String NBT_IRONGOLEM = "se_irongolem_boss";
 
@@ -40,13 +42,13 @@ public class IronGolemBoss {
     private boolean usedReinforce = false;
     private int ticks = 0;
 
-    private int cdStomp = 60;
-    private int cdBoulder = 100;
-    private int cdRocket = 80;
-    private int cdMagnetic = 150;
-    private int cdIronWall = 200;
-    private int cdSlam = 180;
-    private int nextAttackAt = 60;
+    private int cdStomp = 100;
+    private int cdBoulder = 160;
+    private int cdRocket = 140;
+    private int cdMagnetic = 220;
+    private int cdIronWall = 320;
+    private int cdSlam = 300;
+    private int nextAttackAt = 100;
     private final java.util.Random rng = new java.util.Random();
 
     private BukkitRunnable tickTask;
@@ -63,7 +65,8 @@ public class IronGolemBoss {
     public IronGolemMinions getMinions() { return minions; }
 
     private void configureEntity() {
-        com.soulenchants.util.BossHealthHack.apply(entity, MAX_HP);
+        double hp = com.soulenchants.bosses.BossDamage.bossHpOverride("irongolem", MAX_HP);
+        com.soulenchants.util.BossHealthHack.apply(entity, hp);
         entity.setRemoveWhenFarAway(false);
         entity.setPlayerCreated(false);
         updateName();
@@ -96,6 +99,21 @@ public class IronGolemBoss {
                 if (d < bestSq) { bestSq = d; nearest = pl; }
             }
             if (nearest != null) entity.setTarget(nearest);
+        }
+
+        // Melee enforcer — vanilla iron-golem AI swings get cancelled by ability
+        // channels. Every 28t (1.4s), if a player is within 4 blocks (golem reach),
+        // force a swing for 70 dmg. Mid-late tier scaling (Veilweaver=110, HK=150).
+        if (ticks % 28 == 0) {
+            Player closest = null; double bestSq = Double.MAX_VALUE;
+            for (Player pl : entity.getWorld().getPlayers()) {
+                double d = pl.getLocation().distanceSquared(entity.getLocation());
+                if (d < bestSq) { bestSq = d; closest = pl; }
+            }
+            if (closest != null && bestSq <= 16.0) {                      // 4-block reach
+                entity.getWorld().playSound(entity.getLocation(), Sound.IRONGOLEM_HIT, 1.2f, 0.7f);
+                BossDamage.apply(closest, "irongolem", "melee", 70, entity);
+            }
         }
 
         // Constant ambient particles
@@ -167,7 +185,7 @@ public class IronGolemBoss {
         if (cdSlam > 0)     cdSlam--;
 
         if (--nextAttackAt > 0) return;
-        nextAttackAt = 60 + rng.nextInt(40); // 3-5s between picks
+        nextAttackAt = 120 + rng.nextInt(60); // 6-9s between picks (was 3-5s)
 
         // Build weighted pool of attacks that are off cooldown
         java.util.List<String> pool = new java.util.ArrayList<>();
@@ -182,12 +200,12 @@ public class IronGolemBoss {
         if (pool.isEmpty()) return;
 
         switch (pool.get(rng.nextInt(pool.size()))) {
-            case "stomp":    cdStomp = 100;    seismicStomp(); break;
-            case "boulder":  cdBoulder = 140;  boulderThrow(); break;
-            case "rocket":   cdRocket = 120;   rocketCharge(); break;
-            case "magnetic": cdMagnetic = 180; magneticPull(); break;
-            case "wall":     cdIronWall = 240; ironWall();     break;
-            case "slam":     cdSlam = 220;     groundSlam();   break;
+            case "stomp":    cdStomp = 200;    seismicStomp(); break;
+            case "boulder":  cdBoulder = 260;  boulderThrow(); break;
+            case "rocket":   cdRocket = 240;   rocketCharge(); break;
+            case "magnetic": cdMagnetic = 320; magneticPull(); break;
+            case "wall":     cdIronWall = 400; ironWall();     break;
+            case "slam":     cdSlam = 380;     groundSlam();   break;
         }
     }
 
@@ -279,18 +297,13 @@ public class IronGolemBoss {
                     t++;
                     return;
                 }
-                // Impact
+                // Cinematic shockwave + sound
                 loc.getWorld().playSound(loc, Sound.EXPLODE, 2.0f, 0.5f);
                 loc.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 0f, false);
-                for (int r = 1; r <= 6; r++) {
-                    for (int i = 0; i < 24; i++) {
-                        double a = (Math.PI * 2 * i) / 24.0;
-                        Location p = loc.clone().add(Math.cos(a) * r, 0.2, Math.sin(a) * r);
-                        p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.STONE.getId());
-                    }
-                }
+                com.soulenchants.bosses.BossEffects.shockwaveRing(plugin, loc, 6.0, Material.STONE);
+                com.soulenchants.bosses.BossEffects.particleBurst(loc.clone().add(0, 1, 0), Effect.SMOKE, 60);
                 for (Player p : nearbyPlayers(6)) {
-                    BossDamage.apply(p, 90, entity);
+                    BossDamage.apply(p, "irongolem", "ground_slam", 300, entity);
                     p.setVelocity(new org.bukkit.util.Vector(p.getVelocity().getX(), 1.0, p.getVelocity().getZ()));
                     p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 1));
                 }
@@ -334,7 +347,7 @@ public class IronGolemBoss {
             @Override public void run() {
                 if (t++ > 30 || entity.isDead()) { cancel(); return; }
                 if (entity.getLocation().distanceSquared(target.getLocation()) < 4) {
-                    BossDamage.apply(target, 110, entity);
+                    BossDamage.apply(target, "irongolem", "charge", 340, entity);
                     target.setVelocity(new Vector(0, 0.6, 0));
                     cancel();
                 }
@@ -349,7 +362,6 @@ public class IronGolemBoss {
             Vector pull = loc.toVector().subtract(p.getLocation().toVector()).normalize().multiply(1.8);
             pull.setY(0.4);
             p.setVelocity(pull);
-            p.sendMessage("§6✦ §eThe Colossus pulls you in!");
         }
     }
 
@@ -419,17 +431,14 @@ public class IronGolemBoss {
                         Location s = loc.clone().add(Math.cos(a) * 3, 0, Math.sin(a) * 3);
                         s.getWorld().strikeLightningEffect(s);
                     }
-                    for (int r = 1; r <= 7; r++) {
-                        for (int i = 0; i < 24; i++) {
-                            double a = (Math.PI * 2 * i) / 24.0;
-                            Location p = loc.clone().add(Math.cos(a) * r, 0.2, Math.sin(a) * r);
-                            p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.COBBLESTONE.getId());
-                        }
-                    }
+                    com.soulenchants.bosses.BossEffects.shockwaveRing(plugin, loc, 7.0, Material.COBBLESTONE);
+                    com.soulenchants.bosses.BossEffects.particleBurst(loc.clone().add(0, 1, 0), Effect.LARGE_SMOKE, 80);
+                    com.soulenchants.bosses.BossEffects.titleNearby(loc, 30, "§6§l✦ SHOCKWAVE ✦", "§7Run further or take it");
                     for (Player p : nearbyPlayers(7)) {
                         double dist = p.getLocation().distance(loc);
-                        double dmg = Math.max(28, 95 - dist * 5);
-                        BossDamage.apply(p, dmg, entity);
+                        // Linear falloff: 100% at center → ~30% at edge of 7-block radius
+                        double distFactor = Math.max(0.3, 1.0 - dist * 0.10);
+                        BossDamage.applyScaled(p, "irongolem", "shockwave", 250, distFactor, entity);
                         p.setVelocity(new Vector(0, 0.8, 0));
                     }
                     cancel();
@@ -467,6 +476,7 @@ public class IronGolemBoss {
     public Map<UUID, Double> getDamageDealt() { return damageDealt; }
 
     public boolean isInvulnerable() { return invulnerable; }
+    public void forceClearInvuln() { this.invulnerable = false; }
     public IronGolem getEntity() { return entity; }
     public SoulEnchants getPlugin() { return plugin; }
 

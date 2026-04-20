@@ -98,6 +98,10 @@ public class InventoryClickListener implements Listener {
                         ItemStack updated = ItemUtil.addEnchant(originalTarget, id, targetLevel);
                         clickedInv.setItem(slot, updated);
                         p.sendMessage("§a✦ Applied " + enchant.formatLore(targetLevel) + " §a to your item!");
+                        if (plugin.getQuestManager() != null) {
+                            plugin.getQuestManager().onEvent(p,
+                                    com.soulenchants.quests.QuestEvent.bookApplied(updated));
+                        }
                     } else if (destroy) {
                         NBTItem itemNbt = new NBTItem(originalTarget);
                         if (itemNbt.hasKey(ItemUtil.NBT_WHITE_SCROLL) && itemNbt.getBoolean(ItemUtil.NBT_WHITE_SCROLL)) {

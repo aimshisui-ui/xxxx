@@ -123,6 +123,21 @@ public final class VeilweaverCrystals {
             }
         }
         active.clear();
+        // Belt-and-suspenders: scan ALL loaded worlds for crystals tagged as ours.
+        // Catches leaks where a crystal was in an unloaded chunk during the previous
+        // clear and never got removed via UUID lookup.
+        for (org.bukkit.World w : plugin.getServer().getWorlds()) {
+            for (org.bukkit.entity.Entity e : new java.util.ArrayList<>(w.getEntities())) {
+                if (!(e instanceof org.bukkit.entity.EnderCrystal)) continue;
+                try {
+                    de.tr7zw.changeme.nbtapi.NBTEntity nbt = new de.tr7zw.changeme.nbtapi.NBTEntity(e);
+                    if (nbt.hasKey(NBT_VW_CRYSTAL) && nbt.getBoolean(NBT_VW_CRYSTAL)) {
+                        REGISTRY.remove(e.getUniqueId());
+                        e.remove();
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }
     }
 
     private void announceShield() {

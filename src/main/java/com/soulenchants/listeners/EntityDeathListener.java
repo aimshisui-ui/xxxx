@@ -54,14 +54,44 @@ public class EntityDeathListener implements Listener {
             return;
         }
 
-        if (killer == null) return;
+        if (killer == null) {
+            // Mob killed by mob, environment, etc — clean up spawner tag and bail
+            com.soulenchants.currency.MobSoulRules.unmarkSpawner(entity.getUniqueId());
+            return;
+        }
 
-        // Quest mob hook (placeholder - actual quest tracking added in quest phase)
-        // plugin.getQuestManager().onMobKill(killer, entity);
+        // Custom mobs: MobListener handles souls + drops. Skip vanilla logic here.
+        if (com.soulenchants.mobs.CustomMob.idOf(entity) != null) {
+            com.soulenchants.currency.MobSoulRules.unmarkSpawner(entity.getUniqueId());
+            return;
+        }
 
-        // Regular mobs give nothing by default; bumpable in config
-        long flat = plugin.getConfig().getLong("souls.per-mob-kill", 0);
-        if (flat > 0) plugin.getSoulManager().add(killer, flat);
+        // Compute base souls + apply anti-abuse rules
+        com.soulenchants.currency.MobSoulRules.Result result =
+                com.soulenchants.currency.MobSoulRules.compute(entity, killer, entity.getMaxHealth());
+        if (result.amount <= 0) return;
+
+        int total = result.amount;
+
+        // Tier bonus: Silver+ adds +1 per kill
+        com.soulenchants.currency.SoulTier tier = plugin.getSoulManager().getTier(killer);
+        if (tier.grantsBonusPerKill()) total += 1;
+
+        // Soul Reaper bonus on held weapon
+        org.bukkit.inventory.ItemStack hand = killer.getItemInHand();
+        int reaper = hand == null ? 0 : com.soulenchants.items.ItemUtil.getLevel(hand, "soulreaper");
+        if (reaper > 0) total += (int) Math.ceil(result.amount * 0.25 * reaper);
+
+        // Combat bonus: killer took damage in last 10s = +20%
+        long lastHurt = killer.getLastDamage() > 0 ? (long)(System.currentTimeMillis() - killer.getNoDamageTicks() * 50L) : 0L;
+        // Cheap proxy: if killer's noDamageTicks > 0, they took a hit recently
+        if (killer.getNoDamageTicks() > 0 && killer.getNoDamageTicks() < 200) {
+            total = (int) Math.ceil(total * 1.2);
+        }
+
+        plugin.getSoulManager().add(killer, total);
+        com.soulenchants.util.FloatingText.show(plugin, entity.getLocation(),
+                org.bukkit.ChatColor.LIGHT_PURPLE + "+" + total + " §dSoul" + (total == 1 ? "" : "s"));
     }
 
     @EventHandler

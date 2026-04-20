@@ -11,13 +11,18 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
+import java.text.DateFormat;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ScoreboardManager {
 
-    private static final String TITLE = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "✦ Soul Enchants ✦";
+    private static final String TITLE = ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "Fabled"
+            + ChatColor.WHITE + ChatColor.BOLD + "MC";
     private static final DecimalFormat FMT = new DecimalFormat("#,###");
+    private static final DecimalFormat KDR = new DecimalFormat("0.00");
+    private static final DateFormat DATE_FMT = new SimpleDateFormat("MM/dd");
 
     private final SoulEnchants plugin;
     private final Map<UUID, Scoreboard> boards = new HashMap<>();
@@ -76,50 +81,110 @@ public class ScoreboardManager {
     private List<String> buildLines(Player p) {
         List<String> lines = new ArrayList<>();
         UUID id = p.getUniqueId();
-        String sep = ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "                ";
+        // Colored divider — different shades per section so they don't visually merge
+        String divPurple = ChatColor.DARK_PURPLE + "" + ChatColor.STRIKETHROUGH + "                       ";
+        String divGold   = ChatColor.GOLD        + "" + ChatColor.STRIKETHROUGH + "                       ";
+        String divBlue   = ChatColor.AQUA        + "" + ChatColor.STRIKETHROUGH + "                       ";
+        String divRed    = ChatColor.DARK_RED    + "" + ChatColor.STRIKETHROUGH + "                       ";
+        String divGray   = ChatColor.DARK_GRAY   + "" + ChatColor.STRIKETHROUGH + "                       ";
 
-        lines.add(sep);
-        lines.add(ChatColor.RED + "❤ HP: " + ChatColor.WHITE + (int) p.getHealth()
-                + ChatColor.GRAY + "/" + ChatColor.WHITE + (int) p.getMaxHealth());
-        lines.add(ChatColor.GOLD + "✦ Souls: " + ChatColor.WHITE + FMT.format(plugin.getSoulManager().get(p)));
+        // ── HEADER / VITALS ─────────────
+        lines.add(divPurple);
+        int hp = (int) Math.ceil(p.getHealth());
+        int maxHp = (int) Math.ceil(p.getMaxHealth());
+        ChatColor hpColor = hp > maxHp * 0.66 ? ChatColor.GREEN
+                          : hp > maxHp * 0.33 ? ChatColor.YELLOW : ChatColor.RED;
+        lines.add(ChatColor.RED + "❤ Health  " + hpColor + hp + ChatColor.DARK_GRAY + " / " + ChatColor.GRAY + maxHp);
+        lines.add(ChatColor.GOLD + "✦ Souls   " + ChatColor.YELLOW + FMT.format(plugin.getSoulManager().get(p)));
 
-        // Cooldowns section
+        // Tier line (always show — grounds the player in their progression)
+        com.soulenchants.currency.SoulTier tier = plugin.getSoulManager().getTier(p);
+        lines.add(ChatColor.LIGHT_PURPLE + "✦ Tier    " + tier.getColor() + tier.getLabel());
+
+        // ── PVP STATS ──────────────────
+        com.soulenchants.scoreboard.PvPStats stats = plugin.getPvPStats();
+        if (stats != null) {
+            int kills = stats.getKills(p);
+            int deaths = stats.getDeaths(p);
+            double kdr = stats.getKDR(p);
+            ChatColor kdrColor = kdr >= 1.0 ? ChatColor.GREEN : ChatColor.RED;
+            lines.add(ChatColor.GREEN + "⚔ K/D     " + ChatColor.WHITE + kills
+                    + ChatColor.DARK_GRAY + "/" + ChatColor.GRAY + deaths
+                    + " " + kdrColor + "(" + KDR.format(kdr) + ")");
+        }
+        lines.add(ChatColor.AQUA + "✉ Ping    " + ChatColor.WHITE + getPing(p) + ChatColor.GRAY + "ms"
+                + ChatColor.DARK_GRAY + "  " + ChatColor.GRAY + DATE_FMT.format(new Date()));
+
+        // ── COOLDOWNS ───────────────────
         Map<String, Long> cds = plugin.getCooldownManager().getActiveCooldowns(id);
         if (!cds.isEmpty()) {
-            lines.add(sep + " ");
-            lines.add(ChatColor.YELLOW + "" + ChatColor.BOLD + "Cooldowns");
+            lines.add(divBlue);
+            lines.add(ChatColor.AQUA + "" + ChatColor.BOLD + "▎ Cooldowns");
+            int shown = 0;
             for (Map.Entry<String, Long> e : cds.entrySet()) {
-                if (lines.size() >= 14) break;
+                if (shown++ >= 3) break;
+                if (lines.size() >= 13) break;
                 long secs = (e.getValue() + 999) / 1000;
-                lines.add(ChatColor.GRAY + e.getKey() + ": " + ChatColor.RED + secs + "s");
+                String name = e.getKey();
+                if (name.length() > 12) name = name.substring(0, 12);
+                lines.add(ChatColor.GRAY + " " + name + " " + ChatColor.RED + secs + "s");
             }
         }
 
-        // Boss section
+        // ── BOSS SECTION ────────────────
         Veilweaver vw = plugin.getVeilweaverManager().getActive();
         IronGolemBoss ig = plugin.getIronGolemManager().getActive();
+        if ((vw != null && !vw.getEntity().isDead()) || (ig != null && !ig.getEntity().isDead())) {
+            lines.add(divRed);
+            lines.add(ChatColor.RED + "" + ChatColor.BOLD + "▎ Boss");
+        }
         if (vw != null && !vw.getEntity().isDead()) {
-            lines.add(sep + "  ");
             String phaseTag = vw.getPhase() == Veilweaver.Phase.ONE ? "I"
                     : vw.getPhase() == Veilweaver.Phase.TWO ? "II" : "III";
-            lines.add(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Veilweaver "
-                    + ChatColor.LIGHT_PURPLE + "[" + phaseTag + "]");
-            lines.add(ChatColor.RED + "HP: " + ChatColor.WHITE
-                    + (int) vw.getEntity().getHealth() + ChatColor.GRAY + "/"
-                    + ChatColor.WHITE + (int) vw.getEntity().getMaxHealth());
+            lines.add(ChatColor.DARK_PURPLE + " Veilweaver " + ChatColor.LIGHT_PURPLE + "[" + phaseTag + "]");
+            lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
+                    + (int) vw.getEntity().getHealth() + ChatColor.DARK_GRAY + "/"
+                    + ChatColor.GRAY + (int) vw.getEntity().getMaxHealth());
         }
         if (ig != null && !ig.getEntity().isDead()) {
-            lines.add(sep + "   ");
             String phaseTag = ig.getEntity().getHealth() / ig.getEntity().getMaxHealth() > 0.5 ? "I" : "II";
-            lines.add(ChatColor.GOLD + "" + ChatColor.BOLD + "Ironheart "
-                    + ChatColor.YELLOW + "[" + phaseTag + "]");
-            lines.add(ChatColor.RED + "HP: " + ChatColor.WHITE
-                    + (int) ig.getEntity().getHealth() + ChatColor.GRAY + "/"
-                    + ChatColor.WHITE + (int) ig.getEntity().getMaxHealth());
+            lines.add(ChatColor.GOLD + " Ironheart " + ChatColor.YELLOW + "[" + phaseTag + "]");
+            lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
+                    + (int) ig.getEntity().getHealth() + ChatColor.DARK_GRAY + "/"
+                    + ChatColor.GRAY + (int) ig.getEntity().getMaxHealth());
         }
 
-        lines.add(sep + "    ");
+        // ── RIFT SECTION ────────────────
+        com.soulenchants.rifts.VoidRiftManager rifts = plugin.getVoidRiftManager();
+        if (rifts != null && rifts.isActive()) {
+            lines.add(divGold);
+            lines.add(ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "▎ ✦ Void Rift");
+            if (rifts.getState() == com.soulenchants.rifts.VoidRiftManager.State.PORTAL_OPEN) {
+                lines.add(ChatColor.YELLOW + " Portal open");
+                lines.add(ChatColor.GRAY  + " " + rifts.shortStatus());
+            } else {
+                lines.add(ChatColor.LIGHT_PURPLE + " " + rifts.timerLabel()
+                        + ChatColor.GRAY + " left");
+                lines.add(ChatColor.RED + " ☠ " + ChatColor.WHITE + rifts.threatsRemaining()
+                        + ChatColor.GRAY + " threats");
+                lines.add(ChatColor.AQUA + " ⚔ " + ChatColor.WHITE + rifts.participantCount()
+                        + ChatColor.GRAY + " inside");
+            }
+        }
+
+        // Footer
+        lines.add(divGray);
         if (lines.size() > 15) lines = lines.subList(0, 15);
         return lines;
+    }
+
+    /** Reflective ping access — works on Spigot 1.8.x without a hard import. */
+    private int getPing(Player p) {
+        try {
+            Object handle = p.getClass().getMethod("getHandle").invoke(p);
+            return handle.getClass().getField("ping").getInt(handle);
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 }

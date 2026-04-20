@@ -5,6 +5,7 @@ import org.bukkit.Material;
 public enum EnchantSlot {
     SWORD("Sword"),
     BOW("Bow"),
+    WEAPON("Sword or Axe"),
     ARMOR("Any armor piece"),
     HELMET("Helmet"),
     CHESTPLATE("Chestplate"),
@@ -27,6 +28,7 @@ public enum EnchantSlot {
         switch (this) {
             case SWORD:      return n.endsWith("_SWORD");
             case BOW:        return m == Material.BOW;
+            case WEAPON:     return n.endsWith("_SWORD") || (n.endsWith("_AXE") && !n.endsWith("_PICKAXE"));
             case ARMOR:      return n.endsWith("_HELMET") || n.endsWith("_CHESTPLATE")
                                   || n.endsWith("_LEGGINGS") || n.endsWith("_BOOTS");
             case HELMET:     return n.endsWith("_HELMET");

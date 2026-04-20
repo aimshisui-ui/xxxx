@@ -8,7 +8,8 @@ public enum LootRarity {
     UNCOMMON ("Uncommon", ChatColor.GREEN),
     RARE     ("Rare",     ChatColor.AQUA),
     EPIC     ("Epic",     ChatColor.GOLD),
-    BOSS     ("Boss",     ChatColor.DARK_BLUE);
+    BOSS     ("Boss",     ChatColor.DARK_BLUE),
+    MYTHIC   ("Mythic",   ChatColor.LIGHT_PURPLE);
 
     private final String label;
     private final ChatColor color;
