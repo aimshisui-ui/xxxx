@@ -31,6 +31,25 @@ public class CombatListener implements Listener {
     private static final ThreadLocal<Boolean> CLEAVE_GUARD = ThreadLocal.withInitial(() -> Boolean.FALSE);
     /** Set during a Bleed slow-tick application so we don't recurse into bloodlust forever. */
     private static final ThreadLocal<Boolean> BLEED_TICK = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    /** Set during ANY enchant-driven secondary damage call (Earthshaker, Razor Wind,
+     *  Divine Immolation, Reflect, Vengeance, etc). Short-circuits handleSwordEnchants
+     *  on re-entry so an AOE hit doesn't recursively trigger more AOE — caused stack
+     *  overflows when hitting silverfish (which spawn more silverfish on damage). */
+    private static final ThreadLocal<Boolean> AOE_GUARD = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /** Damage `target` from `source` while suppressing our own enchant procs on the
+     *  secondary event. Use for every .damage() call originating in enchant logic. */
+    private static void aoeDamage(LivingEntity target, double dmg, LivingEntity source) {
+        if (target == null || target.isDead() || dmg <= 0) return;
+        AOE_GUARD.set(true);
+        try {
+            if (source != null) target.damage(dmg, source);
+            else target.damage(dmg);
+        } catch (Throwable ignored) {
+        } finally {
+            AOE_GUARD.set(false);
+        }
+    }
     /** Per-victim Bleed stack tracking (Nordic-style: stacks decay 30s after last proc). */
     private final Map<UUID, Integer> bleedStacks = new HashMap<>();
     private final Map<UUID, Long> bleedLastProc = new HashMap<>();
@@ -126,6 +145,9 @@ public class CombatListener implements Listener {
     private static final double OFFENSIVE_BONUS_CAP = 2.00;
 
     private void handleSwordEnchants(Player attacker, LivingEntity victim, EntityDamageByEntityEvent e) {
+        // Re-entry from our own enchant-driven secondary damage (AOE splash, reflect,
+        // etc) — skip processing so AOE doesn't recursively re-fire AOE.
+        if (AOE_GUARD.get()) return;
         ItemStack hand = attacker.getItemInHand();
         if (hand == null) return;
         // Lock all proc-style enchants to boss / boss-minion / player targets.
@@ -204,8 +226,8 @@ public class CombatListener implements Listener {
         if (holy > 0 && isUndead(victim)) offBonus += 0.30 * holy;
 
         // Cleave (Nordic-style) — flat 5% chance to deal a fixed 3 dmg to all valid
-        // proc targets in (level)-block radius. Recursion-guarded so the splash
-        // damage events don't re-trigger.
+        // proc targets in (level)-block radius. AOE_GUARD via aoeDamage() prevents
+        // recursive cleave-of-cleave; CLEAVE_GUARD retained as belt-and-suspenders.
         int cleave = ItemUtil.getLevel(hand, "cleave");
         if (cleave > 0 && !CLEAVE_GUARD.get() && rng.nextDouble() < 0.05) {
             CLEAVE_GUARD.set(true);
@@ -213,7 +235,7 @@ public class CombatListener implements Listener {
                 for (Entity near : attacker.getNearbyEntities(cleave, 10.0, cleave)) {
                     if (!(near instanceof LivingEntity) || near.equals(attacker) || near.equals(victim)) continue;
                     if (!isValidProcTarget((LivingEntity) near)) continue;
-                    ((LivingEntity) near).damage(3.0, attacker);
+                    aoeDamage((LivingEntity) near, 3.0, attacker);
                 }
             } finally {
                 CLEAVE_GUARD.set(false);
@@ -261,7 +283,7 @@ public class CombatListener implements Listener {
             for (Entity near : victim.getNearbyEntities(2.0, 1.5, 2.0)) {
                 if (!(near instanceof LivingEntity) || near.equals(attacker) || near.equals(victim)) continue;
                 if (near instanceof Player) continue;
-                ((LivingEntity) near).damage(aoeDmg, attacker);
+                aoeDamage((LivingEntity) near, aoeDmg, attacker);
             }
         }
 
@@ -288,7 +310,7 @@ public class CombatListener implements Listener {
                 Vector to = near.getLocation().toVector().subtract(attacker.getLocation().toVector()).setY(0);
                 if (to.lengthSquared() == 0) continue;
                 if (to.normalize().dot(forward) > 0.4) {
-                    ((LivingEntity) near).damage(1.5 * rw, attacker);
+                    aoeDamage((LivingEntity) near, 1.5 * rw, attacker);
                 }
             }
         }
@@ -346,11 +368,14 @@ public class CombatListener implements Listener {
             double heal = Math.min(e.getDamage() * (0.25 * bf), 5.0);
             attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
         }
-        // Shieldbreaker — proc TRUE bonus damage (ignores armor)
+        // Shieldbreaker — proc TRUE bonus damage (ignores armor). Sourceless damage
+        // call still fires EntityDamageEvent without a damager, so it doesn't
+        // re-enter onAttack — but guard anyway since handleArmorOnHit/onAnyDamage
+        // would still process it.
         int sb2 = ItemUtil.getLevel(hand, "shieldbreaker");
         if (sb2 > 0 && rng.nextDouble() < 0.05 * sb2) {
             double trueDmg = e.getDamage() * 0.25;
-            try { victim.damage(trueDmg); } catch (Throwable ignored) {}
+            aoeDamage(victim, trueDmg, null);
         }
         // Frostshatter — Slow III + Mining Fatigue III for 4s
         int fs = ItemUtil.getLevel(hand, "frostshatter");
@@ -423,7 +448,7 @@ public class CombatListener implements Listener {
                 if (!(near instanceof LivingEntity)) continue;
                 LivingEntity le = (LivingEntity) near;
                 if (!isValidProcTarget(le)) continue;
-                le.damage(splash, attacker);
+                aoeDamage(le, splash, attacker);
                 Location l = le.getLocation().add(0, 1, 0);
                 l.getWorld().playEffect(l, Effect.MOBSPAWNER_FLAMES, 0);
                 if (le instanceof Player) ((Player) le).sendMessage("§c§l** DIVINE IMMOLATION **");
@@ -464,6 +489,10 @@ public class CombatListener implements Listener {
     }
 
     private void handleArmorOnHit(Player victim, EntityDamageByEntityEvent e) {
+        // Same recursion break as handleSwordEnchants — Reflect/Vengeance/Spite/
+        // Vampiric Plate damage the attacker, which can re-enter onAttack. Without
+        // this guard a Reflect chain between two armored players could oscillate.
+        if (AOE_GUARD.get()) return;
         ItemStack[] armor = victim.getInventory().getArmorContents();
         int hardened=0, antikb=0, molten=0, lastStand=0, stormcall=0, guardians=0,
             reflect=0, endurance=0, vengeance=0, soulburst=0, overshield=0, naturesWrath=0,
@@ -592,7 +621,7 @@ public class CombatListener implements Listener {
         if (reflect > 0 && e.getDamager() instanceof LivingEntity
                 && plugin.getCooldownManager().isReady("reflect", id)) {
             plugin.getCooldownManager().set("reflect", id, 5_000L);
-            ((LivingEntity) e.getDamager()).damage(e.getDamage() * (0.06 * reflect), victim);
+            aoeDamage((LivingEntity) e.getDamager(), e.getDamage() * (0.06 * reflect), victim);
         }
         // Endurance: capped at 6% (was 12%)
         if (endurance > 0) {
@@ -603,7 +632,7 @@ public class CombatListener implements Listener {
             lastCombatTick.put(id, now);
         }
         if (vengeance > 0 && e.getDamager() instanceof LivingEntity)
-            ((LivingEntity) e.getDamager()).damage(0.5 + 0.3 * vengeance, victim);
+            aoeDamage((LivingEntity) e.getDamager(), 0.5 + 0.3 * vengeance, victim);
         // Nature's Wrath — 2% on-hit proc, 10s per-victim CD. Roots all enemy
         // LivingEntities in level*3 radius for (5+level)s + lightning every
         // second for `level` damage. 75 souls per cast. Soul-tier ARMOR.
@@ -669,13 +698,13 @@ public class CombatListener implements Listener {
         // Spite — reflect 8%/lvl as TRUE damage (ignores armor)
         if (spite > 0 && e.getDamager() instanceof LivingEntity) {
             double trueDmg = e.getDamage() * 0.08 * spite;
-            try { ((LivingEntity) e.getDamager()).damage(trueDmg); } catch (Throwable ignored) {}
+            aoeDamage((LivingEntity) e.getDamager(), trueDmg, null);
         }
         // Vampiric Plate — chance to steal 2 HP from attacker
         if (vampiricplate > 0 && e.getDamager() instanceof LivingEntity
                 && rng.nextDouble() < 0.04 * vampiricplate) {
             LivingEntity atk = (LivingEntity) e.getDamager();
-            try { atk.damage(2.0); } catch (Throwable ignored) {}
+            aoeDamage(atk, 2.0, null);
             victim.setHealth(Math.min(victim.getMaxHealth(), victim.getHealth() + 2.0));
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
