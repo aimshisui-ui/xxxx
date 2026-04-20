@@ -41,6 +41,8 @@ public class SoulEnchants extends JavaPlugin {
     private com.soulenchants.gui.LootFilterGUI lootFilterGUI;
     private com.soulenchants.scoreboard.PvPStats pvpStats;
     private com.soulenchants.guilds.GuildManager guildManager;
+    private com.soulenchants.listeners.ClarityTask clarityTask;
+    private com.soulenchants.sets.SetManager setManager;
 
     @Override
     public void onEnable() {
@@ -114,6 +116,11 @@ public class SoulEnchants extends JavaPlugin {
 
         tickTask = new BerserkTickTask(this);
         tickTask.start();
+
+        // Clarity III safety net — fast-tick strip + splash cancel
+        this.clarityTask = new com.soulenchants.listeners.ClarityTask(this);
+        this.clarityTask.start();
+        getServer().getPluginManager().registerEvents(clarityTask, this);
         getServer().getPluginManager().registerEvents(new ArmorChangeListener(this, tickTask), this);
 
         // Reset any lingering max-HP from a previous session, then let the tick re-apply correctly.
@@ -169,6 +176,14 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new com.soulenchants.guilds.GuildListener(this), this);
         getCommand("guild").setExecutor(new com.soulenchants.guilds.GuildCommand(this));
 
+        // Armor set bonuses — pieces tagged with se_set_id NBT trigger lifecycle
+        // hooks + per-event bonuses. Cached per-player; safety-swept every 2s.
+        com.soulenchants.sets.SetRegistry.add(new com.soulenchants.sets.impl.BossKillerSet(this));
+        com.soulenchants.sets.SetRegistry.add(new com.soulenchants.sets.impl.DuelistSet(this));
+        this.setManager = new com.soulenchants.sets.SetManager(this);
+        this.setManager.start();
+        getServer().getPluginManager().registerEvents(new com.soulenchants.sets.SetBonusListener(this), this);
+
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
         for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
@@ -188,6 +203,8 @@ public class SoulEnchants extends JavaPlugin {
         if (lootFilterManager != null) lootFilterManager.save();
         if (pvpStats != null) pvpStats.save();
         if (guildManager != null) { guildManager.stop(); guildManager.save(); }
+        if (clarityTask != null) clarityTask.stop();
+        if (setManager != null) setManager.stop();
         if (veilweaverManager != null && veilweaverManager.getActive() != null)
             veilweaverManager.getActive().stop(false);
         if (ironGolemManager != null && ironGolemManager.getActive() != null)
@@ -219,4 +236,5 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.gui.LootFilterGUI getLootFilterGUI() { return lootFilterGUI; }
     public com.soulenchants.scoreboard.PvPStats getPvPStats() { return pvpStats; }
     public com.soulenchants.guilds.GuildManager getGuildManager() { return guildManager; }
+    public com.soulenchants.sets.SetManager getSetManager() { return setManager; }
 }

@@ -23,10 +23,12 @@ public class GodSet {
     //  GOD SET — PvP focus. Player-killing weapons + defensive PvP procs.
     // ──────────────────────────────────────────────────────────────────
     public static void giveGodSet(Player p) {
-        p.getInventory().setHelmet(godHelmet());
-        p.getInventory().setChestplate(godChest());
-        p.getInventory().setLeggings(godLegs());
-        p.getInventory().setBoots(godBoots());
+        // Tag every armor piece with the Duelist set id so it triggers the
+        // Duelist set bonus (DuelistSet) when all 4 are worn.
+        p.getInventory().setHelmet(    com.soulenchants.sets.SetRegistry.tag(godHelmet(), "duelist"));
+        p.getInventory().setChestplate(com.soulenchants.sets.SetRegistry.tag(godChest(),  "duelist"));
+        p.getInventory().setLeggings(  com.soulenchants.sets.SetRegistry.tag(godLegs(),   "duelist"));
+        p.getInventory().setBoots(     com.soulenchants.sets.SetRegistry.tag(godBoots(),  "duelist"));
         p.getInventory().addItem(godSword());
         p.getInventory().addItem(godAxe());
         p.getInventory().addItem(com.soulenchants.loot.BossLootItems.crimsonTongue());
@@ -133,10 +135,12 @@ public class GodSet {
     //  BOSS SET — PvE focus. Sustain + anti-boss damage + group survival.
     // ──────────────────────────────────────────────────────────────────
     public static void giveBossSet(Player p) {
-        p.getInventory().setHelmet(bossHelmet());
-        p.getInventory().setChestplate(bossChest());
-        p.getInventory().setLeggings(bossLegs());
-        p.getInventory().setBoots(bossBoots());
+        // Tag every armor piece with the Boss-Killer set id so the BossKillerSet
+        // bonuses fire while all 4 are worn.
+        p.getInventory().setHelmet(    com.soulenchants.sets.SetRegistry.tag(bossHelmet(), "bosskiller"));
+        p.getInventory().setChestplate(com.soulenchants.sets.SetRegistry.tag(bossChest(),  "bosskiller"));
+        p.getInventory().setLeggings(  com.soulenchants.sets.SetRegistry.tag(bossLegs(),   "bosskiller"));
+        p.getInventory().setBoots(     com.soulenchants.sets.SetRegistry.tag(bossBoots(),  "bosskiller"));
         p.getInventory().addItem(bossSword());
         p.getInventory().addItem(bossAxe());
         p.getInventory().addItem(com.soulenchants.loot.BossLootItems.crimsonTongue());
