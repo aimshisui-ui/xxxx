@@ -4,6 +4,7 @@ import com.soulenchants.SoulEnchants;
 import com.soulenchants.mythic.MythicWeapon;
 import com.soulenchants.style.MessageStyle;
 import org.bukkit.Effect;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -76,7 +77,8 @@ public final class Ruinhammer extends MythicWeapon {
             center.getWorld().createExplosion(center.getX(), center.getY() + 1, center.getZ(), 0f, false);
             for (Entity near : victim.getNearbyEntities(BURST_RADIUS, 3, BURST_RADIUS)) {
                 if (near == owner) continue;
-                if (!(near instanceof LivingEntity) || near instanceof Player) continue;
+                // Skip Players (friendly fire) + ArmorStands (pet companions / cosmetics).
+                if (!(near instanceof LivingEntity) || near instanceof Player || near instanceof ArmorStand) continue;
                 ((LivingEntity) near).damage(BURST_DMG, owner);
                 near.getWorld().playEffect(near.getLocation().add(0, 1, 0), Effect.MOBSPAWNER_FLAMES, 0);
             }
