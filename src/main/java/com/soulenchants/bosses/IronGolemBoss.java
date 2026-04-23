@@ -268,7 +268,11 @@ public class IronGolemBoss {
                     return;
                 }
                 try {
-                    entity.setHealth(Math.min(entity.getMaxHealth(), entity.getHealth() + 1.0));
+                    // Scale phase-transition regen by any active anti-heal debuff
+                    // on the boss (bleed L4+ / Severance / Reaping Slash).
+                    double heal = com.soulenchants.listeners.CombatListener.scaleHealForAntiHeal(
+                            entity, 1.0);
+                    entity.setHealth(Math.min(entity.getMaxHealth(), entity.getHealth() + heal));
                     entity.getWorld().playEffect(entity.getLocation().add(0, 1, 0),
                             Effect.STEP_SOUND, Material.IRON_BLOCK.getId());
                 } catch (Throwable ignored) {}

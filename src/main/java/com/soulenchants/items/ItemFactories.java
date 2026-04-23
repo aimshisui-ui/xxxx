@@ -26,6 +26,25 @@ public class ItemFactories {
     private static final String DIVIDER =
             MessageStyle.FRAME + "" + ChatColor.STRIKETHROUGH + "                                  ";
 
+    /** Enchants whose effect strength scales with multiple copies on the same
+     *  gear class (armor pieces). Every other enchant in the game either
+     *  Math.max's across pieces (only the highest copy counts) or is weapon-
+     *  slot (single hand-held). Source-of-truth for the "Enchant Stacks"
+     *  book-lore footer. */
+    private static final java.util.Set<String> STACKING_IDS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "armored",      // explicit: sums levels across chest + leggings
+            "enlightened",  // explicit: sums levels across all pieces
+            "radiantshell", // -1 flat dmg per equipped piece, cap -4
+            "thornback"     // reflect TRUE dmg per-piece, stacks
+    ));
+
+    /** Whether this enchant's effect stacks when applied to multiple pieces
+     *  of gear. Returns false for every weapon enchant (single weapon in
+     *  hand), and for armor enchants that Math.max across pieces. */
+    public static boolean stacks(CustomEnchant e) {
+        return e != null && STACKING_IDS.contains(e.getId().toLowerCase());
+    }
+
     public static ItemStack book(CustomEnchant e, int level) {
         return book(e, level, 1 + RNG.nextInt(100), 1 + RNG.nextInt(100));
     }
@@ -54,6 +73,9 @@ public class ItemFactories {
         lore.add(MessageStyle.MUTED + "Tier: "        + e.getTier().coloredName());
         if (e.getSoulCost() > 0)
             lore.add(MessageStyle.MUTED + "Soul Cost: " + MessageStyle.BAD + e.getSoulCost());
+        boolean st = stacks(e);
+        lore.add(MessageStyle.MUTED + "Enchant Stacks: "
+                + (st ? MessageStyle.GOOD + "True" : MessageStyle.BAD + "False"));
         lore.add("");
         lore.add(MessageStyle.TIER_LEGENDARY + "" + MessageStyle.ITALIC + "▶ Drag onto compatible gear to apply");
         lore.add(DIVIDER);

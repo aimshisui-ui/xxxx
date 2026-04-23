@@ -39,17 +39,19 @@ public class GodSet {
     }
 
     private static ItemStack godHelmet() {
-        // PvP helmet: every slot earns its place. No utility filler.
+        // PvP helmet — 9 enchants, every slot combat-relevant.
+        // Dropped wardenseye (position reveal — low PvP value) + reflect (replaced
+        // by dreadmantle which pressures every nearby attacker simultaneously).
         ItemStack it = baseArmor(Material.DIAMOND_HELMET, "Veilwalker's Crown");
         it = ItemUtil.addEnchant(it, "drunk",       4);
         it = ItemUtil.addEnchant(it, "clarity",     3);
-        it = ItemUtil.addEnchant(it, "enlightened", 3);
-        it = ItemUtil.addEnchant(it, "stormcaller", 2);
-        it = ItemUtil.addEnchant(it, "counter",     3);
-        it = ItemUtil.addEnchant(it, "reflect",     2);
         it = ItemUtil.addEnchant(it, "oathbound",   3);
-        it = ItemUtil.addEnchant(it, "wardenseye",  3);
+        it = ItemUtil.addEnchant(it, "dreadmantle", 3);
+        it = ItemUtil.addEnchant(it, "enlightened", 3);
         it = ItemUtil.addEnchant(it, "thornback",   3);
+        it = ItemUtil.addEnchant(it, "counter",     3);
+        it = ItemUtil.addEnchant(it, "stormcaller", 2);
+        it = ItemUtil.addEnchant(it, "molten",      2);
         return it;
     }
 
@@ -85,6 +87,9 @@ public class GodSet {
 
     private static ItemStack godBoots() {
         // Exactly 9 enchants — mobility + dodge + reflect.
+        // Dropped mobslayersward (PvE-only — inert vs player attackers).
+        // Firewalker replaces it: fire immunity against Soul Burn + FIRE_ASPECT
+        // opponents without wasting slots.
         ItemStack it = baseArmor(Material.DIAMOND_BOOTS, "Stormborn Treads");
         it = ItemUtil.addEnchant(it, "speed",         3);
         it = ItemUtil.addEnchant(it, "adrenaline",    3);
@@ -94,11 +99,14 @@ public class GodSet {
         it = ItemUtil.addEnchant(it, "voidwalker",    3);
         it = ItemUtil.addEnchant(it, "thornback",     3);
         it = ItemUtil.addEnchant(it, "radiantshell",  4);
-        it = ItemUtil.addEnchant(it, "mobslayersward",3);
+        it = ItemUtil.addEnchant(it, "firewalker",    1);
         return it;
     }
 
-    /** PvP sword — control + crits + lifesteal. No boss-only enchants. */
+    /** PvP sword — control + crits + lifesteal + anti-heal finisher.
+     *  Dropped soulreaper (soul-farm enchant — zero value vs players) for
+     *  severance 3 (25% anti-heal proc — massive pressure vs lifesteal/regen
+     *  builds). */
     private static ItemStack godSword() {
         ItemStack it = baseTool(Material.DIAMOND_SWORD, "Duellist's Edge");
         try {
@@ -115,11 +123,14 @@ public class GodSet {
         it = ItemUtil.addEnchant(it, "frostaspect",    3);
         it = ItemUtil.addEnchant(it, "phantomstrike",  2);
         it = ItemUtil.addEnchant(it, "blessed",        4);
-        it = ItemUtil.addEnchant(it, "soulreaper",     5);
+        it = ItemUtil.addEnchant(it, "severance",      3);
         return it;
     }
 
-    /** PvP axe — heavy CC + bleed pressure + anti-heal finisher. Exactly 9 enchants. */
+    /** PvP axe — heavy CC + bleed pressure + anti-heal finisher + clutch heal.
+     *  Dropped skullcrush (niche Nausea+Weakness II proc) for bloodfury 3
+     *  (25% damage-to-heal while below 30% HP — the best PvP panic button
+     *  currently in the system). Exactly 9 enchants. */
     private static ItemStack godAxe() {
         ItemStack it = baseTool(Material.DIAMOND_AXE, "Duellist's Cleaver");
         try {
@@ -130,7 +141,7 @@ public class GodSet {
         it = ItemUtil.addEnchant(it, "bleed",        6);
         it = ItemUtil.addEnchant(it, "deepwounds",   3);
         it = ItemUtil.addEnchant(it, "blessed",      4);
-        it = ItemUtil.addEnchant(it, "skullcrush",   3);
+        it = ItemUtil.addEnchant(it, "bloodfury",    3);
         it = ItemUtil.addEnchant(it, "hamstring",    3);
         it = ItemUtil.addEnchant(it, "shieldbreaker",3);
         it = ItemUtil.addEnchant(it, "rendingblow",  3);
@@ -247,18 +258,20 @@ public class GodSet {
 
     private static ItemStack bossHelmet() {
         // Every slot earns its place — combat-relevant only. Dropped saturation /
-        // aquatic / nightvision / magnetism (utility enchants with no bearing on
-        // a boss fight) in favour of clarity + oathbound + wardenseye + dreadmantle.
+        // aquatic / nightvision / magnetism / wardenseye (utility enchants with
+        // no bearing on a boss fight — wardenseye reveals positions which is
+        // meaningless vs stationary bosses). Vampiricplate + molten replace
+        // reflect + wardenseye — both scale with hit frequency.
         ItemStack it = baseArmor(Material.DIAMOND_HELMET, "Veilseeker's Crown");
-        it = ItemUtil.addEnchant(it, "drunk",        4);
-        it = ItemUtil.addEnchant(it, "clarity",      3);
-        it = ItemUtil.addEnchant(it, "enlightened",  3);
-        it = ItemUtil.addEnchant(it, "reflect",      2);
-        it = ItemUtil.addEnchant(it, "stormcaller",  2);
-        it = ItemUtil.addEnchant(it, "oathbound",    3);
-        it = ItemUtil.addEnchant(it, "wardenseye",   3);
-        it = ItemUtil.addEnchant(it, "dreadmantle",  3);
-        it = ItemUtil.addEnchant(it, "thornback",    3);
+        it = ItemUtil.addEnchant(it, "drunk",         4);
+        it = ItemUtil.addEnchant(it, "clarity",       3);
+        it = ItemUtil.addEnchant(it, "oathbound",     3);
+        it = ItemUtil.addEnchant(it, "dreadmantle",   3);
+        it = ItemUtil.addEnchant(it, "enlightened",   3);
+        it = ItemUtil.addEnchant(it, "thornback",     3);
+        it = ItemUtil.addEnchant(it, "stormcaller",   2);
+        it = ItemUtil.addEnchant(it, "vampiricplate", 3);
+        it = ItemUtil.addEnchant(it, "molten",        2);
         return it;
     }
 
@@ -330,7 +343,10 @@ public class GodSet {
         return it;
     }
 
-    /** PvE axe — wave-clear minions + low-HP scaling vs bosses + debuff finisher. */
+    /** PvE axe — wave-clear minions + low-HP scaling vs bosses + debuff finisher.
+     *  Swapped wraithcleave→slayer (wraithcleave requires target to be alone —
+     *  rarely procs in boss fights since minions cluster) and berserkersedge→reapingslash
+     *  (stacking 40% anti-heal proc does far more than 5s Strength I on kill). */
     private static ItemStack bossAxe() {
         ItemStack it = baseTool(Material.DIAMOND_AXE, "Veilreaper");
         try {
@@ -343,10 +359,10 @@ public class GodSet {
         it = ItemUtil.addEnchant(it, "deepwounds",       3);
         it = ItemUtil.addEnchant(it, "blessed",          4);
         it = ItemUtil.addEnchant(it, "reaver",           4);
-        it = ItemUtil.addEnchant(it, "wraithcleave",     3);
+        it = ItemUtil.addEnchant(it, "slayer",           3);
         it = ItemUtil.addEnchant(it, "executionersmark", 3);
         it = ItemUtil.addEnchant(it, "bloodfury",        3);
-        it = ItemUtil.addEnchant(it, "berserkersedge",   3);
+        it = ItemUtil.addEnchant(it, "reapingslash",     3);
         return it;
     }
 

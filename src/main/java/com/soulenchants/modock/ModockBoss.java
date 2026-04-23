@@ -278,8 +278,10 @@ public class ModockBoss {
      *  our own enchant/proc listeners and damage-map updaters all run. */
     private void applyOutgoing(LivingEntity target, double dmg) {
         try { target.damage(dmg, entity); } catch (Throwable ignored) {}
-        // Lifesteal: heal Modock 30% of damage dealt, capped at 200 HP per hit
-        double heal = Math.min(200.0, dmg * 0.30);
+        // Lifesteal: heal Modock 30% of damage dealt, capped at 200 HP per hit.
+        // Scaled by any active anti-heal debuff (Bleed L4+ / Severance / Reaping Slash).
+        double heal = com.soulenchants.listeners.CombatListener.scaleHealForAntiHeal(
+                entity, Math.min(200.0, dmg * 0.30));
         entity.setHealth(Math.min(entity.getMaxHealth(), entity.getHealth() + heal));
     }
 

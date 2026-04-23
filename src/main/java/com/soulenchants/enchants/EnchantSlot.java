@@ -5,7 +5,7 @@ import org.bukkit.Material;
 public enum EnchantSlot {
     SWORD("Sword"),
     BOW("Bow"),
-    WEAPON("Sword or Axe"),
+    WEAPON("Weapon"),
     ARMOR("Any armor piece"),
     HELMET("Helmet"),
     CHESTPLATE("Chestplate"),

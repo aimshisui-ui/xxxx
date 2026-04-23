@@ -124,9 +124,11 @@ public class Veilweaver {
             }
         }
 
-        // Heal if no players in arena (anti-kite)
+        // Heal if no players in arena (anti-kite). Scaled by any active
+        // anti-heal debuff on the boss (Bleed L4+ / Severance / Reaping Slash).
         if (ticks % 160 == 0 && arena.noPlayersInArena()) {
-            double heal = MAX_HP * 0.05;
+            double heal = com.soulenchants.listeners.CombatListener.scaleHealForAntiHeal(
+                    entity, MAX_HP * 0.05);
             entity.setHealth(Math.min(entity.getMaxHealth(), entity.getHealth() + heal));
         }
 

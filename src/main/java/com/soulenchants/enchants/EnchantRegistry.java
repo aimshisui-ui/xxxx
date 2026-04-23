@@ -24,7 +24,7 @@ public class EnchantRegistry {
                 "Poison on hit"));
         register(new CustomEnchant("vampire", "Vampire", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 2,
                 "Killed mobs drop bonus XP"));
-        register(new CustomEnchant("slayer", "Slayer", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+        register(new CustomEnchant("slayer", "Slayer", EnchantTier.EPIC, EnchantSlot.WEAPON, 3,
                 "Bonus damage to bosses and their minions"));
         register(new CustomEnchant("holysmite", "Holy Smite", EnchantTier.RARE, EnchantSlot.SWORD, 3,
                 "Bonus damage to undead mobs"));

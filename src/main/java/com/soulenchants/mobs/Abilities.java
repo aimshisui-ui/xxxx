@@ -248,7 +248,11 @@ public final class Abilities {
             final double pct = spec.getd("percent", 0.0);
             return new MobAbility() {
                 @Override public void onHitPlayer(LivingEntity a, Player v, EntityDamageByEntityEvent e) {
-                    double heal = e.getDamage() * pct;
+                    // Scale the mob's lifesteal by any active anti-heal debuff
+                    // on the mob itself — elite bosses need to be pressured by
+                    // bleed L4+ / Severance / Reaping Slash just like players are.
+                    double heal = com.soulenchants.listeners.CombatListener.scaleHealForAntiHeal(
+                            a, e.getDamage() * pct);
                     a.setHealth(Math.min(a.getMaxHealth(), a.getHealth() + heal));
                 }
             };
@@ -322,7 +326,10 @@ public final class Abilities {
             final double amount = spec.getd("amount", 1.0);
             return new MobAbility() {
                 @Override public void onHurt(LivingEntity v, EntityDamageEvent e) {
-                    v.setHealth(Math.min(v.getMaxHealth(), v.getHealth() + amount));
+                    // Scale passive regen by any active anti-heal debuff on v.
+                    double scaled = com.soulenchants.listeners.CombatListener.scaleHealForAntiHeal(
+                            v, amount);
+                    v.setHealth(Math.min(v.getMaxHealth(), v.getHealth() + scaled));
                 }
             };
         });
