@@ -28,15 +28,22 @@ public final class LunarCommand implements CommandExecutor {
         if (args.length == 0 || args[0].equalsIgnoreCase("status")) {
             Chat.banner(sender, "Lunar Bridge Status");
             printDetectedPlugin(sender);
+            // Which backend resolved? apollo > legacy > none
+            String backend = LunarBridge.backend();
+            String backendLabel;
+            if ("apollo".equals(backend))      backendLabel = MessageStyle.GOOD + "Apollo " + MessageStyle.FRAME + "(modern)";
+            else if ("legacy".equals(backend)) backendLabel = MessageStyle.TIER_LEGENDARY + "legacy LunarClient-API";
+            else                                backendLabel = MessageStyle.BAD + "none";
+            sender.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.DIAMOND + "  "
+                    + MessageStyle.MUTED + "Backend:    " + backendLabel);
             sender.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.DIAMOND + "  "
                     + MessageStyle.MUTED + "API handle: " + MessageStyle.VALUE
                     + (LunarBridge.isAvailable() ? "resolved" : "not resolved"));
             Chat.rule(sender);
             if (!LunarBridge.isAvailable()) {
-                Chat.info(sender, "Install "
-                        + MessageStyle.VALUE + "LunarClient-API"
-                        + MessageStyle.MUTED + " (Moonsworth) and restart. Download: "
-                        + MessageStyle.FRAME + "github.com/LunarClient/BukkitAPI/releases");
+                Chat.info(sender, "Install " + MessageStyle.VALUE + "Apollo"
+                        + MessageStyle.MUTED + " (Lunar's current server API) and restart.");
+                Chat.info(sender, "Download: " + MessageStyle.FRAME + "lunarclient.dev/apollo/downloads");
             }
             return true;
         }
@@ -57,12 +64,12 @@ public final class LunarCommand implements CommandExecutor {
     }
 
     private static void printDetectedPlugin(CommandSender to) {
-        String[] names = { "LunarClient-API", "LunarBukkitAPI", "LunarClientAPI", "LunarAPI" };
+        String[] names = { "Apollo", "LunarClient-API", "LunarBukkitAPI", "LunarClientAPI", "LunarAPI" };
         for (String n : names) {
             org.bukkit.plugin.Plugin pl = Bukkit.getPluginManager().getPlugin(n);
             if (pl != null) {
                 to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.GOOD + "✓ "
-                        + MessageStyle.MUTED + "Plugin found: " + MessageStyle.VALUE + n
+                        + MessageStyle.MUTED + "Plugin:     " + MessageStyle.VALUE + n
                         + MessageStyle.FRAME + " v" + MessageStyle.VALUE + pl.getDescription().getVersion());
                 return;
             }

@@ -10,121 +10,145 @@ import java.lang.reflect.Method;
 import java.util.logging.Logger;
 
 /**
- * Reflection-based bridge to Moonsworth's LunarClient-API. We compile against
- * no Lunar jar so the plugin builds clean in any environment; at runtime we
- * try to load the Lunar plugin's concrete classes and cache their handles.
+ * Dual-path bridge to Lunar Client server APIs. We try the modern Apollo
+ * API first (com.lunarclient:apollo-api), and fall back to the legacy
+ * LunarClient-API via reflection if Apollo isn't installed.
  *
- * Real API surface (1.8.8 Moonsworth "LunarClient-API"):
- *   com.lunarclient.bukkitapi.LunarClientAPI          (main plugin class + singleton)
- *     .getInstance()                                  → singleton
- *     .sendWaypoint(Player, LCWaypoint)
- *     .sendCooldown(Player, LCCooldown)
- *     .sendTitle   (Player, LCTitle)
- *   com.lunarclient.bukkitapi.object.LCWaypoint       (String name, x, y, z, int color, boolean forced, boolean visible)
- *   com.lunarclient.bukkitapi.object.LCCooldown       (String id, long durationMs, Material icon)
- *   com.lunarclient.bukkitapi.object.LCTitle          (varies by version)
+ * Apollo is the current, supported API — see https://lunarclient.dev/apollo
+ * Legacy is kept only for servers still running the old Moonsworth plugin.
  *
- * If the plugin isn't installed, every bridge method no-ops silently.
+ *    backend    | plugin name        | notes
+ *    ───────────┼────────────────────┼──────────────────────────────────────
+ *    Apollo     | Apollo             | preferred; uses type-safe ApolloHook
+ *    legacy     | LunarClient-API    | reflection; LCCooldown DTO shape
+ *
+ * When neither is installed, every bridge call no-ops silently. Admins
+ * can verify status with /lunar status.
  */
 public final class LunarBridge {
 
     private static Logger log;
     private static boolean probed;
 
-    // Cached handles — all null if Lunar isn't present.
+    /** Which backend resolved — null, "apollo", or "legacy". */
+    private static String backend;
+
+    // Legacy backend reflection handles
     private static Object      lunarApiInstance;
-    private static Method      sendCooldownMethod;
-    private static Constructor<?> cooldownCtor;
-    private static Method      sendWaypointMethod;
-    private static Constructor<?> waypointCtor;
-    private static Method      sendTitleMethod;
+    private static Method      legacySendCooldown;
+    private static Constructor<?> legacyCooldownCtor;
+    private static Method      legacySendWaypoint;
+    private static Constructor<?> legacyWaypointCtor;
 
     private LunarBridge() {}
 
     public static void init(org.bukkit.plugin.java.JavaPlugin plugin) {
         log = plugin.getLogger();
         probe();
-        if (isAvailable()) {
-            log.info("[lunar] LunarClient-API detected @ " + lunarApiInstance.getClass().getName()
-                    + " — cooldowns=" + (sendCooldownMethod != null)
-                    + " waypoints=" + (sendWaypointMethod != null)
-                    + " titles=" + (sendTitleMethod != null));
+        if ("apollo".equals(backend)) {
+            log.info("[lunar] Apollo API detected — cooldowns + waypoints enabled");
+        } else if ("legacy".equals(backend)) {
+            log.info("[lunar] legacy LunarClient-API detected — cooldowns=" + (legacySendCooldown != null)
+                    + " waypoints=" + (legacySendWaypoint != null));
         } else {
-            log.info("[lunar] LunarClient-API not present — pings/cosmetics will no-op");
+            log.info("[lunar] no Lunar server API present — install Apollo to enable cooldowns/waypoints");
         }
     }
 
-    public static boolean isAvailable() { return lunarApiInstance != null; }
+    public static boolean isAvailable() { return backend != null; }
+    public static String  backend()     { return backend; }
 
     // ──────────────────────── Cooldown ────────────────────────
 
-    /**
-     * Push a client-side cooldown ring to the given player. The icon is
-     * rendered in the ring on Lunar Client. No-op if Lunar absent, call
-     * failed, or the player isn't on Lunar (Lunar itself handles that
-     * check server-side).
-     *
-     * @param id        Unique cooldown id — also the label on the ring.
-     *                  Same id re-sent with new duration resets the ring.
-     * @param durationMs Cooldown length in milliseconds.
-     */
     public static void sendCooldown(Player p, String id, long durationMs) {
         sendCooldown(p, id, durationMs, Material.DIAMOND_SWORD);
     }
 
     public static void sendCooldown(Player p, String id, long durationMs, Material icon) {
-        if (!isAvailable() || sendCooldownMethod == null || cooldownCtor == null) return;
-        try {
-            Object cooldown = cooldownCtor.newInstance(id, durationMs, icon);
-            sendCooldownMethod.invoke(lunarApiInstance, p, cooldown);
-        } catch (Throwable t) {
-            if (log != null) log.fine("[lunar] sendCooldown failed: " + t);
+        if ("apollo".equals(backend)) {
+            ApolloHook.sendCooldown(p, id, durationMs, icon);
+        } else if ("legacy".equals(backend) && legacySendCooldown != null && legacyCooldownCtor != null) {
+            try {
+                Object cooldown = legacyCooldownCtor.newInstance(id, durationMs, icon);
+                legacySendCooldown.invoke(lunarApiInstance, p, cooldown);
+            } catch (Throwable t) {
+                if (log != null) log.fine("[lunar-legacy] sendCooldown failed: " + t);
+            }
         }
     }
 
     // ──────────────────────── Waypoint ────────────────────────
 
     public static void sendWaypoint(Player p, String name, Location loc, int rgb) {
-        if (!isAvailable() || sendWaypointMethod == null || waypointCtor == null) return;
-        try {
-            // Moonsworth LCWaypoint(String name, int x, int y, int z, int color, boolean forced, boolean visible)
-            Object waypoint = waypointCtor.newInstance(
-                    name, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), rgb, false, true);
-            sendWaypointMethod.invoke(lunarApiInstance, p, waypoint);
-        } catch (Throwable t) {
-            if (log != null) log.fine("[lunar] sendWaypoint failed: " + t);
+        if ("apollo".equals(backend)) {
+            ApolloHook.sendWaypoint(p, name, loc, rgb);
+        } else if ("legacy".equals(backend) && legacySendWaypoint != null && legacyWaypointCtor != null) {
+            try {
+                Object waypoint = legacyWaypointCtor.newInstance(
+                        name, loc.getBlockX(), loc.getBlockY(), loc.getBlockZ(), rgb, false, true);
+                legacySendWaypoint.invoke(lunarApiInstance, p, waypoint);
+            } catch (Throwable t) {
+                if (log != null) log.fine("[lunar-legacy] sendWaypoint failed: " + t);
+            }
         }
     }
 
     // ──────────────────────── Title ────────────────────────
 
     public static void sendTitle(Player p, String title, String subtitle, long durationMs) {
-        if (!isAvailable() || sendTitleMethod == null) return;
-        try { sendTitleMethod.invoke(lunarApiInstance, p, title, subtitle, durationMs); }
-        catch (Throwable ignored) {}
+        // Not implemented for either backend yet; kept in the public surface for
+        // callers that might need it later.
     }
 
     // ──────────────────────── Probe ────────────────────────
 
     /**
-     * Discover the Moonsworth API classes + methods. Tries multiple
-     * candidate class names since Nordic's recon noted forks exist
-     * (LunarClient-API, LunarBukkitAPI, LunarAPI, etc.).
+     * Resolve the best available backend:
+     *   1. Apollo — if com.lunarclient.apollo.Apollo is on the classpath
+     *   2. Legacy LunarClient-API — if com.lunarclient.bukkitapi.LunarClientAPI is
+     *   3. Nothing — no-op all calls
+     *
+     * Apollo is class-path-checked (not plugin-checked) because the Apollo
+     * Bukkit jar exposes its API classes through Bukkit's plugin classloader
+     * the moment we softdepend on it in plugin.yml.
      */
     private static void probe() {
         if (probed) return;
         probed = true;
 
-        // 1. Find the Lunar plugin instance.
+        // 1) Apollo — preferred modern path.
+        if (classPresent("com.lunarclient.apollo.Apollo")) {
+            try {
+                if (ApolloHook.init()) {
+                    backend = "apollo";
+                    return;
+                }
+                if (log != null) log.warning("[lunar] Apollo class present but module init failed");
+            } catch (Throwable t) {
+                if (log != null) log.warning("[lunar] Apollo init threw: " + t);
+            }
+        }
+
+        // 2) Legacy LunarClient-API — reflection, DTO constructor (String, long, Material)
+        if (probeLegacy()) {
+            backend = "legacy";
+        }
+    }
+
+    private static boolean classPresent(String name) {
+        try { Class.forName(name); return true; }
+        catch (ClassNotFoundException e) { return false; }
+    }
+
+    private static boolean probeLegacy() {
         String[] pluginNames = { "LunarClient-API", "LunarBukkitAPI", "LunarClientAPI", "LunarAPI" };
         org.bukkit.plugin.Plugin found = null;
         for (String n : pluginNames) {
             found = Bukkit.getPluginManager().getPlugin(n);
             if (found != null) break;
         }
-        if (found == null) return;
+        if (found == null) return false;
 
-        // 2. Resolve the API singleton. Moonsworth uses LunarClientAPI.getInstance().
         String[] apiClasses = {
                 "com.lunarclient.bukkitapi.LunarClientAPI",
                 "com.lunarclient.bukkitapi.LunarBukkitAPI",
@@ -135,67 +159,40 @@ public final class LunarBridge {
             try { apiClass = Class.forName(cn); break; }
             catch (ClassNotFoundException ignored) {}
         }
-        if (apiClass == null) {
-            if (log != null) log.warning("[lunar] plugin " + found.getName()
-                    + " is loaded but its API class wasn't found on any known path");
-            return;
-        }
-        try {
-            Method getInstance = apiClass.getMethod("getInstance");
-            lunarApiInstance = getInstance.invoke(null);
-        } catch (Throwable t) {
-            // Fall back to the plugin instance itself.
-            lunarApiInstance = found;
-        }
-        if (lunarApiInstance == null) return;
+        if (apiClass == null) return false;
+        try { lunarApiInstance = apiClass.getMethod("getInstance").invoke(null); }
+        catch (Throwable t) { lunarApiInstance = found; }
+        if (lunarApiInstance == null) return false;
 
-        // 3. Resolve DTOs + their send methods.
+        // DTOs
         String[] cooldownClasses = {
                 "com.lunarclient.bukkitapi.object.LCCooldown",
                 "com.lunarclient.bukkitapi.cooldown.LCCooldown",
                 "com.lunarclient.bukkitapi.LCCooldown"
         };
-        Class<?> cooldownClass = firstClass(cooldownClasses);
-        if (cooldownClass != null) {
-            try {
-                cooldownCtor = cooldownClass.getConstructor(String.class, long.class, Material.class);
-            } catch (NoSuchMethodException e) {
-                // Older variant: (String, long, int material-id)
-                try { cooldownCtor = cooldownClass.getConstructor(String.class, long.class, int.class); }
+        Class<?> cdCls = firstClass(cooldownClasses);
+        if (cdCls != null) {
+            try { legacyCooldownCtor = cdCls.getConstructor(String.class, long.class, Material.class); }
+            catch (NoSuchMethodException e) {
+                try { legacyCooldownCtor = cdCls.getConstructor(String.class, long.class, int.class); }
                 catch (NoSuchMethodException ignored) {}
             }
-            sendCooldownMethod = findMethod(lunarApiInstance.getClass(), "sendCooldown", Player.class, cooldownClass);
-            if (sendCooldownMethod == null) {
-                // Some forks rename it — scan by Player+(matching DTO class) signature.
-                sendCooldownMethod = findMethodBySig(lunarApiInstance.getClass(), "cooldown", Player.class, cooldownClass);
-            }
+            legacySendCooldown = findMethod(lunarApiInstance.getClass(), "sendCooldown", Player.class, cdCls);
         }
-
         String[] waypointClasses = {
                 "com.lunarclient.bukkitapi.object.LCWaypoint",
                 "com.lunarclient.bukkitapi.waypoint.LCWaypoint",
                 "com.lunarclient.bukkitapi.LCWaypoint"
         };
-        Class<?> waypointClass = firstClass(waypointClasses);
-        if (waypointClass != null) {
+        Class<?> wpCls = firstClass(waypointClasses);
+        if (wpCls != null) {
             try {
-                waypointCtor = waypointClass.getConstructor(
+                legacyWaypointCtor = wpCls.getConstructor(
                         String.class, int.class, int.class, int.class, int.class, boolean.class, boolean.class);
             } catch (NoSuchMethodException ignored) {}
-            sendWaypointMethod = findMethod(lunarApiInstance.getClass(), "sendWaypoint", Player.class, waypointClass);
-            if (sendWaypointMethod == null) {
-                sendWaypointMethod = findMethodBySig(lunarApiInstance.getClass(), "waypoint", Player.class, waypointClass);
-            }
+            legacySendWaypoint = findMethod(lunarApiInstance.getClass(), "sendWaypoint", Player.class, wpCls);
         }
-
-        // Title — not critical; skip if missing. We don't currently call it.
-        for (Method m : lunarApiInstance.getClass().getMethods()) {
-            if (m.getName().toLowerCase().contains("title")
-                    && m.getParameterTypes().length >= 2
-                    && m.getParameterTypes()[0] == Player.class) {
-                sendTitleMethod = m; break;
-            }
-        }
+        return legacySendCooldown != null || legacySendWaypoint != null;
     }
 
     private static Class<?> firstClass(String[] candidates) {
@@ -209,20 +206,5 @@ public final class LunarBridge {
     private static Method findMethod(Class<?> cls, String name, Class<?>... args) {
         try { return cls.getMethod(name, args); }
         catch (NoSuchMethodException e) { return null; }
-    }
-
-    /** Flexible match — name contains substring, param types match exactly. */
-    private static Method findMethodBySig(Class<?> cls, String nameContains, Class<?>... args) {
-        for (Method m : cls.getMethods()) {
-            if (!m.getName().toLowerCase().contains(nameContains.toLowerCase())) continue;
-            Class<?>[] pt = m.getParameterTypes();
-            if (pt.length != args.length) continue;
-            boolean ok = true;
-            for (int i = 0; i < pt.length; i++) {
-                if (!pt[i].isAssignableFrom(args[i])) { ok = false; break; }
-            }
-            if (ok) return m;
-        }
-        return null;
     }
 }

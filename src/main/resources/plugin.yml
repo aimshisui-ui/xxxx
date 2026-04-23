@@ -4,7 +4,7 @@ main: com.soulenchants.SoulEnchants
 api-version: 1.8
 author: built-via-claude
 description: Custom enchantments with Souls currency, books, dust, scrolls, mythic weapons and cosmetic masks.
-softdepend: [ProtocolLib, LunarClient-API, LunarAPI]
+softdepend: [ProtocolLib, Apollo, LunarClient-API, LunarAPI]
 
 commands:
   souls:

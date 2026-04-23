@@ -21,6 +21,10 @@
             <id>codemc-repo</id>
             <url>https://repo.codemc.org/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>lunarclient</id>
+            <url>https://repo.lunarclient.dev</url>
+        </repository>
     </repositories>
 
     <!--
@@ -42,6 +46,19 @@
             <artifactId>item-nbt-api</artifactId>
             <version>2.13.2</version>
             <scope>compile</scope>
+        </dependency>
+        <!--
+          Apollo — Lunar Client's server API. Provided scope: classes are
+          available at compile time, but the jar isn't bundled. At runtime,
+          Apollo classes are only on the class path when the Apollo plugin
+          is installed; ApolloHook.isAvailable() gates every call so we
+          no-op cleanly when it's absent.
+        -->
+        <dependency>
+            <groupId>com.lunarclient</groupId>
+            <artifactId>apollo-api</artifactId>
+            <version>1.2.5</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
