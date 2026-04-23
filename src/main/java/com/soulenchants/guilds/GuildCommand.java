@@ -53,10 +53,14 @@ public class GuildCommand implements CommandExecutor {
                 final org.bukkit.Location origin = p.getLocation();
                 final String pingName = "Ping: " + p.getName();
                 int sent = 0;
+                // Self gets the waypoint too — useful even solo for marking
+                // a spot temporarily, and removes the "no guildmates online"
+                // failure mode entirely.
+                com.soulenchants.lunar.LunarBridge.sendWaypoint(p, pingName, origin, 0xE8B86A);
                 for (UUID memberId : g.getMembers()) {
                     Player mate = Bukkit.getPlayer(memberId);
                     if (mate == null || !mate.isOnline()) continue;
-                    if (mate.equals(p)) continue; // no self-ping
+                    if (mate.equals(p)) continue; // already sent to self above
                     String wpLabel;
                     if (mate.getWorld().equals(origin.getWorld())) {
                         wpLabel = pingName + " (" + (int) mate.getLocation().distance(origin) + "m)";
@@ -70,15 +74,15 @@ public class GuildCommand implements CommandExecutor {
                             + origin.getBlockY() + ", " + origin.getBlockZ() + ")");
                     sent++;
                 }
-                if (sent == 0) {
-                    p.sendMessage(ChatColor.YELLOW + "✦ No guildmates online to ping.");
-                } else {
-                    p.sendMessage(ChatColor.GOLD + "✦ Pinged your location to "
-                            + ChatColor.YELLOW + sent + ChatColor.GOLD + " guildmate"
-                            + (sent == 1 ? "" : "s") + ".");
-                }
-                // Auto-remove after 5 seconds
+                p.sendMessage(ChatColor.GOLD + "✦ Pinged your location"
+                        + (sent == 0 ? ChatColor.GRAY + " (no guildmates online)"
+                                     : ChatColor.GOLD + " to " + ChatColor.YELLOW + sent
+                                             + ChatColor.GOLD + " guildmate" + (sent == 1 ? "" : "s"))
+                        + ChatColor.GOLD + ".");
+                // Auto-remove after 5 seconds — self is in g.getMembers() so
+                // the pinger's waypoint clears too.
                 final java.util.Set<UUID> receivers = new java.util.HashSet<>(g.getMembers());
+                receivers.add(p.getUniqueId()); // safety — always clear self
                 new org.bukkit.scheduler.BukkitRunnable() {
                     @Override public void run() {
                         for (UUID u : receivers) {

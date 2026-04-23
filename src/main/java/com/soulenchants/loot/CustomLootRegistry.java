@@ -131,6 +131,24 @@ public final class CustomLootRegistry {
         addVanilla(org.bukkit.Material.LEATHER_LEGGINGS);
         addVanilla(org.bukkit.Material.LEATHER_BOOTS);
         addVanilla(org.bukkit.Material.BOW);
+        // Diamond armor + weapons + tool-equivalent picks for filter coverage.
+        // Players farming bosses often end up with stacks of diamond gear they
+        // don't want cluttering their inventory.
+        addVanilla(org.bukkit.Material.DIAMOND_SWORD);
+        addVanilla(org.bukkit.Material.DIAMOND_AXE);
+        addVanilla(org.bukkit.Material.DIAMOND_PICKAXE);
+        addVanilla(org.bukkit.Material.DIAMOND_SPADE);
+        addVanilla(org.bukkit.Material.DIAMOND_HOE);
+        addVanilla(org.bukkit.Material.DIAMOND_HELMET);
+        addVanilla(org.bukkit.Material.DIAMOND_CHESTPLATE);
+        addVanilla(org.bukkit.Material.DIAMOND_LEGGINGS);
+        addVanilla(org.bukkit.Material.DIAMOND_BOOTS);
+        addVanilla(org.bukkit.Material.DIAMOND);
+        // Iron tools + axes were missing from the set — add them too.
+        addVanilla(org.bukkit.Material.IRON_AXE);
+        addVanilla(org.bukkit.Material.IRON_PICKAXE);
+        addVanilla(org.bukkit.Material.GOLD_AXE);
+        addVanilla(org.bukkit.Material.GOLD_PICKAXE);
     }
 
     /** Convenience: register a vanilla material with id "vanilla:MATERIAL_NAME". */
