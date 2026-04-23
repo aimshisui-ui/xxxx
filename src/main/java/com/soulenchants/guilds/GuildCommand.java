@@ -40,6 +40,57 @@ public class GuildCommand implements CommandExecutor {
         GuildManager mgr = plugin.getGuildManager();
 
         switch (sub) {
+            case "ping": {
+                // /g ping — broadcast an Apollo waypoint to every online guildmate
+                // carrying the caller's position + their distance in the label.
+                // Auto-removes after 5s so the HUD stays clean.
+                Guild g = mgr.getByMember(p.getUniqueId());
+                if (g == null) { p.sendMessage(ChatColor.RED + "You're not in a guild."); return true; }
+                if (!com.soulenchants.lunar.LunarBridge.isAvailable()) {
+                    p.sendMessage(ChatColor.RED + "Lunar API isn't loaded — install Apollo to use /g ping.");
+                    return true;
+                }
+                final org.bukkit.Location origin = p.getLocation();
+                final String pingName = "Ping: " + p.getName();
+                int sent = 0;
+                for (UUID memberId : g.getMembers()) {
+                    Player mate = Bukkit.getPlayer(memberId);
+                    if (mate == null || !mate.isOnline()) continue;
+                    if (mate.equals(p)) continue; // no self-ping
+                    String wpLabel;
+                    if (mate.getWorld().equals(origin.getWorld())) {
+                        wpLabel = pingName + " (" + (int) mate.getLocation().distance(origin) + "m)";
+                    } else {
+                        wpLabel = pingName + " (other world)";
+                    }
+                    com.soulenchants.lunar.LunarBridge.sendWaypoint(mate, wpLabel, origin, 0xE8B86A);
+                    mate.sendMessage(ChatColor.GOLD + "✦ " + ChatColor.YELLOW + p.getName()
+                            + ChatColor.GRAY + " pinged their location "
+                            + ChatColor.WHITE + "(" + origin.getBlockX() + ", "
+                            + origin.getBlockY() + ", " + origin.getBlockZ() + ")");
+                    sent++;
+                }
+                if (sent == 0) {
+                    p.sendMessage(ChatColor.YELLOW + "✦ No guildmates online to ping.");
+                } else {
+                    p.sendMessage(ChatColor.GOLD + "✦ Pinged your location to "
+                            + ChatColor.YELLOW + sent + ChatColor.GOLD + " guildmate"
+                            + (sent == 1 ? "" : "s") + ".");
+                }
+                // Auto-remove after 5 seconds
+                final java.util.Set<UUID> receivers = new java.util.HashSet<>(g.getMembers());
+                new org.bukkit.scheduler.BukkitRunnable() {
+                    @Override public void run() {
+                        for (UUID u : receivers) {
+                            Player mate = Bukkit.getPlayer(u);
+                            if (mate != null && mate.isOnline()) {
+                                com.soulenchants.lunar.LunarBridge.clearWaypoint(mate, pingName);
+                            }
+                        }
+                    }
+                }.runTaskLater(plugin, 100L);
+                return true;
+            }
             case "create": {
                 if (args.length < 2) { p.sendMessage(ChatColor.RED + "Usage: /guild create <name>"); return true; }
                 String name = args[1];
@@ -156,14 +207,28 @@ public class GuildCommand implements CommandExecutor {
     }
 
     private void help(CommandSender to) {
-        to.sendMessage(ChatColor.LIGHT_PURPLE + "§l✦ Guild Commands");
-        to.sendMessage(ChatColor.GRAY + "  /guild create <name>");
-        to.sendMessage(ChatColor.GRAY + "  /guild invite <player>");
-        to.sendMessage(ChatColor.GRAY + "  /guild join <name>");
-        to.sendMessage(ChatColor.GRAY + "  /guild leave");
-        to.sendMessage(ChatColor.GRAY + "  /guild disband §8(owner only)");
-        to.sendMessage(ChatColor.GRAY + "  /guild vault §8(members only)");
-        to.sendMessage(ChatColor.GRAY + "  /guild info");
-        to.sendMessage(ChatColor.GRAY + "  /guild top");
+        com.soulenchants.style.Chat.banner(to, "Guild " + com.soulenchants.style.MessageStyle.FRAME + "commands");
+        row(to, "/guild create <name>",        "found a new guild");
+        row(to, "/guild invite <player>",      "invite a player");
+        row(to, "/guild join <name>",          "accept an invite");
+        row(to, "/guild leave",                "leave your guild");
+        row(to, "/guild disband",              "owner only");
+        row(to, "/guild vault",                "shared storage");
+        row(to, "/guild info",                 "roster + stats");
+        row(to, "/guild top",                  "leaderboard");
+        row(to, "/guild ping  " + com.soulenchants.style.MessageStyle.FRAME + "| " +
+                com.soulenchants.style.MessageStyle.VALUE + "/g ping",
+                com.soulenchants.style.MessageStyle.TIER_RARE + "v1.1 " + com.soulenchants.style.MessageStyle.MUTED
+                        + "ping your location to every online guildmate (5s, Lunar)");
+        com.soulenchants.style.Chat.rule(to);
+    }
+
+    private static void row(CommandSender s, String cmd, String desc) {
+        s.sendMessage(com.soulenchants.style.MessageStyle.FRAME + "   "
+                + com.soulenchants.style.MessageStyle.ARROW + " "
+                + com.soulenchants.style.MessageStyle.VALUE + cmd
+                + com.soulenchants.style.MessageStyle.FRAME + "  "
+                + com.soulenchants.style.MessageStyle.BAR + "  "
+                + (desc.startsWith("§") ? desc : com.soulenchants.style.MessageStyle.MUTED + desc));
     }
 }

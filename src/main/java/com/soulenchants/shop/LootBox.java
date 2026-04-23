@@ -102,18 +102,29 @@ public final class LootBox {
         try { return Kind.valueOf(nbt.getString(NBT_LOOTBOX)); } catch (Exception e) { return null; }
     }
 
-    /** Roll the box and return the item(s) to give. Never empty. */
+    /**
+     * Roll the box and return exactly 3 items — guaranteed yield across all
+     * tiers so players always see a full 3-slot reveal. Reward composition:
+     *
+     *   BRONZE  — 1× Common/Uncommon book + 2× common reagents
+     *   SILVER  — 1× Uncommon/Rare/Epic book + 1× epic reagent + 1× common reagent
+     *   GOLD    — 1× Rare/Epic/Legendary book + 2× epic reagents
+     *   BOSS    — 5% chance a boss-tier named item as the first slot,
+     *             otherwise an Epic/Legendary book + 2× epic reagents
+     */
     public static List<ItemStack> roll(Kind kind) {
         List<ItemStack> out = new ArrayList<>();
         switch (kind) {
             case BRONZE:
                 out.add(rollBook(RNG.nextDouble() < 0.80 ? EnchantTier.COMMON : EnchantTier.UNCOMMON));
-                if (RNG.nextDouble() < 0.40) out.add(randomReagent(false));
+                out.add(randomReagent(false));
+                out.add(randomReagent(false));
                 break;
             case SILVER: {
                 double r = RNG.nextDouble();
                 EnchantTier t = r < 0.60 ? EnchantTier.UNCOMMON : r < 0.95 ? EnchantTier.RARE : EnchantTier.EPIC;
                 out.add(rollBook(t));
+                out.add(randomReagent(true));
                 out.add(randomReagent(false));
                 break;
             }
@@ -122,17 +133,18 @@ public final class LootBox {
                 EnchantTier t = r < 0.45 ? EnchantTier.RARE : r < 0.90 ? EnchantTier.EPIC : EnchantTier.LEGENDARY;
                 out.add(rollBook(t));
                 out.add(randomReagent(true));
+                out.add(randomReagent(true));
                 break;
             }
             case BOSS: {
                 double r = RNG.nextDouble();
                 if (r < 0.05) {
-                    // Boss-tier named item
                     out.add(rollBossTier());
                 } else {
                     EnchantTier t = r < 0.65 ? EnchantTier.EPIC : EnchantTier.LEGENDARY;
                     out.add(rollBook(t));
                 }
+                out.add(randomReagent(true));
                 out.add(randomReagent(true));
                 break;
             }

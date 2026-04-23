@@ -45,6 +45,9 @@ public final class MythicFactory {
             // block below uses strikethrough dividers so it stays visually
             // separated from whatever enchants get stacked on top.
             meta.setLore(renderMythicLore(m, /* ability */ null));
+            // Mythic weapons never break — durability stat is cosmetic only.
+            // 1.8 exposes this via the Spigot ItemMeta subclass.
+            try { meta.spigot().setUnbreakable(true); } catch (Throwable ignored) {}
             item.setItemMeta(meta);
         }
 

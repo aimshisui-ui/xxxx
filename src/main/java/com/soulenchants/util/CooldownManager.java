@@ -44,20 +44,37 @@ public class CooldownManager {
             "stormbringer", "dawnbringer", "natureswrath", "aegis", "rush", "overshield"
     ));
 
-    /** Per-ability icon for the Lunar cooldown ring — best-effort visual match. */
+    /**
+     * Per-ability icon for the Lunar cooldown ring. Apollo's cooldown API
+     * only renders the icon + countdown timer — no text label is supported,
+     * per their docs. So every icon has to be visually unambiguous at a
+     * glance. Picks below aim for maximum distinctiveness:
+     *
+     *   Stormcaller     BEACON          tall glowing beam
+     *   Stormbringer    FIREWORK_CHARGE star-burst shape
+     *   Guardians       GOLDEN_APPLE    gold glow
+     *   Overshield      NETHER_STAR     unique sparkle
+     *   Soul Shield     EMERALD         green gem
+     *   Reflect         SLIME_BALL      green orb
+     *   Phoenix         BLAZE_POWDER    orange dust
+     *   Nature's Wrath  SAPLING         leafy green
+     *   Dawnbringer     GLOWSTONE_DUST  yellow-white dust
+     *   Aegis           DIAMOND_HELMET  blue gem helm
+     *   Rush            FEATHER         speed-feel icon
+     */
     private static final Map<String, Material> LUNAR_ICONS = new HashMap<>();
     static {
         LUNAR_ICONS.put("stormcaller",  Material.BEACON);
-        LUNAR_ICONS.put("guardians",    Material.DIAMOND_CHESTPLATE);
+        LUNAR_ICONS.put("guardians",    Material.GOLDEN_APPLE);
         LUNAR_ICONS.put("soulshield",   Material.EMERALD);
         LUNAR_ICONS.put("phoenix",      Material.BLAZE_POWDER);
-        LUNAR_ICONS.put("reflect",      Material.IRON_CHESTPLATE);
-        LUNAR_ICONS.put("stormbringer", Material.DIAMOND_SWORD);
-        LUNAR_ICONS.put("dawnbringer",  Material.GOLD_SWORD);
+        LUNAR_ICONS.put("reflect",      Material.SLIME_BALL);
+        LUNAR_ICONS.put("stormbringer", Material.FIREWORK_CHARGE);
+        LUNAR_ICONS.put("dawnbringer",  Material.GLOWSTONE_DUST);
         LUNAR_ICONS.put("natureswrath", Material.SAPLING);
-        LUNAR_ICONS.put("aegis",        Material.IRON_HELMET);   // 1.8 lacks Material.SHIELD
-        LUNAR_ICONS.put("rush",         Material.SUGAR);
-        LUNAR_ICONS.put("overshield",   Material.GOLDEN_APPLE);
+        LUNAR_ICONS.put("aegis",        Material.DIAMOND_HELMET);
+        LUNAR_ICONS.put("rush",         Material.FEATHER);
+        LUNAR_ICONS.put("overshield",   Material.NETHER_STAR);
     }
 
     public void set(String type, UUID player, long durationMs) {

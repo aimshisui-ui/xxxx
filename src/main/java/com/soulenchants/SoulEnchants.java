@@ -14,8 +14,8 @@ import com.soulenchants.gui.EnchantMenuGUI;
 import com.soulenchants.listeners.*;
 import com.soulenchants.lunar.LunarBridge;
 import com.soulenchants.lunar.LunarPingListener;
+import com.soulenchants.masks.MaskAttachListener;
 import com.soulenchants.masks.MaskCommand;
-import com.soulenchants.masks.MaskManager;
 import com.soulenchants.masks.MaskPacketInjector;
 import com.soulenchants.masks.MaskRegistry;
 import com.soulenchants.mythic.MythicAuraTask;
@@ -62,7 +62,6 @@ public class SoulEnchants extends JavaPlugin {
     private EnchantConfig enchantConfig;
     private MythicConfig mythicConfig;
     private MythicAuraTask mythicAuraTask;
-    private MaskManager maskManager;
     private MaskPacketInjector maskPacketInjector;
     private LunarPingListener lunarPingListener;
 
@@ -241,9 +240,12 @@ public class SoulEnchants extends JavaPlugin {
             getCommand("mythic").setExecutor(new MythicCommand(this));
 
         // ──────────────── Cosmetic Masks (v1.1) ────────────────
-        this.maskManager = new MaskManager(this);
-        this.maskPacketInjector = new MaskPacketInjector(this, maskManager);
+        // Identity lives on items (se_mask_item / se_mask_attached NBT).
+        // Packet injector reads the wearer's helmet NBT each tick; the
+        // attach listener handles drag-onto-helmet / right-click-detach.
+        this.maskPacketInjector = new MaskPacketInjector(this);
         maskPacketInjector.attach();
+        getServer().getPluginManager().registerEvents(new MaskAttachListener(this), this);
         if (getCommand("mask") != null)
             getCommand("mask").setExecutor(new MaskCommand(this));
 
@@ -328,5 +330,5 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.modock.ModockManager getModockManager() { return modockManager; }
     public EnchantConfig getEnchantConfig() { return enchantConfig; }
     public MythicConfig getMythicConfig() { return mythicConfig; }
-    public MaskManager getMaskManager() { return maskManager; }
+    public com.soulenchants.masks.MaskPacketInjector getMaskPacketInjector() { return maskPacketInjector; }
 }

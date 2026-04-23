@@ -45,7 +45,7 @@ commands:
     aliases: [lootft, lootfilters, ftloot]
   guild:
     description: Guild — 10 players max, friendly-fire blocked, shared vault
-    usage: §8/§eguild §7<create|invite|join|leave|disband|vault|info|top>
+    usage: §8/§eguild §7<create|invite|join|leave|disband|vault|info|top|ping>
     aliases: [guilds, g]
   modock:
     description: Modock — King of Atlantis (three-phase rift boss)

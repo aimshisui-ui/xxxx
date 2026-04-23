@@ -108,4 +108,17 @@ final class ApolloHook {
             return false;
         }
     }
+
+    /** Clear a pushed waypoint — call on boss death / ping expiry. */
+    static boolean clearWaypoint(Player viewer, String name) {
+        if (waypointModule == null) return false;
+        Optional<ApolloPlayer> apolloPlayer = Apollo.getPlayerManager().getPlayer(viewer.getUniqueId());
+        if (!apolloPlayer.isPresent()) return false;
+        try {
+            waypointModule.removeWaypoint(apolloPlayer.get(), name);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 }

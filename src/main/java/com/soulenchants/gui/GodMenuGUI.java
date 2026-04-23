@@ -300,31 +300,13 @@ public class GodMenuGUI implements Listener {
         Inventory inv = Bukkit.createInventory(null, rows * 9, TITLE_MASKS);
         int slot = 0;
         for (Mask m : list) {
-            inv.setItem(slot++, maskTile(m, plugin.getMaskManager().getEquipped(p)));
+            // v1.1 Nordic-style — click gives you the mask ITEM; you then
+            // drag it onto any helmet to attach. Lore communicates that
+            // flow up-front so players know they're not equipping here.
+            inv.setItem(slot++, m.buildInventoryItem());
         }
         inv.setItem(rows * 9 - 5, backButton());
         p.openInventory(inv);
-    }
-
-    private ItemStack maskTile(Mask m, String currentlyEquippedId) {
-        ItemStack it = m.buildVisual();
-        ItemMeta meta = it.getItemMeta();
-        if (meta != null) {
-            boolean equipped = m.getId().equals(currentlyEquippedId);
-            meta.setDisplayName(MessageStyle.TIER_EPIC + MessageStyle.BOLD + m.getDisplayName());
-            List<String> lore = new ArrayList<>();
-            lore.add(MessageStyle.MUTED + "Id: " + MessageStyle.VALUE + m.getId());
-            lore.add("");
-            if (equipped) {
-                lore.add(MessageStyle.GOOD + MessageStyle.BOLD + "✓ EQUIPPED");
-                lore.add(MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "clear");
-            } else {
-                lore.add(MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip");
-            }
-            meta.setLore(lore);
-            it.setItemMeta(meta);
-        }
-        return it;
     }
 
     // ──────────────────────────── Click routing ─────────────────────────
@@ -406,26 +388,19 @@ public class GodMenuGUI implements Listener {
             return;
         }
 
-        // Mask browser: equip / toggle off
+        // Mask browser: v1.1 Nordic-style — click gives the mask as an item.
+        // Player then drags it onto a helmet to attach. Detach is a
+        // right-click on the attached helmet (handled by MaskAttachListener).
         if (title.equals(TITLE_MASKS)) {
-            Mask target = null;
-            for (Mask m : MaskRegistry.all()) {
-                ItemStack v = m.buildVisual();
-                if (v.getType() == clicked.getType() && v.getDurability() == clicked.getDurability()) {
-                    target = m; break;
-                }
-            }
-            if (target == null) return;
-            String currentId = plugin.getMaskManager().getEquipped(p);
-            if (target.getId().equals(currentId)) {
-                plugin.getMaskManager().clear(p);
-                Chat.info(p, "Cleared " + MessageStyle.TIER_EPIC + target.getDisplayName() + MessageStyle.MUTED + ".");
-            } else {
-                plugin.getMaskManager().equip(p, target.getId());
-                Chat.good(p, "Equipped " + MessageStyle.TIER_EPIC + target.getDisplayName() + MessageStyle.GOOD + ".");
-            }
-            p.getInventory().setHelmet(p.getInventory().getHelmet());
-            openMasks(p);
+            String maskId = MaskRegistry.maskItemId(clicked);
+            if (maskId == null) return;
+            Mask mask = MaskRegistry.get(maskId);
+            if (mask == null) return;
+            p.getInventory().addItem(mask.buildInventoryItem()).values()
+                    .forEach(over -> p.getWorld().dropItemNaturally(p.getLocation(), over));
+            Chat.good(p, "Received " + MessageStyle.TIER_EPIC + MessageStyle.BOLD + "✦ "
+                    + mask.getDisplayName() + MessageStyle.GOOD
+                    + ". " + MessageStyle.MUTED + "Drag it onto any helmet to attach.");
             return;
         }
 

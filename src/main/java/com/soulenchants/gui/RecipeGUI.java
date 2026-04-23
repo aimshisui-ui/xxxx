@@ -113,29 +113,37 @@ public class RecipeGUI implements Listener {
         return it;
     }
 
+    /**
+     * Opens a real InventoryType.WORKBENCH so the view IS a crafting table —
+     * slot 0 is the result, slots 1-9 are the 3x3 grid. All clicks are
+     * cancelled by our click handler so the player can't pick anything up.
+     *
+     * Workbench inventories have no room for back/close buttons, so the
+     * result item's lore carries the "click result to go back" hint.
+     */
     public void openRecipe(Player p, LootRecipes.RecipeEntry recipe) {
-        Inventory inv = Bukkit.createInventory(null, 54, T_VIEW + ChatColor.RESET
-                + (recipe.result.getItemMeta() != null && recipe.result.getItemMeta().hasDisplayName()
-                ? recipe.result.getItemMeta().getDisplayName()
-                : recipe.name));
-        // Background panes for visual separation
-        ItemStack glass = pane((short) 7, " ");
-        for (int s = 0; s < 54; s++) inv.setItem(s, glass);
-        // Crafting bench-style header
-        inv.setItem(4, banner(recipe.name));
-        // Place ingredients in the 3x3 grid
+        Inventory inv = Bukkit.createInventory(null, org.bukkit.event.inventory.InventoryType.WORKBENCH,
+                T_VIEW + ChatColor.RESET
+                        + (recipe.result.getItemMeta() != null && recipe.result.getItemMeta().hasDisplayName()
+                        ? recipe.result.getItemMeta().getDisplayName()
+                        : recipe.name));
+        // 3x3 grid in slots 1..9
         for (int i = 0; i < 9; i++) {
             ItemStack ing = ingredientItem(recipe, i);
-            inv.setItem(GRID_SLOTS[i], ing);
+            inv.setItem(i + 1, ing);
         }
-        // Arrow indicator (between grid and result)
-        inv.setItem(23, button(Material.ARROW, ChatColor.GREEN + "" + ChatColor.BOLD + "→",
-                "Combine ingredients", "in a crafting table"));
-        // Result
-        inv.setItem(RESULT_SLOT, recipe.result.clone());
-        // Footer
-        inv.setItem(BACK_SLOT, button(Material.ARROW, ChatColor.YELLOW + "« Back to list", ""));
-        inv.setItem(CLOSE_SLOT, button(Material.BARRIER, ChatColor.RED + "Close", ""));
+        // Result in slot 0 — clone so we can annotate lore without mutating the registry.
+        ItemStack result = recipe.result.clone();
+        ItemMeta rm = result.getItemMeta();
+        if (rm != null) {
+            java.util.List<String> lore = new java.util.ArrayList<>();
+            if (rm.hasLore()) lore.addAll(rm.getLore());
+            lore.add("");
+            lore.add(ChatColor.YELLOW + "» Click to return to the recipe list");
+            rm.setLore(lore);
+            result.setItemMeta(rm);
+        }
+        inv.setItem(0, result);
         p.openInventory(inv);
     }
 
@@ -244,8 +252,11 @@ public class RecipeGUI implements Listener {
             openRecipe(p, LootRecipes.ENTRIES.get(idx));
             return;
         }
-        // View screen
-        if (e.getRawSlot() == BACK_SLOT) { openList(p, currentPage.getOrDefault(p.getUniqueId(), 0)); return; }
-        if (e.getRawSlot() == CLOSE_SLOT) { p.closeInventory(); return; }
+        // View screen — InventoryType.WORKBENCH. Slot 0 is the result;
+        // clicking it returns to the list. All other slot clicks are no-ops
+        // (we already cancelled above, so the player can't pick up items).
+        if (e.getRawSlot() == 0) {
+            openList(p, currentPage.getOrDefault(p.getUniqueId(), 0));
+        }
     }
 }

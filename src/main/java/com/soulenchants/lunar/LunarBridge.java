@@ -93,6 +93,17 @@ public final class LunarBridge {
         }
     }
 
+    /** Clear a previously-pushed waypoint by name — use on boss death / ping expiry. */
+    public static void clearWaypoint(Player p, String name) {
+        if ("apollo".equals(backend)) ApolloHook.clearWaypoint(p, name);
+        // Legacy API has no remove equivalent exposed.
+    }
+
+    /** Clear a previously-pushed cooldown by name. */
+    public static void clearCooldown(Player p, String name) {
+        if ("apollo".equals(backend)) ApolloHook.clearCooldown(p, name);
+    }
+
     // ──────────────────────── Title ────────────────────────
 
     public static void sendTitle(Player p, String title, String subtitle, long durationMs) {
