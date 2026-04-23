@@ -253,8 +253,7 @@ public class SoulEnchants extends JavaPlugin {
         // the license-gate behaviour described in items/SoulGem.java.
         getServer().getPluginManager().registerEvents(
                 new com.soulenchants.listeners.SoulGemListener(this), this);
-        if (getCommand("soulgem") != null)
-            getCommand("soulgem").setExecutor(new com.soulenchants.commands.SoulGemCommand(this));
+        // /soulgem removed — minting is now a /souls withdraw subcommand.
 
         // ──────────────── Lunar Client bridge (v1.1) ────────────────
         LunarBridge.init(this);
@@ -262,7 +261,7 @@ public class SoulEnchants extends JavaPlugin {
         lunarPingListener.start();
 
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
-        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask","soulgem"}) {
+        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
         }
 

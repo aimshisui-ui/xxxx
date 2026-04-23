@@ -262,16 +262,22 @@ public class GodMenuGUI implements Listener {
         Inventory inv = Bukkit.createInventory(null, 36, TITLE_SOUL_GEM);
         long ledger  = plugin.getSoulManager().get(p);
         long gemTotal = com.soulenchants.items.SoulGemUtil.totalGemBalance(p);
-        // Info tile
+        // Info tile — Soul Bank balance + carried gem balance + license state
         inv.setItem(4, tile(Material.BOOK, MessageStyle.TIER_SOUL, "Soul Balance",
-                "Ledger: " + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(ledger),
-                "Gems:   " + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(gemTotal),
+                "Soul Bank: " + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(ledger),
+                "In Gems:   " + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(gemTotal),
                 com.soulenchants.items.SoulGemUtil.hasGem(p)
                         ? MessageStyle.GOOD + "✓ license active"
                         : MessageStyle.BAD + "✗ no gem — soul enchants blocked",
                 null));
-        // Mint preset tiles
-        int[] slots = { 10, 11, 12, 13, 14, 15, 16 };
+        // Warning tile — centred between info and presets
+        inv.setItem(13, tile(Material.BARRIER, MessageStyle.BAD, "⚠ One-Way Mint",
+                "Souls withdrawn from the Soul Bank",
+                "cannot be deposited back.",
+                MessageStyle.BAD + "Gems are one-way ammunition",
+                null));
+        // Mint preset tiles — left side of the 7-slot row
+        int[] slots = { 19, 20, 21, 22, 23, 24, 25 };
         for (int i = 0; i < slots.length && i < MINT_PRESETS.length; i++) {
             long amt = MINT_PRESETS[i];
             boolean afford = ledger >= amt;
@@ -284,11 +290,6 @@ public class GodMenuGUI implements Listener {
                             + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(amt - ledger),
                     afford ? "mint" : null));
         }
-        // Deposit held gem tile
-        inv.setItem(22, tile(Material.CHEST, MessageStyle.TIER_LEGENDARY, "Deposit Held Gem",
-                "Redeem the gem in your hand", "back into the ledger.",
-                MessageStyle.MUTED + "Same as right-click in-world",
-                "deposit"));
         inv.setItem(31, backButton());
         p.openInventory(inv);
     }
@@ -372,38 +373,25 @@ public class GodMenuGUI implements Listener {
             }
         }
 
-        // Soul Gem mint menu
+        // Soul Gem mint menu — one-way; deposit path removed
         if (title.equals(TITLE_SOUL_GEM)) {
             int rawSlot = e.getRawSlot();
             for (int i = 0; i < MINT_PRESETS.length; i++) {
-                if (rawSlot == 10 + i) {
+                if (rawSlot == 19 + i) {
                     long amt = MINT_PRESETS[i];
                     if (!com.soulenchants.items.SoulGemUtil.withdraw(plugin, p, amt)) {
-                        Chat.err(p, "Not enough ledger souls.");
+                        Chat.err(p, "Not enough Soul Bank balance.");
                         return;
                     }
                     Chat.good(p, "Minted a " + MessageStyle.TIER_SOUL
                             + com.soulenchants.items.SoulGem.formatNum(amt) + "-soul gem"
-                            + MessageStyle.GOOD + ".");
+                            + MessageStyle.GOOD + ". "
+                            + MessageStyle.BAD + MessageStyle.ITALIC
+                            + "(One-way — cannot be deposited back.)");
                     p.playSound(p.getLocation(), org.bukkit.Sound.ORB_PICKUP, 0.9f, 1.3f);
                     openSoulGemMint(p);
                     return;
                 }
-            }
-            if (rawSlot == 22) {
-                org.bukkit.inventory.ItemStack held = p.getItemInHand();
-                if (!com.soulenchants.items.SoulGem.isGem(held)) {
-                    Chat.err(p, "Hold a Soul Gem in your hand to deposit.");
-                    return;
-                }
-                long amt = com.soulenchants.items.SoulGemUtil.deposit(plugin, p, held);
-                p.setItemInHand(new org.bukkit.inventory.ItemStack(Material.AIR));
-                Chat.good(p, "Deposited " + MessageStyle.VALUE
-                        + com.soulenchants.items.SoulGem.formatNum(amt)
-                        + MessageStyle.GOOD + " souls to the ledger.");
-                p.playSound(p.getLocation(), org.bukkit.Sound.LEVEL_UP, 0.8f, 1.8f);
-                openSoulGemMint(p);
-                return;
             }
             return;
         }

@@ -59,10 +59,6 @@ commands:
     description: Cosmetic masks — client-side helmet overrides (ProtocolLib)
     usage: §8/§emask §7<list|equip §8<§7id§8>|clear>
     aliases: [masks]
-  soulgem:
-    description: Soul Gem — portable soul battery, required to use soul enchants
-    usage: §8/§esoulgem §7<balance|withdraw §8<§7amount§8>|deposit>
-    aliases: [sgem, sg]
 
 permissions:
   soulenchants.admin:

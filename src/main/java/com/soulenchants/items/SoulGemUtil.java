@@ -13,17 +13,16 @@ import org.bukkit.inventory.PlayerInventory;
  *   player proc soul-enchant X with cost C
  *     → SoulGemUtil.chargeSoulCost(plugin, player, C)
  *         1. find largest soul gem in inventory
- *         2. no gem?                        → block + throttled msg + return false
- *         3. gem.amount + ledger &lt; C?       → block + throttled msg + return false
- *         4. debit min(gem.amount, C) from gem (updates stack NBT in place)
- *         5. debit remainder (if any) from ledger via SoulManager.take()
- *         6. return true
+ *         2. no gem?           → block + throttled msg + return false
+ *         3. gem.amount &lt; C?   → block + throttled msg + return false
+ *         4. debit C from gem (updates stack NBT in place)
+ *         5. return true
  * </pre>
  *
- * Rationale: the gem is a license AND a battery. Keeping ledger as fallback
- * means a player who forgot to refill their gem mid-fight still gets one
- * emergency proc, which feels less punishing than "you forgot one item, no
- * procs for you".
+ * The gem IS the source — no ledger fallback. Ledger souls exist to be
+ * moved into gems via /souls withdraw; once minted, only gem souls power
+ * enchants. A player whose gem runs dry mid-fight has to mint a fresh one
+ * between engagements.
  */
 public final class SoulGemUtil {
 
@@ -76,33 +75,25 @@ public final class SoulGemUtil {
         if (gemSlot < 0) {
             sendGatedMessage(plugin, p, "no_gem_msg",
                     MessageStyle.BAD + "No " + MessageStyle.TIER_SOUL + "Soul Gem"
-                            + MessageStyle.BAD + " in inventory — soul enchants require one.");
+                            + MessageStyle.BAD + " in inventory — mint one with "
+                            + MessageStyle.VALUE + "/souls withdraw <amount>");
             return false;
         }
         ItemStack gem = p.getInventory().getItem(gemSlot);
         long gemAmt = SoulGem.amount(gem);
-        long ledger = plugin.getSoulManager().get(p);
-        if (gemAmt + ledger < cost) {
+        if (gemAmt < cost) {
             sendGatedMessage(plugin, p, "no_souls_msg",
-                    MessageStyle.BAD + "Not enough souls — need "
+                    MessageStyle.BAD + "Gem drained — need "
                             + MessageStyle.VALUE + SoulGem.formatNum(cost)
-                            + MessageStyle.BAD + ", have "
-                            + MessageStyle.VALUE + SoulGem.formatNum(gemAmt + ledger)
-                            + MessageStyle.MUTED + " (" + SoulGem.formatNum(gemAmt)
-                            + " gem + " + SoulGem.formatNum(ledger) + " ledger).");
+                            + MessageStyle.BAD + ", gem holds "
+                            + MessageStyle.VALUE + SoulGem.formatNum(gemAmt)
+                            + MessageStyle.BAD + ". Re-mint with "
+                            + MessageStyle.VALUE + "/souls withdraw");
             return false;
         }
-        // Pay gem first
-        long fromGem = Math.min(gemAmt, cost);
-        if (fromGem > 0) {
-            ItemStack updated = SoulGem.withAmount(gem, gemAmt - fromGem);
-            p.getInventory().setItem(gemSlot, updated);
-        }
-        // Fallback to ledger
-        long remainder = cost - fromGem;
-        if (remainder > 0) {
-            plugin.getSoulManager().take(p, remainder);
-        }
+        // Debit from gem — no ledger fallback. Gem is the source of truth.
+        ItemStack updated = SoulGem.withAmount(gem, gemAmt - cost);
+        p.getInventory().setItem(gemSlot, updated);
         return true;
     }
 
@@ -120,13 +111,6 @@ public final class SoulGemUtil {
         p.getInventory().addItem(gem).values().forEach(
                 o -> p.getWorld().dropItemNaturally(p.getLocation(), o));
         return true;
-    }
-
-    /** Deposit a gem back into the ledger, emptying the item. */
-    public static long deposit(SoulEnchants plugin, Player p, ItemStack gem) {
-        long amt = SoulGem.amount(gem);
-        if (amt > 0) plugin.getSoulManager().add(p, amt);
-        return amt;
     }
 
     /** Merge two gems — sum amounts, return a fresh gem with combined total. */

@@ -100,16 +100,22 @@ public final class SoulGem {
     private static List<String> buildLore(long amount) {
         return Arrays.asList(
                 DIVIDER,
-                MessageStyle.MUTED + "" + MessageStyle.ITALIC + "A crystallised fragment of ledger-souls,",
-                MessageStyle.MUTED + "" + MessageStyle.ITALIC + "carried where no bank reaches.",
+                MessageStyle.MUTED + "" + MessageStyle.ITALIC + "A crystallised fragment of soul-ledger,",
+                MessageStyle.MUTED + "" + MessageStyle.ITALIC + "carried into battle as living ammunition.",
                 "",
                 MessageStyle.TIER_SOUL + "▸ " + MessageStyle.MUTED + "Required to use "
                         + MessageStyle.TIER_SOUL + "Soul Enchants",
                 MessageStyle.GOOD    + "▸ " + MessageStyle.MUTED + "Balance: "
                         + MessageStyle.VALUE + formatNum(amount) + MessageStyle.MUTED + " souls",
-                MessageStyle.TIER_LEGENDARY + "▸ " + MessageStyle.MUTED + "Drains before ledger on proc",
+                MessageStyle.TIER_LEGENDARY + "▸ " + MessageStyle.MUTED + "Every soul-enchant proc "
+                        + MessageStyle.VALUE + "drains this gem",
                 "",
-                MessageStyle.TIER_LEGENDARY + "" + MessageStyle.ITALIC + "▶ Right-click to deposit into ledger",
+                MessageStyle.BAD + "" + MessageStyle.BOLD + "⚠ WARNING",
+                MessageStyle.BAD + "Souls withdrawn from the Soul Bank",
+                MessageStyle.BAD + "cannot be deposited back. Once minted,",
+                MessageStyle.BAD + "the gem is one-way ammunition — spend it",
+                MessageStyle.BAD + "or lose it.",
+                "",
                 MessageStyle.TIER_LEGENDARY + "" + MessageStyle.ITALIC + "▶ Drop another gem on top to merge",
                 DIVIDER
         );

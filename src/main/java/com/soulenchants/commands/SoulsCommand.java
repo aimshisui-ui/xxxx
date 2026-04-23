@@ -37,6 +37,37 @@ public class SoulsCommand implements CommandExecutor {
             return true;
         }
 
+        // v1.1 — mint a Soul Gem from ledger souls. One-way: no deposit path.
+        if (sub.equals("withdraw") || sub.equals("mint")) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            Player p = (Player) sender;
+            if (args.length < 2) {
+                Chat.info(p, "Usage: /souls withdraw <amount>  " + MessageStyle.FRAME
+                        + "(mints a Soul Gem; one-way — no deposit)");
+                return true;
+            }
+            long amt = parseAmount(args[1]);
+            if (amt <= 0) { Chat.err(p, "Enter a positive amount."); return true; }
+            long ledger = plugin.getSoulManager().get(p);
+            if (ledger < amt) {
+                Chat.err(p, "Soul Bank short — you have " + MessageStyle.VALUE
+                        + com.soulenchants.items.SoulGem.formatNum(ledger)
+                        + MessageStyle.BAD + ", need " + MessageStyle.VALUE
+                        + com.soulenchants.items.SoulGem.formatNum(amt));
+                return true;
+            }
+            plugin.getSoulManager().take(p, amt);
+            org.bukkit.inventory.ItemStack gem = com.soulenchants.items.SoulGem.create(amt);
+            p.getInventory().addItem(gem).values().forEach(
+                    o -> p.getWorld().dropItemNaturally(p.getLocation(), o));
+            Chat.good(p, "Minted a " + MessageStyle.TIER_SOUL
+                    + com.soulenchants.items.SoulGem.formatNum(amt) + "-soul gem"
+                    + MessageStyle.GOOD + ". " + MessageStyle.BAD + MessageStyle.ITALIC
+                    + "(One-way — cannot be deposited back.)");
+            p.playSound(p.getLocation(), org.bukkit.Sound.ORB_PICKUP, 0.9f, 1.3f);
+            return true;
+        }
+
         if (sub.equals("give") || sub.equals("take") || sub.equals("set")) {
             if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage("§cNo permission."); return true; }
             if (args.length < 3) { sender.sendMessage("§c/souls " + sub + " <player> <amount>"); return true; }
@@ -176,6 +207,8 @@ public class SoulsCommand implements CommandExecutor {
         row(sender, "/souls",                                "view your profile");
         row(sender, "/souls show <player>",                  "view any player's profile");
         row(sender, "/souls tier [player]",                  "show tier + progress to next");
+        row(sender, "/souls withdraw <amount>",              MessageStyle.TIER_SOUL + "mint a Soul Gem "
+                + MessageStyle.FRAME + "(one-way)");
         row(sender, "/souls rules",                          "mob drop table");
         sender.sendMessage(MessageStyle.FRAME + "  " + MessageStyle.BAR + MessageStyle.BAR + " "
                 + MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Admin " + MessageStyle.FRAME + MessageStyle.BAR + MessageStyle.BAR);
@@ -225,5 +258,17 @@ public class SoulsCommand implements CommandExecutor {
 
     private int safeInt(String s, int dflt) {
         try { return Integer.parseInt(s); } catch (Exception e) { return dflt; }
+    }
+
+    /** Supports k/m/b suffixes: "10k" → 10000, "2.5m" → 2_500_000. */
+    private static long parseAmount(String s) {
+        try {
+            s = s.toLowerCase().trim().replace(",", "");
+            double mult = 1;
+            if      (s.endsWith("k")) { mult = 1_000;          s = s.substring(0, s.length() - 1); }
+            else if (s.endsWith("m")) { mult = 1_000_000;      s = s.substring(0, s.length() - 1); }
+            else if (s.endsWith("b")) { mult = 1_000_000_000L; s = s.substring(0, s.length() - 1); }
+            return (long) (Double.parseDouble(s) * mult);
+        } catch (Throwable t) { return -1; }
     }
 }
