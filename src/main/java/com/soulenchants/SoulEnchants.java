@@ -236,6 +236,8 @@ public class SoulEnchants extends JavaPlugin {
 
         // ──────────────── Mythic Weapons (v1.1) ────────────────
         getServer().getPluginManager().registerEvents(new MythicListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new com.soulenchants.listeners.MythicDeathMessages(), this);
         this.mythicAuraTask = new MythicAuraTask(this, mythicConfig);
         mythicAuraTask.start();
         if (getCommand("mythic") != null)
