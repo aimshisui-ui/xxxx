@@ -62,14 +62,36 @@ public abstract class MythicWeapon {
     /** Hook fired whenever an enchant procs on a held mythic — for Crimson Tongue etc. */
     public void onEnchantProc(Player owner, String enchantId, int level) {}
 
-    /** Default 2-line prefix for the item's lore — the mythic badge + tag line. */
+    /**
+     * Lore header that sits BELOW vanilla enchants (which Minecraft renders
+     * automatically under the display name). Using a strikethrough divider
+     * + badge + "Mythic Ability" label keeps the eye flowing:
+     *
+     *   [display name]
+     *   Sharpness V
+     *   Unbreaking III
+     *   …
+     *   ━━━━━━━━━━━━━━━━━    ← divider
+     *   ✦ MYTHIC — Crimson Tongue
+     *   held effect
+     *   (ability lines follow)
+     */
     public final List<String> prefixLore() {
+        String divider = MessageStyle.FRAME + "" + org.bukkit.ChatColor.STRIKETHROUGH
+                + "                                  ";
         return Arrays.asList(
-                MessageStyle.FRAME + MessageStyle.BOLD + "✦ MYTHIC " + MessageStyle.FRAME + "— " +
-                        MessageStyle.TIER_SOUL + MessageStyle.BOLD + displayName,
+                divider,
+                MessageStyle.TIER_SOUL + MessageStyle.BOLD + "✦ MYTHIC " + MessageStyle.FRAME + "— "
+                        + MessageStyle.TIER_SOUL + MessageStyle.BOLD + displayName,
                 MessageStyle.FRAME + MessageStyle.ITALIC + mode.name().toLowerCase() + " effect",
                 ""
         );
+    }
+
+    /** Footer divider closes the mythic block. */
+    public static String closingDivider() {
+        return MessageStyle.FRAME + "" + org.bukkit.ChatColor.STRIKETHROUGH
+                + "                                  ";
     }
 
     /** Helper subclasses use to return a single empty list. */

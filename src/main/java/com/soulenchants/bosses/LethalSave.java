@@ -43,12 +43,8 @@ public class LethalSave {
                 np.sendMessage("§c§l*** PHOENIX SOUL (§7" + p.getName() + ", -" + cost + " souls§c§l) ***");
                 try { np.playSound(p.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 1.0f, 1.25f); } catch (Throwable ignored) {}
             }
-            // Flair: fire particle burst
-            for (int i = 0; i < 16; i++) {
-                double a = (Math.PI * 2 * i) / 16.0;
-                p.getWorld().playEffect(p.getLocation().add(Math.cos(a), 1, Math.sin(a)),
-                        org.bukkit.Effect.MOBSPAWNER_FLAMES, 0);
-            }
+            // v1.1: unified VFX (Nordic-ported flame pillar + dragon growl)
+            com.soulenchants.style.SoulVFX.phoenixSave(p);
             return true;
         }
 

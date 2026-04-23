@@ -66,52 +66,81 @@ public class GodMenuGUI implements Listener {
             if (i < 9 || i >= 36 || i % 9 == 0 || i % 9 == 8) inv.setItem(i, glass);
         }
 
+        // Every tile follows the same lore template:
+        //   line 1 : one-sentence description (grey)
+        //   line 2 : count / stat summary (optional, mixed-chroma)
+        //   blank
+        //   line 3 : click hint — "Click ▸ <verb>" in soul-gold+grey
+        // Keeps eye-flow consistent across the whole panel.
+
         // ── Row 1 — GEAR ─────────────────────────────────────────────
-        inv.setItem(10, button(Material.BOOK,               MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Enchants",
-                "Browse every custom enchant",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "open catalog"));
-        inv.setItem(12, button(Material.NETHER_STAR,        MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Mythic Weapons",
-                MessageStyle.TIER_SOUL + "v1.1 " + MessageStyle.MUTED + "— "
-                        + MessageStyle.VALUE + MythicRegistry.all().size()
-                        + MessageStyle.MUTED + " weapons",
-                "Sharpness pre-loaded, custom effect",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse"));
-        inv.setItem(14, button(Material.PUMPKIN,            MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Cosmetic Masks",
-                MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "— "
-                        + MessageStyle.VALUE + MaskRegistry.all().size()
-                        + MessageStyle.MUTED + " masks",
-                "Client-side helmet skin (ProtocolLib)",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip / clear"));
-        inv.setItem(16, button(Material.DIAMOND_SWORD,      MessageStyle.FRAME + MessageStyle.BOLD + "Boss Loot",
-                "Every named boss drop",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse"));
+        inv.setItem(10, tile(Material.BOOK, MessageStyle.TIER_EPIC, "Enchants",
+                "The paginated catalog of every", "custom enchant in the registry.",
+                MessageStyle.VALUE + com.soulenchants.enchants.EnchantRegistry.all().size()
+                        + MessageStyle.MUTED + " enchants across " + MessageStyle.VALUE + "6 " + MessageStyle.MUTED + "tiers",
+                "open catalog"));
+        inv.setItem(12, tile(Material.NETHER_STAR, MessageStyle.TIER_SOUL, "Mythic Weapons",
+                "Named gear with unique procs —", "aura, chain lightning, ignite…",
+                MessageStyle.VALUE + MythicRegistry.all().size() + MessageStyle.MUTED + " weapons · "
+                        + MessageStyle.VALUE + "Sharpness V+" + MessageStyle.MUTED + " pre-forged",
+                "browse / give"));
+        inv.setItem(14, tile(Material.PUMPKIN, MessageStyle.TIER_EPIC, "Cosmetic Masks",
+                "Client-side helmet skins —", "real helmet stays equipped.",
+                MessageStyle.VALUE + MaskRegistry.all().size() + MessageStyle.MUTED + " masks · "
+                        + MessageStyle.VALUE + "ProtocolLib" + MessageStyle.MUTED + " required",
+                "equip / clear"));
+        inv.setItem(16, tile(Material.DIAMOND_SWORD, MessageStyle.FRAME, "Boss Loot",
+                "Named drops from every boss —", "hammers, mantles, cores, plates.",
+                MessageStyle.VALUE + "12" + MessageStyle.MUTED + " items · "
+                        + MessageStyle.VALUE + "Legendary tier",
+                "browse"));
 
         // ── Row 2 — SUPPORT ──────────────────────────────────────────
-        inv.setItem(19, button(Material.IRON_BLOCK,         MessageStyle.TIER_UNCOMMON + MessageStyle.BOLD + "Reagents",
-                "Crafting materials"));
-        inv.setItem(20, button(Material.GOLDEN_APPLE,       MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Consumables",
-                "Dust, scrolls, permanent buffs"));
-        inv.setItem(21, button(Material.CHEST,              MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Loot Boxes",
-                "Bronze, Silver, Gold, Boss"));
-        inv.setItem(22, button(Material.WORKBENCH,          MessageStyle.TIER_RARE + MessageStyle.BOLD + "Recipes",
-                "Every custom crafting recipe"));
-        inv.setItem(24, button(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Godset " + MessageStyle.FRAME + "(PvE)",
-                "Full boss-killer loadout",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip instantly"));
-        inv.setItem(25, button(Material.DIAMOND_HELMET,     MessageStyle.TIER_SOUL + MessageStyle.BOLD + "God Set " + MessageStyle.FRAME + "(PvP)",
-                "Full PvP-tuned kit",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip instantly"));
+        inv.setItem(19, tile(Material.IRON_BLOCK, MessageStyle.TIER_UNCOMMON, "Reagents",
+                "Crafting materials for every", "custom recipe in the book.",
+                MessageStyle.VALUE + "10" + MessageStyle.MUTED + " reagents · "
+                        + MessageStyle.VALUE + "stackable",
+                "grab a sample"));
+        inv.setItem(20, tile(Material.GOLDEN_APPLE, MessageStyle.TIER_EPIC, "Consumables",
+                "Magic Dust, Black/White Scrolls,", "Heart of the Forge, Veil Sigil.",
+                MessageStyle.VALUE + "4" + MessageStyle.MUTED + " dust tiers · "
+                        + MessageStyle.VALUE + "2" + MessageStyle.MUTED + " scrolls · "
+                        + MessageStyle.VALUE + "2" + MessageStyle.MUTED + " buffs",
+                "browse"));
+        inv.setItem(21, tile(Material.CHEST, MessageStyle.SOUL_GOLD, "Loot Boxes",
+                "Sealed crates — click-to-open", "animation, rarity-weighted rolls.",
+                MessageStyle.VALUE + "4" + MessageStyle.MUTED + " tiers · "
+                        + MessageStyle.VALUE + "Bronze→Boss",
+                "browse"));
+        inv.setItem(22, tile(Material.WORKBENCH, MessageStyle.TIER_RARE, "Recipes",
+                "Every custom 3×3 crafting recipe —", "grid preview, ingredient list.",
+                MessageStyle.VALUE + com.soulenchants.loot.LootRecipes.ENTRIES.size()
+                        + MessageStyle.MUTED + " recipes",
+                "open recipe book"));
+        inv.setItem(24, tile(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD, "Godset (PvE)",
+                "Full boss-killer loadout —", "sword + four armor pieces.",
+                MessageStyle.VALUE + "Tuned" + MessageStyle.MUTED + " for Veilweaver / Colossus",
+                "equip instantly"));
+        inv.setItem(25, tile(Material.DIAMOND_HELMET, MessageStyle.TIER_SOUL, "God Set (PvP)",
+                "Full PvP-tuned kit — enchanted", "sword, armor, and effects.",
+                MessageStyle.VALUE + "Tuned" + MessageStyle.MUTED + " for player combat",
+                "equip instantly"));
 
         // ── Row 3 — SPAWN ────────────────────────────────────────────
-        inv.setItem(29, button(Material.MONSTER_EGG,        MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Spawn a Boss",
-                "Veilweaver · Colossus · Modock",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "open spawn menu"));
-        inv.setItem(31, button(Material.SKULL_ITEM,         MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Custom Mobs",
-                "60+ unique mobs",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "runs /mob list"));
+        inv.setItem(29, tile(Material.MONSTER_EGG, MessageStyle.SOUL_GOLD, "Summon a Boss",
+                "Spawn any registered world boss", "at your current location.",
+                MessageStyle.VALUE + "3" + MessageStyle.MUTED + " bosses · "
+                        + MessageStyle.VALUE + "Veilweaver · Colossus · Modock",
+                "open spawn menu"));
+        inv.setItem(31, tile(Material.SKULL_ITEM, MessageStyle.TIER_EPIC, "Custom Mobs",
+                "Every registered custom mob —", "Hollow King, cave roster, rift adds.",
+                MessageStyle.VALUE + "60+" + MessageStyle.MUTED + " mobs · "
+                        + MessageStyle.VALUE + "/mob list",
+                "close and run /mob list"));
 
         // ── Close ────────────────────────────────────────────────────
-        inv.setItem(40, button(Material.BARRIER,            MessageStyle.BAD + MessageStyle.BOLD + "Close", ""));
+        inv.setItem(40, button(Material.BARRIER, MessageStyle.BAD + MessageStyle.BOLD + "Close",
+                MessageStyle.MUTED + "Dismiss the Soul Vault."));
         p.openInventory(inv);
     }
 
@@ -391,6 +420,34 @@ public class GodMenuGUI implements Listener {
             for (String s : lore) l.add(s.startsWith("§") ? s : MessageStyle.MUTED + s);
             m.setLore(l);
         }
+        it.setItemMeta(m);
+        return it;
+    }
+
+    /**
+     * Tile factory for the hub. Standard layout:
+     *   desc1     — grey description, line 1
+     *   desc2     — grey description, line 2
+     *   stats     — coloured stat summary (value-mute mix)
+     *   (blank)
+     *   ▸ <verb>  — soul-gold click hint
+     *
+     * Any null/empty line is omitted so short-blurb tiles don't carry dead rows.
+     */
+    private ItemStack tile(Material mat, String accent, String title,
+                           String desc1, String desc2, String stats, String clickVerb) {
+        ItemStack it = new ItemStack(mat);
+        ItemMeta m = it.getItemMeta();
+        m.setDisplayName(accent + MessageStyle.BOLD + title);
+        List<String> l = new ArrayList<>();
+        if (desc1 != null && !desc1.isEmpty()) l.add(MessageStyle.MUTED + desc1);
+        if (desc2 != null && !desc2.isEmpty()) l.add(MessageStyle.MUTED + desc2);
+        if (stats != null && !stats.isEmpty()) l.add(stats);
+        if (clickVerb != null && !clickVerb.isEmpty()) {
+            l.add("");
+            l.add(MessageStyle.SOUL_GOLD + "▸ Click " + MessageStyle.MUTED + "to " + clickVerb);
+        }
+        m.setLore(l);
         it.setItemMeta(m);
         return it;
     }

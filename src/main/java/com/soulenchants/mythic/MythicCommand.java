@@ -31,6 +31,7 @@ public final class MythicCommand implements CommandExecutor {
                         m.getMode().name().toLowerCase());
             }
             Chat.rule(sender);
+            Chat.info(sender, "Sub-commands: " + MessageStyle.VALUE + "give / infuse / clear");
             return true;
         }
         if (args[0].equalsIgnoreCase("give") && args.length >= 2) {
@@ -45,7 +46,51 @@ public final class MythicCommand implements CommandExecutor {
                     MessageStyle.VALUE + p.getName());
             return true;
         }
-        Chat.info(sender, "Usage: /mythic list  |  /mythic give <id> [player]");
+        // v1.1 — ability-slot binding. Infuses the HELD mythic with a second
+        // effect, so one weapon procs core AND ability on every attack.
+        if (args[0].equalsIgnoreCase("infuse") && args.length >= 2) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            Player p = (Player) sender;
+            ItemStack held = p.getItemInHand();
+            String coreId = MythicRegistry.idOf(held);
+            if (coreId == null) { Chat.err(p, "Hold a mythic weapon first."); return true; }
+            String abilityId = args[1].toLowerCase();
+            MythicWeapon ability = MythicRegistry.get(abilityId);
+            if (ability == null) { Chat.err(p, "Unknown mythic id: " + abilityId); return true; }
+            if (abilityId.equals(coreId)) {
+                Chat.err(p, "Ability must differ from the core ("
+                        + MessageStyle.TIER_SOUL + coreId + MessageStyle.BAD + ").");
+                return true;
+            }
+            ItemStack bound = MythicRegistry.bindAbility(held, abilityId);
+            bound = MythicFactory.reRender(bound);
+            p.setItemInHand(bound);
+            Chat.good(p, "Infused " + MessageStyle.TIER_SOUL + MessageStyle.BOLD + "❖ "
+                    + MythicRegistry.get(coreId).getDisplayName()
+                    + MessageStyle.GOOD + " with ability " + MessageStyle.TIER_EPIC
+                    + MessageStyle.BOLD + "✦ " + ability.getDisplayName());
+            p.getWorld().playSound(p.getLocation(), org.bukkit.Sound.ENDERMAN_TELEPORT, 0.8f, 1.5f);
+            return true;
+        }
+        if (args[0].equalsIgnoreCase("clear")) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            Player p = (Player) sender;
+            ItemStack held = p.getItemInHand();
+            if (MythicRegistry.idOf(held) == null) {
+                Chat.err(p, "Hold a mythic weapon first.");
+                return true;
+            }
+            if (MythicRegistry.abilityIdOf(held) == null) {
+                Chat.info(p, "No ability was bound.");
+                return true;
+            }
+            ItemStack cleared = MythicRegistry.clearAbility(held);
+            cleared = MythicFactory.reRender(cleared);
+            p.setItemInHand(cleared);
+            Chat.good(p, "Cleared bound ability.");
+            return true;
+        }
+        Chat.info(sender, "Usage: /mythic list  |  give <id> [player]  |  infuse <ability-id>  |  clear");
         return true;
     }
 }

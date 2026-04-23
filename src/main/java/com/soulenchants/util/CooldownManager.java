@@ -1,5 +1,9 @@
 package com.soulenchants.util;
 
+import com.soulenchants.lunar.LunarBridge;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -19,11 +23,33 @@ public class CooldownManager {
         PRETTY_NAMES.put("phoenix", "Phoenix");
         PRETTY_NAMES.put("reflect", "Reflect");
         PRETTY_NAMES.put("cripple", "Cripple");
+        // v1.1 mythic abilities
+        PRETTY_NAMES.put("stormbringer", "Stormbringer");
+        PRETTY_NAMES.put("dawnbringer",  "Dawnbringer");
     }
+
+    /**
+     * Cooldown types we push to Lunar Client's cooldown overlay. Limited to
+     * "big moment" abilities — spammy internal CDs (cripple msg, AoE guards)
+     * don't need a client-side ring. If Lunar API isn't present on the
+     * player, the push is a silent no-op.
+     */
+    private static final java.util.Set<String> LUNAR_PUSHED = new java.util.HashSet<>(java.util.Arrays.asList(
+            "stormcaller", "guardians", "soulshield", "phoenix", "reflect",
+            "stormbringer", "dawnbringer", "natureswrath", "aegis", "rush", "overshield"
+    ));
 
     public void set(String type, UUID player, long durationMs) {
         cds.computeIfAbsent(type.toLowerCase(), k -> new HashMap<>())
                 .put(player, System.currentTimeMillis() + durationMs);
+        // Lunar Client overlay — fires client-side cooldown ring above hotbar.
+        String key = type.toLowerCase();
+        if (LUNAR_PUSHED.contains(key)) {
+            Player p = Bukkit.getPlayer(player);
+            if (p != null && p.isOnline()) {
+                LunarBridge.sendCooldown(p, key, durationMs);
+            }
+        }
     }
 
     public long remaining(String type, UUID player) {

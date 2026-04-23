@@ -29,19 +29,28 @@ public final class MythicAuraTask extends BukkitRunnable {
     public void run() {
         for (Player p : plugin.getServer().getOnlinePlayers()) {
             PlayerInventory inv = p.getInventory();
-            // Main hand
-            MythicWeapon held = MythicRegistry.of(inv.getItemInHand());
-            if (held != null) held.onAuraTick(p);
-            // Hotbar / offhand (AURA + HOTBAR modes)
+            // Main hand — core + bound ability both tick
+            MythicWeapon heldCore    = MythicRegistry.of(inv.getItemInHand());
+            MythicWeapon heldAbility = MythicRegistry.abilityOf(inv.getItemInHand());
+            if (heldCore != null)    heldCore.onAuraTick(p);
+            if (heldAbility != null) heldAbility.onAuraTick(p);
+            // Hotbar / offhand (AURA + HOTBAR modes on core or ability)
             if (!cfg.auraHotbarCountsAsHeld) continue;
             int mainSlot = inv.getHeldItemSlot();
             for (int i = 0; i <= 8; i++) {
-                if (i == mainSlot) continue; // already ticked above
-                MythicWeapon m = MythicRegistry.of(inv.getItem(i));
-                if (m == null) continue;
-                if (m.getMode() == MythicWeapon.ProximityMode.AURA
-                        || m.getMode() == MythicWeapon.ProximityMode.HOTBAR) {
-                    m.onAuraTick(p);
+                if (i == mainSlot) continue;
+                org.bukkit.inventory.ItemStack slot = inv.getItem(i);
+                MythicWeapon core    = MythicRegistry.of(slot);
+                MythicWeapon ability = MythicRegistry.abilityOf(slot);
+                if (core != null
+                        && (core.getMode() == MythicWeapon.ProximityMode.AURA
+                            || core.getMode() == MythicWeapon.ProximityMode.HOTBAR)) {
+                    core.onAuraTick(p);
+                }
+                if (ability != null
+                        && (ability.getMode() == MythicWeapon.ProximityMode.AURA
+                            || ability.getMode() == MythicWeapon.ProximityMode.HOTBAR)) {
+                    ability.onAuraTick(p);
                 }
             }
         }

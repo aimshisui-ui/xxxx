@@ -39,10 +39,12 @@ public final class MythicFactory {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(MessageStyle.TIER_SOUL + MessageStyle.BOLD + m.getDisplayName());
-            List<String> lore = new ArrayList<>();
-            lore.addAll(m.prefixLore());
-            lore.addAll(m.getLoreLines());
-            meta.setLore(lore);
+            // Minecraft renders vanilla enchants right below the display name and
+            // above the lore. Custom SoulEnchant books prepend their own
+            // "✦ Enchants ✦" block at lore[0] via ItemUtil.renderLore. The mythic
+            // block below uses strikethrough dividers so it stays visually
+            // separated from whatever enchants get stacked on top.
+            meta.setLore(renderMythicLore(m, /* ability */ null));
             item.setItemMeta(meta);
         }
 
@@ -51,6 +53,67 @@ public final class MythicFactory {
         NBTItem nbt = new NBTItem(item);
         nbt.setString(MythicRegistry.NBT_KEY, mythicId);
         return nbt.getItem();
+    }
+
+    /**
+     * Re-render the mythic lore block from the item's current core + ability
+     * NBT. Called after binding or clearing an ability so the tooltip
+     * updates without rebuilding the entire stack. Preserves whatever
+     * custom SoulEnchant lore already sits above the mythic divider.
+     */
+    public static ItemStack reRender(ItemStack item) {
+        if (item == null) return null;
+        MythicWeapon core = MythicRegistry.of(item);
+        if (core == null) return item;
+        MythicWeapon ability = MythicRegistry.abilityOf(item);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return item;
+        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        // Strip any prior mythic block (starts at our opening divider).
+        int openIdx = findMythicBlockStart(lore);
+        if (openIdx >= 0) {
+            // Delete from openIdx to (and including) the closing divider.
+            while (lore.size() > openIdx) {
+                String line = lore.remove(openIdx);
+                if (line.equals(MythicWeapon.closingDivider())) break;
+            }
+        }
+        lore.addAll(renderMythicLore(core, ability));
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    /** Locate the opening divider of our mythic block in a lore list. */
+    private static int findMythicBlockStart(List<String> lore) {
+        String open = MessageStyle.FRAME + "" + org.bukkit.ChatColor.STRIKETHROUGH
+                + "                                  ";
+        // Scan from the bottom — the mythic block is always the last block
+        // (SoulEnchant lore is prepended at index 0).
+        for (int i = lore.size() - 1; i >= 0; i--) {
+            if (lore.get(i).equals(open)) {
+                // Walk upward past any empty lines — we want the actual block open
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Build the full mythic lore block: divider, core, ability (optional), divider. */
+    private static List<String> renderMythicLore(MythicWeapon core, MythicWeapon ability) {
+        List<String> out = new ArrayList<>();
+        out.addAll(core.prefixLore());
+        out.addAll(core.getLoreLines());
+        if (ability != null) {
+            out.add("");
+            out.add(MessageStyle.FRAME + MessageStyle.BOLD + "✦ ABILITY " + MessageStyle.FRAME + "— "
+                    + MessageStyle.TIER_EPIC + MessageStyle.BOLD + ability.getDisplayName());
+            out.add(MessageStyle.FRAME + MessageStyle.ITALIC + ability.getMode().name().toLowerCase() + " effect");
+            out.add("");
+            out.addAll(ability.getLoreLines());
+        }
+        out.add(MythicWeapon.closingDivider());
+        return out;
     }
 
     /** Paint vanilla enchants onto a raw stack based on its material class. */

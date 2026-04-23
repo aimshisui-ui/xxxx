@@ -111,7 +111,8 @@ public class InventoryClickListener implements Listener {
                                 + com.soulenchants.style.MessageStyle.GOOD
                                 + com.soulenchants.style.MessageStyle.BOLD + "✦ APPLIED "
                                 + com.soulenchants.style.MessageStyle.RESET + enchant.formatLore(targetLevel));
-                        p.playSound(p.getLocation(), org.bukkit.Sound.LEVEL_UP, 0.9f, 1.8f);
+                        // Nordic-ported particle burst + celebratory sound
+                        com.soulenchants.style.SoulVFX.bookApplySuccess(p);
                         if (plugin.getQuestManager() != null) {
                             plugin.getQuestManager().onEvent(p,
                                     com.soulenchants.quests.QuestEvent.bookApplied(updated));
@@ -135,12 +136,14 @@ public class InventoryClickListener implements Listener {
                                     + com.soulenchants.style.MessageStyle.BOLD + "✗ DESTROYED "
                                     + com.soulenchants.style.MessageStyle.RESET
                                     + com.soulenchants.style.MessageStyle.BAD + "Enchant failed catastrophically.");
-                            p.playSound(p.getLocation(), org.bukkit.Sound.ANVIL_BREAK, 1.0f, 0.6f);
+                            // Loud, unmistakable — gear-lost should feel felt.
+                            com.soulenchants.style.SoulVFX.bookApplyDestroy(p);
                         }
                     } else {
                         p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
                                 + com.soulenchants.style.MessageStyle.MUTED
                                 + "Enchant failed, but your item is intact.");
+                        com.soulenchants.style.SoulVFX.bookApplyFailSoft(p);
                     }
                     p.updateInventory();
                 }

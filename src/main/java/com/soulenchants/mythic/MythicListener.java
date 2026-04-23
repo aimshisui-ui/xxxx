@@ -22,17 +22,19 @@ public final class MythicListener implements Listener {
     public void onAttack(EntityDamageByEntityEvent e) {
         Player attacker = resolveAttacker(e);
         if (attacker == null) return;
-        MythicWeapon m = MythicRegistry.of(attacker.getItemInHand());
-        if (m != null) m.onAttack(attacker, e);
-        // Soulbinder fires on projectile too — its onAttack checks cause internally.
-        if (attacker.getItemInHand() == null && e.getCause() ==
-                org.bukkit.event.entity.EntityDamageEvent.DamageCause.PROJECTILE) {
-            // Ranged without a mythic — nothing to do.
-        }
+        org.bukkit.inventory.ItemStack held = attacker.getItemInHand();
+        // Dual dispatch: core first, then bound ability (if any and distinct).
+        MythicWeapon core    = MythicRegistry.of(held);
+        MythicWeapon ability = MythicRegistry.abilityOf(held);
+        if (core != null)    core.onAttack(attacker, e);
+        if (ability != null) ability.onAttack(attacker, e);
         if (e.getEntity() instanceof Player) {
             Player victim = (Player) e.getEntity();
-            MythicWeapon held = MythicRegistry.of(victim.getItemInHand());
-            if (held != null) held.onDefend(victim, e);
+            org.bukkit.inventory.ItemStack vHeld = victim.getItemInHand();
+            MythicWeapon vCore    = MythicRegistry.of(vHeld);
+            MythicWeapon vAbility = MythicRegistry.abilityOf(vHeld);
+            if (vCore != null)    vCore.onDefend(victim, e);
+            if (vAbility != null) vAbility.onDefend(victim, e);
         }
     }
 
@@ -41,8 +43,11 @@ public final class MythicListener implements Listener {
         LivingEntity dead = e.getEntity();
         Player killer = dead.getKiller();
         if (killer == null) return;
-        MythicWeapon m = MythicRegistry.of(killer.getItemInHand());
-        if (m != null) m.onKill(killer, e);
+        org.bukkit.inventory.ItemStack held = killer.getItemInHand();
+        MythicWeapon core    = MythicRegistry.of(held);
+        MythicWeapon ability = MythicRegistry.abilityOf(held);
+        if (core != null)    core.onKill(killer, e);
+        if (ability != null) ability.onKill(killer, e);
     }
 
     /** Resolve the damaging player — direct hit or via projectile. */
