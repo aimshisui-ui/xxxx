@@ -219,18 +219,21 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Cripple — proc + short CD per attacker
+        // Cripple — proc + short CD per attacker.
+        // Gated by Dawnbringer aura (blocks all non-soul debuffs).
         int cr = ItemUtil.getLevel(hand, "cripple");
         if (cr > 0 && rng.nextDouble() < cfg.crippleProc * cr
-                && plugin.getCooldownManager().isReady("cripple", attacker.getUniqueId())) {
+                && plugin.getCooldownManager().isReady("cripple", attacker.getUniqueId())
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.SLOW)) {
             plugin.getCooldownManager().set("cripple", attacker.getUniqueId(), cfg.crippleCdMs);
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     cfg.crippleSlowTicks, cr - 1));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, cfg.crippleSlowTicks, cr - 1));
         }
 
-        // Venom — proc-gated Poison
+        // Venom — Poison proc. Clarity + Dawnbringer both block.
         int ven = ItemUtil.getLevel(hand, "venom");
-        if (ven > 0 && rng.nextDouble() < cfg.venomProc * ven)
+        if (ven > 0 && rng.nextDouble() < cfg.venomProc * ven
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.POISON))
             victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 40 * ven, 0));
 
         // Wither Bane → additive
@@ -280,18 +283,20 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Frost Aspect — proc Slow + Mining Fatigue
+        // Frost Aspect — proc Slow + Mining Fatigue. Gated by Dawnbringer.
         int frost = ItemUtil.getLevel(hand, "frostaspect");
-        if (frost > 0 && rng.nextDouble() < cfg.frostProc * frost) {
+        if (frost > 0 && rng.nextDouble() < cfg.frostProc * frost
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.SLOW)) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40 * frost, frost - 1));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 40 * frost, frost - 1));
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.PACKED_ICE.getId());
         }
 
-        // Cursed Edge — proc Wither II
+        // Cursed Edge — proc Wither II. Gated by Dawnbringer.
         int curse = ItemUtil.getLevel(hand, "cursededge");
-        if (curse > 0 && rng.nextDouble() < cfg.cursedEdgeProc * curse)
+        if (curse > 0 && rng.nextDouble() < cfg.cursedEdgeProc * curse
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.WITHER))
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
 
         // Soul Burn — flat add stays additive AFTER multiplier so the cap doesn't eat it
@@ -321,9 +326,10 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Bonebreaker — proc Weakness
+        // Bonebreaker — proc Weakness. Gated by Dawnbringer.
         int bb = ItemUtil.getLevel(hand, "bonebreaker");
-        if (bb > 0 && rng.nextDouble() < cfg.bonebreakerProc * bb)
+        if (bb > 0 && rng.nextDouble() < cfg.bonebreakerProc * bb
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.WEAKNESS))
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 60 * bb, 0));
 
         // Critical Strike — proc-gated additive bonus
@@ -384,14 +390,17 @@ public class CombatListener implements Listener {
         // Skullcrush — proc Nausea + Weakness II. Previously player-only; now
         // fires against bosses + minions too (victim is already gated by
         // isValidProcTarget at the top of this method).
+        // Skullcrush — proc Nausea + Weakness II. Gated by Dawnbringer.
         int skull = ItemUtil.getLevel(hand, "skullcrush");
-        if (skull > 0 && rng.nextDouble() < cfg.skullcrushProc * skull) {
+        if (skull > 0 && rng.nextDouble() < cfg.skullcrushProc * skull
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.WEAKNESS)) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 60 * skull, 0));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS,  60 * skull, 1));
         }
-        // Hamstring — root victim (Slow IV) for 2s
+        // Hamstring — root victim (Slow IV) for 2s. Gated by Dawnbringer.
         int ham = ItemUtil.getLevel(hand, "hamstring");
-        if (ham > 0 && rng.nextDouble() < cfg.hamstringProc * ham) {
+        if (ham > 0 && rng.nextDouble() < cfg.hamstringProc * ham
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.SLOW)) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 3));
         }
         // Blood Fury — heal scaled to damage dealt while below HP threshold
@@ -409,9 +418,10 @@ public class CombatListener implements Listener {
             double trueDmg = e.getDamage() * cfg.shieldbreakerTrueDmgPct;
             aoeDamage(victim, trueDmg, null);
         }
-        // Frostshatter — Slow III + Mining Fatigue III for 4s
+        // Frostshatter — Slow III + Mining Fatigue III for 4s. Gated by Dawnbringer.
         int fs = ItemUtil.getLevel(hand, "frostshatter");
-        if (fs > 0 && rng.nextDouble() < cfg.frostshatterProc * fs) {
+        if (fs > 0 && rng.nextDouble() < cfg.frostshatterProc * fs
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.SLOW)) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 2));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 2));
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
@@ -430,9 +440,10 @@ public class CombatListener implements Listener {
             }
             if (alone) offBonus += cfg.wraithcleaveBonus * wc;
         }
-        // Rending Blow — Wither III for 5s
+        // Rending Blow — Wither III for 5s. Gated by Dawnbringer.
         int rb = ItemUtil.getLevel(hand, "rendingblow");
-        if (rb > 0 && rng.nextDouble() < cfg.rendingBlowProc * rb) {
+        if (rb > 0 && rng.nextDouble() < cfg.rendingBlowProc * rb
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.WITHER)) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 100, 2));
         }
         // Executioner's Mark → additive when victim has any debuff
@@ -627,8 +638,10 @@ public class CombatListener implements Listener {
                 }.runTask(plugin);
             }
         }
-        // Molten — proc ignite attacker
-        if (molten > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < cfg.moltenProc * molten)
+        // Molten — proc ignite attacker. Gated by Dawnbringer aura on the attacker.
+        if (molten > 0 && e.getDamager() instanceof LivingEntity
+                && rng.nextDouble() < cfg.moltenProc * molten
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul((LivingEntity) e.getDamager(), null))
             ((LivingEntity) e.getDamager()).setFireTicks(cfg.moltenFireTicks * molten);
         if (lastStand > 0 && victim.getHealth() <= cfg.lastStandHpThreshold)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 30, Math.max(0, lastStand - 2)));

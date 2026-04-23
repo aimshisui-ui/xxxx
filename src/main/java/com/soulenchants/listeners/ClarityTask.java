@@ -14,15 +14,19 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
 /**
- * Clarity III safety net.
+ * Clarity safety net.
  *
- * The main BerserkTickTask runs every 20 ticks — leaves a full second of
- * visible Poison/Blindness before the strip. This task fires every 2 ticks
- * (0.1s) so the effect never visibly applies on a Clarity III wearer. We
- * also cancel Poison/Blindness splashes from PotionSplashEvent before they
- * even hit, which is cleaner for the common case (witch potions, splash pots).
+ * v1.1 spec change: Clarity at ANY level grants hard immunity to POISON
+ * and BLINDNESS. No more "chance to strip" slow-tick model — the effect
+ * simply never applies. Three layers of defense:
  *
- * Clarity I/II still use the original chance-based slow-tick strip.
+ *   1. DebuffImmunity.clarityBlocks() — enchant procs check this before
+ *      applying their debuff (see CombatListener / BossDamage / etc).
+ *   2. PotionSplashEvent hook — witch potions, splash pots, etc. get
+ *      their intensity set to 0 on Clarity wearers before they land.
+ *   3. Fast 2-tick scrubber — any effect that slipped past (1) and (2),
+ *      from third-party plugins or NMS, gets stripped within 0.1s.
+ *      Belt-and-suspenders.
  */
 public class ClarityTask implements Listener {
 
@@ -35,7 +39,7 @@ public class ClarityTask implements Listener {
         task = new BukkitRunnable() {
             @Override public void run() {
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (!hasClarity3(p)) continue;
+                    if (!hasClarity(p)) continue;
                     if (p.hasPotionEffect(PotionEffectType.POISON))    p.removePotionEffect(PotionEffectType.POISON);
                     if (p.hasPotionEffect(PotionEffectType.BLINDNESS)) p.removePotionEffect(PotionEffectType.BLINDNESS);
                 }
@@ -46,7 +50,7 @@ public class ClarityTask implements Listener {
 
     public void stop() { if (task != null) try { task.cancel(); } catch (Exception ignored) {} }
 
-    /** Cancel POISON/BLINDNESS splashes BEFORE they apply to Clarity III wearers. */
+    /** Cancel POISON/BLINDNESS splashes BEFORE they apply to any Clarity wearer. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onSplash(PotionSplashEvent e) {
         boolean carriesPoisonOrBlindness = false;
@@ -60,16 +64,15 @@ public class ClarityTask implements Listener {
         if (!carriesPoisonOrBlindness) return;
         for (LivingEntity victim : e.getAffectedEntities()) {
             if (!(victim instanceof Player)) continue;
-            if (hasClarity3((Player) victim)) {
-                // Set intensity to 0 — the effect simply doesn't apply to this player
+            if (hasClarity((Player) victim)) {
                 e.setIntensity(victim, 0.0);
             }
         }
     }
 
-    private boolean hasClarity3(Player p) {
+    private boolean hasClarity(Player p) {
         ItemStack helmet = p.getInventory().getHelmet();
         if (helmet == null) return false;
-        return ItemUtil.getLevel(helmet, "clarity") >= 3;
+        return ItemUtil.getLevel(helmet, "clarity") >= 1;
     }
 }
