@@ -1201,45 +1201,70 @@ public class CombatListener implements Listener {
     private void triggerNaturesWrath(Player caster, int level) {
         int radius = (int) (level * cfg.naturesWrathRadiusPerLevel);
         int durTicks = (cfg.naturesWrathDurationSecondsBase + level) * 20;
-        java.util.List<Player> rooted = new java.util.ArrayList<>();
+        java.util.List<Player> rootedPlayers = new java.util.ArrayList<>();
+        java.util.List<LivingEntity> rootedMobs = new java.util.ArrayList<>();
         for (Entity near : caster.getNearbyEntities(radius, radius, radius)) {
-            if (!(near instanceof Player)) continue;
-            Player victim = (Player) near;
-            if (victim == caster) continue;
-            try { victim.setWalkSpeed(0.0f); } catch (Throwable ignored) {}
-            victim.removePotionEffect(PotionEffectType.JUMP);
-            victim.removePotionEffect(PotionEffectType.SLOW);
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.JUMP,     durTicks, 129, false, false));
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     durTicks, 129, false, false));
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, durTicks, 3,   false, false));
-            naturesWrathRooted.add(victim.getUniqueId());
-            rooted.add(victim);
-            victim.playSound(victim.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 2.0f, 2.0f);
-            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0), Effect.LARGE_SMOKE, 0);
+            if (!(near instanceof LivingEntity)) continue;
+            LivingEntity le = (LivingEntity) near;
+            if (le == caster || le.isDead()) continue;
+            if (le instanceof Player) {
+                Player victim = (Player) le;
+                try { victim.setWalkSpeed(0.0f); } catch (Throwable ignored) {}
+                victim.removePotionEffect(PotionEffectType.JUMP);
+                victim.removePotionEffect(PotionEffectType.SLOW);
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.JUMP,     durTicks, 129, false, false));
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     durTicks, 129, false, false));
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, durTicks, 3,   false, false));
+                naturesWrathRooted.add(victim.getUniqueId());
+                rootedPlayers.add(victim);
+                victim.playSound(victim.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 2.0f, 2.0f);
+                victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0), Effect.LARGE_SMOKE, 0);
+                continue;
+            }
+            // Custom mobs (bosses + minions) — Slow 129 achieves the functional
+            // root since they don't have Player walkSpeed. Skip vanilla mobs so
+            // we don't nuke random passive fauna; NW is a combat enchant.
+            if (!isValidProcTarget(le)) continue;
+            if (com.soulenchants.mobs.CustomMob.idOf(le) == null) continue;
+            le.removePotionEffect(PotionEffectType.SLOW);
+            le.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     durTicks, 129, false, false));
+            le.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, durTicks, 3,   false, false));
+            rootedMobs.add(le);
+            le.getWorld().playEffect(le.getLocation().add(0, 1, 0), Effect.LARGE_SMOKE, 0);
         }
-        // Lunar toast for the caster + a single chat line for non-Lunar players.
+        int totalRooted = rootedPlayers.size() + rootedMobs.size();
         com.soulenchants.lunar.LunarFx.notify(caster,
                 "§a§l✦ NATURE'S WRATH",
-                "§7" + rooted.size() + " rooted · §c−75 Souls§7 · §f" + plugin.getSoulManager().get(caster) + "§7 left",
+                "§7" + totalRooted + " rooted · §c−75 Souls§7 · §f" + plugin.getSoulManager().get(caster) + "§7 left",
                 4500L);
         caster.sendMessage("§a§l** NATURE'S WRATH **");
         caster.sendMessage("§a§l- 75 Soul Gems §7§n" + plugin.getSoulManager().get(caster) + "§7 souls left.");
-        if (rooted.isEmpty()) return;
-        // 5-tick lightning storm: every 1s for 5s, strike each rooted player + dmg `level`.
+        if (totalRooted == 0) return;
+        // 5-tick lightning storm: every 1s for 5s, strike each rooted target
+        // for `level` damage. Players keep their NW-rooted flag; custom mobs
+        // just take damage and keep their Slow-129 until it decays naturally.
         new BukkitRunnable() {
             int t = 0;
             @Override public void run() {
                 if (t++ >= 5) {
-                    for (Player v : rooted) restoreFromNaturesWrath(v);
+                    for (Player v : rootedPlayers) restoreFromNaturesWrath(v);
                     cancel();
                     return;
                 }
-                for (Player v : rooted) {
+                for (Player v : rootedPlayers) {
                     if (v == null || v.isDead() || !v.isOnline()) continue;
                     v.getWorld().strikeLightningEffect(v.getLocation());
                     v.damage(level);
                     try { v.playSound(v.getLocation(), org.bukkit.Sound.GHAST_SCREAM2, 2.0f, 2.0f); } catch (Throwable ignored) {}
                     v.sendMessage("§2§l** NATURES **");
+                }
+                for (LivingEntity m : rootedMobs) {
+                    if (m == null || m.isDead()) continue;
+                    m.getWorld().strikeLightningEffect(m.getLocation());
+                    // Route through aoeDamage so our damage event flows cleanly
+                    // through AOE_GUARD (won't re-enter handleSwordEnchants).
+                    // Caster is the source → boss damage-map credits the caster.
+                    aoeDamage(m, level, caster);
                 }
             }
         }.runTaskTimer(plugin, 20L, 20L);
