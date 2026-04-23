@@ -16,10 +16,10 @@ import org.bukkit.potion.PotionEffectType;
  *
  * Two layers of immunity:
  *
- *   1. CLARITY (helmet) — specifically blocks POISON and BLINDNESS. At any
- *      level; legacy Clarity I/II used a chance-based strip, but by the user's
- *      spec those effects "should never apply" — we treat all Clarity levels
- *      as hard-immune to the two effects.
+ *   1. CLARITY III (helmet) — specifically blocks POISON and BLINDNESS at
+ *      proc time. Clarity I/II are NOT hard-immune here; they still rely
+ *      on the chance-based slow-tick strip in BerserkTickTask (intentional
+ *      — lower tiers shouldn't feel identical to the top tier).
  *
  *   2. DAWNBRINGER (mythic, aura mode) — blocks every non-soul debuff proc
  *      when the mythic is in the wielder's main hand OR hotbar. Soul enchants
@@ -44,14 +44,19 @@ public final class DebuffImmunity {
 
     // ──────────────────── Clarity ────────────────────
 
-    /** Is this player's helmet warded against a given potion type? */
+    /**
+     * Is this player's helmet warded against a given potion type?
+     * Only Clarity III grants proc-time immunity — I/II fall back to the
+     * chance-based slow-tick strip (see BerserkTickTask), so they still
+     * visibly see the debuff tick for a moment before it gets cleared.
+     */
     public static boolean clarityBlocks(LivingEntity victim, PotionEffectType type) {
         if (!(victim instanceof Player)) return false;
         if (type != PotionEffectType.POISON && type != PotionEffectType.BLINDNESS) return false;
         Player p = (Player) victim;
         ItemStack helmet = p.getInventory().getHelmet();
         if (helmet == null) return false;
-        return ItemUtil.getLevel(helmet, "clarity") >= 1;
+        return ItemUtil.getLevel(helmet, "clarity") >= 3;
     }
 
     // ──────────────────── Dawnbringer aura ────────────────────
