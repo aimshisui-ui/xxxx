@@ -107,6 +107,12 @@ public class EnchantRegistry {
         register(new CustomEnchant("reapingslash", "Reaping Slash", EnchantTier.LEGENDARY, EnchantSlot.AXE,   3,
                 "15%/lvl chance · apply 40% Anti-Heal for 6s (reduces target's healing)"));
 
+        // Rage (ported from Nordic) — consecutive hits on the same player stack
+        // bonus damage: +(level × stack × 2) per hit, cap 10 stacks, 30s decay,
+        // resets if victim changes or is hit by someone else.
+        register(new CustomEnchant("rage", "Rage", EnchantTier.LEGENDARY, EnchantSlot.WEAPON, 6,
+                "Consecutive hits on the same target stack bonus damage (PvP only)"));
+
         // ── ARMOR (7 new — PvP focused) ───────────────────────────────────
         register(new CustomEnchant("counter", "Counter", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
                 "Chance to disarm attacker (forces them to drop their weapon)"));

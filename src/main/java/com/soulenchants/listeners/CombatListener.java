@@ -92,6 +92,32 @@ public class CombatListener implements Listener {
     private final Map<UUID, Long>    owLast   = new HashMap<>();
     /** Soul Warden — per-victim cooldown on the Regen proc. */
     private final Map<UUID, Long>    soulWardenCd = new HashMap<>();
+    /** Rage (ported from Nordic) — per-attacker streak state: victim UUID, stack
+     *  count, last-hit timestamp. 30 s decay. Resets when the attacker switches
+     *  victims or when a victim is hit by a different player. PvP-only —
+     *  onHitMob is a no-op for this enchant. */
+    private final Map<UUID, UUID>    rageVictim = new HashMap<>();
+    private final Map<UUID, Integer> rageStacks = new HashMap<>();
+    private final Map<UUID, Long>    rageLast   = new HashMap<>();
+    private static final int  RAGE_MAX_STACKS    = 10;
+    private static final long RAGE_DECAY_MS      = 30_000L;
+
+    /** Action-bar indicator for the attacker's current Rage stack count.
+     *  Bar ramps GREEN → YELLOW → GOLD → RED as stacks climb to 10. */
+    private static void sendRageActionbar(Player attacker, int stacks) {
+        int cap = RAGE_MAX_STACKS;
+        String color = stacks <= 3 ? "§a"
+                : stacks <= 5 ? "§e"
+                : stacks <= 7 ? "§6"
+                : "§c";
+        StringBuilder bar = new StringBuilder();
+        bar.append(color);
+        for (int i = 0; i < stacks; i++) bar.append("▉");
+        bar.append("§8");
+        for (int i = stacks; i < cap; i++) bar.append("▉");
+        String text = "§c§l⚔ RAGE §7" + bar + " " + color + stacks + "§7/" + cap;
+        com.soulenchants.util.ActionBar.send(attacker, text);
+    }
     /** Anti-Healing debuff — keyed by (victim, source). Each source (bleed,
      *  severance, reapingslash, …) tracks its own {pct, until} independently;
      *  sources stack MULTIPLICATIVELY with diminishing returns, so 30% + 20%
@@ -581,6 +607,57 @@ public class CombatListener implements Listener {
             applyAntiHeal(victim, "reapingslash", 0.40, 6_000L);
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+        }
+
+        // Rage (Nordic port) — consecutive hits on the same target stack
+        // +(level × stack × 2) bonus damage per hit. 10 stacks max, 30s decay.
+        // Works in BOTH PvP and PvE. Stacks reset if we switch victims or if
+        // our victim is hit by someone else (scan below).
+        int rage = ItemUtil.getLevel(hand, "rage");
+        if (rage > 0) {
+            UUID atkId = attacker.getUniqueId();
+            UUID vid   = victim.getUniqueId();
+            long now   = System.currentTimeMillis();
+            // Reset any OTHER attacker's streak against this victim — Nordic's
+            // "victim was hit by someone else → previous attacker's rage resets"
+            // rule. Small data; O(n) scan is fine.
+            for (java.util.Iterator<Map.Entry<UUID, UUID>> it = rageVictim.entrySet().iterator();
+                 it.hasNext();) {
+                Map.Entry<UUID, UUID> en = it.next();
+                if (!en.getKey().equals(atkId) && en.getValue().equals(vid)) {
+                    rageStacks.remove(en.getKey());
+                    rageLast.remove(en.getKey());
+                    it.remove();
+                }
+            }
+            UUID prev  = rageVictim.get(atkId);
+            Long last  = rageLast.get(atkId);
+            int stacks;
+            if (prev == null || !prev.equals(vid) || last == null || now - last > RAGE_DECAY_MS) {
+                // First hit against this victim — initialize streak at 1, no bonus yet.
+                rageVictim.put(atkId, vid);
+                rageStacks.put(atkId, 1);
+                rageLast.put(atkId, now);
+                stacks = 1;
+            } else {
+                stacks = Math.min(RAGE_MAX_STACKS, rageStacks.getOrDefault(atkId, 1));
+                double bonus = (rage * stacks) * 2.0;
+                flatAdd += bonus;
+                rageStacks.put(atkId, Math.min(RAGE_MAX_STACKS, stacks + 1));
+                rageLast.put(atkId, now);
+                // Redstone-dust burst at victim — Nordic signature cue.
+                if (stacks > 1) {
+                    for (int i = 0; i < 6; i++) {
+                        victim.getWorld().playEffect(victim.getLocation().add(
+                                (rng.nextDouble() - 0.5) * 0.8,
+                                0.6 + rng.nextDouble() * 0.6,
+                                (rng.nextDouble() - 0.5) * 0.8),
+                                Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+                    }
+                }
+            }
+            // Actionbar stack indicator — colored bar that scales with stack count.
+            sendRageActionbar(attacker, stacks);
         }
 
         // Overwhelm — consecutive hits on the same target stack 6%/lvl per stack, capped at 5.
@@ -1201,6 +1278,11 @@ public class CombatListener implements Listener {
         owLast.remove(id);
         soulWardenCd.remove(id);
         antiHealBySource.remove(id);
+        // Rage state — both as attacker and as tracked victim.
+        rageVictim.remove(id);
+        rageStacks.remove(id);
+        rageLast.remove(id);
+        rageVictim.values().removeIf(v -> v.equals(id));
     }
 
     /** 1 Hz DoT that drains Exsanguinate'd victims for 1 HP each tick until expiry. */

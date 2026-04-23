@@ -283,8 +283,6 @@ public class SoulEnchants extends JavaPlugin {
                 new com.soulenchants.lunar.LunarRichPresenceTask(this);
         rpc.start();
         getServer().getPluginManager().registerEvents(rpc, this);
-        // Live boss-HP Apollo holograms — multi-line bar above every active boss.
-        new com.soulenchants.lunar.BossHologramTask(this).start();
 
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
         for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {

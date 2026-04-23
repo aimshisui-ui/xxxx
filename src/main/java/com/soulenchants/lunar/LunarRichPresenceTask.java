@@ -54,11 +54,21 @@ public final class LunarRichPresenceTask implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        // Give Apollo ~1s to register the player before pushing the initial
-        // presence — otherwise ApolloPlayer lookup returns empty.
-        new BukkitRunnable() {
-            @Override public void run() { if (e.getPlayer().isOnline()) updatePresence(e.getPlayer()); }
-        }.runTaskLater(plugin, 20L);
+        // Lunar's Apollo handshake can take a few seconds after the vanilla
+        // join packet, and Discord RPC requires BOTH (a) Apollo registered
+        // the player and (b) the client's Discord Integration is enabled.
+        // Retry a few times so late-connecting Lunar users still get a push
+        // even if the first attempt fired before Apollo saw them.
+        for (long delay : new long[]{ 40L, 100L, 200L, 400L, 800L }) {
+            new BukkitRunnable() {
+                @Override public void run() {
+                    if (!e.getPlayer().isOnline()) return;
+                    // Drop cached state so the retry always pushes.
+                    lastState.remove(e.getPlayer().getUniqueId());
+                    updatePresence(e.getPlayer());
+                }
+            }.runTaskLater(plugin, delay);
+        }
     }
 
     @EventHandler

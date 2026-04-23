@@ -59,7 +59,32 @@ public final class LunarCommand implements CommandExecutor {
                     + MessageStyle.MUTED + "If no ring appears, you may not be on Lunar Client.");
             return true;
         }
-        Chat.info(sender, "Usage: /lunar status | /lunar test");
+        if (args[0].equalsIgnoreCase("rpc")) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            Player p = (Player) sender;
+            boolean ok = LunarBridge.setRichPresence(p,
+                    "FabledMC", "SoulEnchants", "Test Presence",
+                    "Manual /lunar rpc test @ " + System.currentTimeMillis() % 100000,
+                    "Test Map", null);
+            if (ok) {
+                Chat.good(p, "Rich Presence pushed. " + MessageStyle.MUTED
+                        + "Check your Discord — it should now show FabledMC · SoulEnchants.");
+                Chat.info(p, "If Discord still says \"playing a local server\", verify:");
+                Chat.info(p, "  1. Lunar Client → Settings → Discord Integration is §fON§7.");
+                Chat.info(p, "  2. Discord → User Settings → Activity Privacy → §fshow current activity§7.");
+                Chat.info(p, "  3. Apollo plugin is installed server-side (see /lunar status).");
+            } else {
+                Chat.err(p, "Rich Presence push failed — Apollo not resolved or player not on Lunar.");
+            }
+            return true;
+        }
+        if (args[0].equalsIgnoreCase("reset")) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            boolean ok = LunarBridge.resetRichPresence((Player) sender);
+            Chat.info(sender, ok ? "Rich Presence reset." : "Reset failed (no Apollo or not on Lunar).");
+            return true;
+        }
+        Chat.info(sender, "Usage: /lunar status | /lunar test | /lunar rpc | /lunar reset");
         return true;
     }
 
