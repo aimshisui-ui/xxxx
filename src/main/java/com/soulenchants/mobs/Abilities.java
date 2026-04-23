@@ -95,6 +95,13 @@ public final class Abilities {
         return AbilitySpec.of("aoe_burst", "damage", damage, "radius", radius, "cooldown_ticks", cooldownTicks);
     }
 
+    /** Keeps the mob's Bukkit target locked onto the nearest player within
+     *  `range` blocks every tick. Used for spider bosses whose vanilla AI
+     *  de-aggros in daylight. */
+    public static AbilitySpec stickyTargeter(double range) {
+        return AbilitySpec.of("sticky_targeter", "range", range);
+    }
+
     // ── ON-DEATH ─────────────────────────────────────────────────────────
 
     public static AbilitySpec deathExplode(double damage, int radius) {
@@ -432,6 +439,39 @@ public final class Abilities {
                         if (near instanceof Player) ((Player) near).damage(damage, e);
                     }
                     loc.getWorld().playSound(loc, Sound.BLAZE_HIT, 1.5f, 0.7f);
+                }
+            };
+        });
+
+        AbilityFactory.register("sticky_targeter", spec -> {
+            final double range = spec.getd("range", 40.0);
+            final double rangeSq = range * range;
+            return new MobAbility() {
+                int cd = 0;
+                @Override public void onTick(LivingEntity e) {
+                    // Re-check every ~10 ticks instead of every tick to avoid
+                    // thrashing the mob's pathfinder when multiple players are
+                    // equidistant. 2 Hz is plenty to keep the target locked.
+                    if (cd-- > 0) return;
+                    cd = 10;
+                    if (!(e instanceof Monster)) return;
+                    Monster m = (Monster) e;
+                    LivingEntity current = m.getTarget();
+                    Player nearest = null;
+                    double bestSq = rangeSq;
+                    for (Player p : e.getWorld().getPlayers()) {
+                        if (p.getGameMode() == org.bukkit.GameMode.CREATIVE
+                                || p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
+                        if (!p.isValid() || p.isDead()) continue;
+                        double d = p.getLocation().distanceSquared(e.getLocation());
+                        if (d < bestSq) { bestSq = d; nearest = p; }
+                    }
+                    // If we already have a valid player target in range, keep it.
+                    if (current instanceof Player && !current.isDead()
+                            && current.getLocation().distanceSquared(e.getLocation()) < rangeSq) return;
+                    if (nearest != null) {
+                        try { m.setTarget(nearest); } catch (Throwable ignored) {}
+                    }
                 }
             };
         });

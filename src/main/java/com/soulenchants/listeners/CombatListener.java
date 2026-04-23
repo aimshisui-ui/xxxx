@@ -1053,11 +1053,14 @@ public class CombatListener implements Listener {
 
         // ─── v1.3 god-tier armor enchants ────────────────────────────────
 
-        // Voidwalker — outright dodge chance. Fires BEFORE thornback / bulwark
-        // so a dodged hit doesn't consume unrelated procs.
+        // Voidwalker — outright dodge chance. Nerfed from 8%/lvl → 4%/lvl
+        // (L3 = 12% instead of 24%) — full dodge is a very strong effect and
+        // stacking it with Callous made armored players functionally immortal.
+        // Fires BEFORE thornback / bulwark so a dodged hit doesn't consume
+        // unrelated procs.
         ItemStack bootsVw = victim.getInventory().getBoots();
         int vw = bootsVw == null ? 0 : ItemUtil.getLevel(bootsVw, "voidwalker");
-        if (vw > 0 && rng.nextDouble() < 0.08 * vw) {
+        if (vw > 0 && rng.nextDouble() < 0.04 * vw) {
             e.setDamage(0);
             e.setCancelled(true);
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0), Effect.PORTAL, 0);

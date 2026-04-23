@@ -358,7 +358,6 @@ public final class MobRegistry {
                         // On-hit procs — wither + lifesteal, no AOE chains
                         Abilities.wither(8),
                         Abilities.lifestealOnHit(0.20),                                         // was 0.30 — softer
-                        Abilities.regenOnHurt(2),                                               // was 6 — was net-healing
                         Abilities.splitSpawn("shardling", 6),                                   // 6 minions on death
                         Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.crownOfTheHollow(), 1.0),
                         Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.hollowFragment(12), 1.0),
@@ -385,14 +384,16 @@ public final class MobRegistry {
                 Arrays.asList(
                         Abilities.strength(2),
                         Abilities.fireResistance(),
-                        Abilities.resistance(0),
                         Abilities.particleAura(Effect.WITCH_MAGIC, 3, 14),
                         Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW, 0, 5),
                         Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW_DIGGING, 0, 5),
+                        // Spider vanilla AI de-aggros targets in sunlight — keep her
+                        // locked onto the nearest player every tick so she can't
+                        // wander off in daylight fights.
+                        Abilities.stickyTargeter(40.0),
                         // Hit triggers — venom + minor lifesteal
                         Abilities.hitEffect(org.bukkit.potion.PotionEffectType.POISON, 2, 140),
                         Abilities.lifestealOnHit(0.20),
-                        Abilities.regenOnHurt(1.5),
                         // Forced melee (1.5s cadence, 3.0 reach)
                         Abilities.meleeEnforcer(100, 3.0, 30),
                         // Venom-cloud AoE every 24s — radius 8, 160 dmg, chat flavor
@@ -429,14 +430,12 @@ public final class MobRegistry {
                 Arrays.asList(
                         Abilities.strength(3),
                         Abilities.fireResistance(),
-                        Abilities.resistance(0),
                         Abilities.particleAura(Effect.MOBSPAWNER_FLAMES, 4, 20),
                         Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW, 0, 7),
                         // Hits set player on fire — knockback intentionally removed so
                         // he can't kite players into his own meteor drops by punting them.
                         Abilities.setOnFire(8),
                         Abilities.lifestealOnHit(0.25),
-                        Abilities.regenOnHurt(1.5),
                         // Heavy melee pressure
                         Abilities.meleeEnforcer(220, 3.2, 28),
                         // Signature AOE — 25s cadence, radius 9, 260 dmg
@@ -476,7 +475,6 @@ public final class MobRegistry {
                 Arrays.asList(
                         Abilities.strength(2),
                         Abilities.fireResistance(),
-                        Abilities.resistance(0),
                         Abilities.particleAura(Effect.WITCH_MAGIC, 4, 16),
                         Abilities.particleAura(Effect.PORTAL, 3, 10),
                         Abilities.auraEffect(org.bukkit.potion.PotionEffectType.WEAKNESS, 0, 7),
@@ -485,7 +483,6 @@ public final class MobRegistry {
                         Abilities.hitEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, 0,  80),
                         Abilities.stealSouls(80),
                         Abilities.lifestealOnHit(0.30),
-                        Abilities.regenOnHurt(1.5),
                         Abilities.meleeEnforcer(200, 3.0, 26),
                         // Signature AOE — rare but brutal: 22s, 10-block radius, 280 dmg
                         Abilities.bossAttack(280, 10, 440, Arrays.asList(

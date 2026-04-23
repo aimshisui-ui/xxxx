@@ -152,7 +152,7 @@ public final class EnchantEffects {
             case "thornback":       return "Attackers take " + (level * 5) + "% of their damage as TRUE damage (stacks per piece)";
             case "wardenseye":      return "Reveal invisible entities in 12 blocks · attackers briefly Glow";
             case "bulwark":         return "-" + (level * 6) + "% damage from mobs · Resistance II below 40% HP";
-            case "voidwalker":      return (level * 8) + "% chance to dodge any hit · permanent Speed I";
+            case "voidwalker":      return (level * 4) + "% chance to dodge any hit · permanent Speed I";
             case "oathbound":       return "On hit · cleanse Slow/Weakness/Wither on self · 30s CD";
             case "entombed":        return "Below 30% HP on hit · Slow IV + Mining Fatigue III to attackers in 8 blocks for 4s · 60s CD";
         }

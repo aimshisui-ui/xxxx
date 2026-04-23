@@ -147,7 +147,7 @@ public class EnchantRegistry {
                 "Mark attackers with a particle ring — reveals position to you"));
         register(new CustomEnchant("bulwark",    "Bulwark",     EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 3,
                 "-6%/lvl damage from custom mobs · Resistance II below 40% HP"));
-        register(new CustomEnchant("voidwalker", "Voidwalker",  EnchantTier.LEGENDARY, EnchantSlot.BOOTS,      3,
+        register(new CustomEnchant("voidwalker", "Voidwalker",  EnchantTier.LEGENDARY, EnchantSlot.BOOTS,      5,
                 "8%/lvl chance to dodge any hit · grants permanent Speed I"));
         register(new CustomEnchant("oathbound",  "Oathbound",   EnchantTier.EPIC,      EnchantSlot.HELMET,     3,
                 "On hit · cleanse Slow / Weakness / Wither from self (30s CD)"));

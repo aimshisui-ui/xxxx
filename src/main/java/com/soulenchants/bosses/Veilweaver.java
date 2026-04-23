@@ -124,12 +124,12 @@ public class Veilweaver {
             }
         }
 
-        // Heal if no players in arena (anti-kite). Scaled by any active
-        // anti-heal debuff on the boss (Bleed L4+ / Severance / Reaping Slash).
+        // Passive anti-kite heal removed per balance pass — bosses no longer
+        // regenerate unless it's tied to a phase transition. Instead, teleport
+        // the boss back to the arena center if all players have left so she
+        // doesn't wander off (no HP regain, though).
         if (ticks % 160 == 0 && arena.noPlayersInArena()) {
-            double heal = com.soulenchants.listeners.CombatListener.scaleHealForAntiHeal(
-                    entity, MAX_HP * 0.05);
-            entity.setHealth(Math.min(entity.getMaxHealth(), entity.getHealth() + heal));
+            entity.teleport(arena.getCenter());
         }
 
         // Constant ambient particles around boss (the "thread/runes" effect)
