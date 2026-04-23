@@ -158,22 +158,6 @@ public final class LunarBridge {
         return false;
     }
 
-    // ──────────────────────── Rich Presence (Discord RPC) ────────────────────────
-
-    public static boolean setRichPresence(Player p, String gameName, String gameVariant,
-                                          String gameState, String playerState,
-                                          String mapName, String subServerName) {
-        if ("apollo".equals(backend)) {
-            return ApolloHook.sendRichPresence(p, gameName, gameVariant, gameState, playerState,
-                    mapName, subServerName);
-        }
-        return false;
-    }
-
-    public static boolean resetRichPresence(Player p) {
-        if ("apollo".equals(backend)) return ApolloHook.resetRichPresence(p);
-        return false;
-    }
 
     // ──────────────────────── Probe ────────────────────────
 

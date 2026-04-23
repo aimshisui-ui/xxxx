@@ -59,43 +59,7 @@ public final class LunarCommand implements CommandExecutor {
                     + MessageStyle.MUTED + "If no ring appears, you may not be on Lunar Client.");
             return true;
         }
-        if (args[0].equalsIgnoreCase("rpc")) {
-            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
-            Player p = (Player) sender;
-            boolean ok = LunarBridge.setRichPresence(p,
-                    "FabledMC", "SoulEnchants", "Test Presence",
-                    "Manual /lunar rpc test @ " + System.currentTimeMillis() % 100000,
-                    "Test Map", null);
-            if (ok) {
-                Chat.good(p, "Rich Presence packet sent. " + MessageStyle.MUTED
-                        + "If Discord still shows \"playing a local server\", read below:");
-                Chat.rule(p);
-                Chat.info(p, MessageStyle.BAD + "IMPORTANT: §7Lunar's RichPresence module requires your");
-                Chat.info(p, "server to be listed in §fLunar's ServerMappings §7— a curated");
-                Chat.info(p, "allow-list of public servers. The client IGNORES rich-presence");
-                Chat.info(p, "packets from unlisted/local servers.");
-                Chat.info(p, "");
-                Chat.info(p, "Verbatim from Lunar docs:");
-                Chat.info(p, MessageStyle.MUTED + MessageStyle.ITALIC
-                        + "  \"Your server must be a part of Lunar Client's ServerMappings");
-                Chat.info(p, MessageStyle.MUTED + MessageStyle.ITALIC
-                        + "   to use this module.\"");
-                Chat.info(p, "");
-                Chat.info(p, "To register: open a PR at §fgithub.com/LunarClient/ServerMappings");
-                Chat.info(p, "Until then, RPC will not work — rest of Apollo (titles, toasts,");
-                Chat.info(p, "waypoints, cooldowns, holograms) works fine without ServerMappings.");
-            } else {
-                Chat.err(p, "Rich Presence push failed — Apollo not resolved or player not on Lunar.");
-            }
-            return true;
-        }
-        if (args[0].equalsIgnoreCase("reset")) {
-            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
-            boolean ok = LunarBridge.resetRichPresence((Player) sender);
-            Chat.info(sender, ok ? "Rich Presence reset." : "Reset failed (no Apollo or not on Lunar).");
-            return true;
-        }
-        Chat.info(sender, "Usage: /lunar status | /lunar test | /lunar rpc | /lunar reset");
+        Chat.info(sender, "Usage: /lunar status | /lunar test");
         return true;
     }
 

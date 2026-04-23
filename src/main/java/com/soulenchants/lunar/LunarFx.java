@@ -9,9 +9,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -142,36 +140,6 @@ public final class LunarFx {
             if (task != null) { try { task.cancel(); } catch (Throwable ignored) {} task = null; }
             if (apolloActive) { LunarBridge.removeHologram(id); apolloActive = false; }
         }
-    }
-
-    // ──────────────────────── Rich Presence ────────────────────────
-
-    /** Per-player Discord RPC engage state. Tracked so we only push a new
-     *  presence when it actually changes, and so LogoutListener can
-     *  reset on quit. */
-    private static final Set<UUID> rpcActive = new HashSet<>();
-
-    public static void setBossEngage(Player p, String bossName, String phase) {
-        if (p == null) return;
-        boolean ok = LunarBridge.setRichPresence(p,
-                "FabledMC",                                           // gameName
-                "SoulEnchants",                                       // gameVariant
-                "Boss Fight",                                         // gameState
-                "Fighting " + bossName + (phase == null ? "" : " [" + phase + "]"),  // playerState
-                bossName,                                             // mapName
-                null);                                                // subServer
-        if (ok) rpcActive.add(p.getUniqueId());
-    }
-
-    public static void setIdle(Player p) {
-        if (p == null) return;
-        LunarBridge.setRichPresence(p, "FabledMC", "SoulEnchants", "Exploring", "On FabledMC", null, null);
-        rpcActive.add(p.getUniqueId());
-    }
-
-    public static void clearPresence(Player p) {
-        if (p == null) return;
-        if (rpcActive.remove(p.getUniqueId())) LunarBridge.resetRichPresence(p);
     }
 
     // ──────────────────────── Helpers ────────────────────────

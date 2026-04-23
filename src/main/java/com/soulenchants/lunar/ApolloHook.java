@@ -10,8 +10,6 @@ import com.lunarclient.apollo.module.hologram.Hologram;
 import com.lunarclient.apollo.module.hologram.HologramModule;
 import com.lunarclient.apollo.module.notification.Notification;
 import com.lunarclient.apollo.module.notification.NotificationModule;
-import com.lunarclient.apollo.module.richpresence.RichPresenceModule;
-import com.lunarclient.apollo.module.richpresence.ServerRichPresence;
 import com.lunarclient.apollo.module.title.Title;
 import com.lunarclient.apollo.module.title.TitleModule;
 import com.lunarclient.apollo.module.title.TitleType;
@@ -48,7 +46,6 @@ final class ApolloHook {
     private static HologramModule      hologramModule;
     private static NotificationModule  notificationModule;
     private static TitleModule         titleModule;
-    private static RichPresenceModule  richPresenceModule;
 
     /** Legacy-codes → Adventure Components so our existing §-colored strings
      *  render correctly on Lunar clients. '§' and '&' both parse. */
@@ -66,7 +63,6 @@ final class ApolloHook {
             hologramModule     = safeGet(HologramModule.class);
             notificationModule = safeGet(NotificationModule.class);
             titleModule        = safeGet(TitleModule.class);
-            richPresenceModule = safeGet(RichPresenceModule.class);
             return cooldownModule != null;
         } catch (Throwable t) {
             return false;
@@ -273,32 +269,4 @@ final class ApolloHook {
         } catch (Throwable t) { return false; }
     }
 
-    // ──────────────────────── Rich Presence ────────────────────────
-
-    static boolean sendRichPresence(Player viewer, String gameName, String gameVariant,
-                                    String gameState, String playerState,
-                                    String mapName, String subServerName) {
-        if (richPresenceModule == null) return false;
-        Optional<ApolloPlayer> a = ap(viewer);
-        if (!a.isPresent()) return false;
-        try {
-            ServerRichPresence.ServerRichPresenceBuilder b = ServerRichPresence.builder();
-            if (gameName != null)      b = b.gameName(gameName);
-            if (gameVariant != null)   b = b.gameVariantName(gameVariant);
-            if (gameState != null)     b = b.gameState(gameState);
-            if (playerState != null)   b = b.playerState(playerState);
-            if (mapName != null)       b = b.mapName(mapName);
-            if (subServerName != null) b = b.subServerName(subServerName);
-            richPresenceModule.overrideServerRichPresence(a.get(), b.build());
-            return true;
-        } catch (Throwable t) { return false; }
-    }
-
-    static boolean resetRichPresence(Player viewer) {
-        if (richPresenceModule == null) return false;
-        Optional<ApolloPlayer> a = ap(viewer);
-        if (!a.isPresent()) return false;
-        try { richPresenceModule.resetServerRichPresence(a.get()); return true; }
-        catch (Throwable t) { return false; }
-    }
 }
