@@ -87,6 +87,20 @@ public class EnchantRegistry {
         register(new CustomEnchant("executionersmark", "Executioner's Mark", EnchantTier.LEGENDARY, EnchantSlot.AXE, 3,
                 "Bonus damage to enemies with active negative effects"));
 
+        // ── AXE (v1.2 — debuff-heavy PvE focus) ──────────────────────────
+        register(new CustomEnchant("marrowbreak", "Marrowbreak", EnchantTier.RARE, EnchantSlot.AXE, 3,
+                "25%/lvl chance to apply Weakness II for 5s"));
+        register(new CustomEnchant("crushingblow", "Crushing Blow", EnchantTier.EPIC, EnchantSlot.AXE, 3,
+                "20%/lvl chance to apply Slow III for 3s"));
+        register(new CustomEnchant("pulverize", "Pulverize", EnchantTier.EPIC, EnchantSlot.AXE, 3,
+                "15%/lvl chance to apply Nausea III + Slow II for 4s"));
+        register(new CustomEnchant("exsanguinate", "Exsanguinate", EnchantTier.LEGENDARY, EnchantSlot.AXE, 3,
+                "10%/lvl — 5s true-damage DoT (1 HP/s, ignores armor)"));
+        register(new CustomEnchant("huntersmark", "Hunter's Mark", EnchantTier.LEGENDARY, EnchantSlot.AXE, 3,
+                "Mark target for 10s — deal +12%/lvl damage vs the mark"));
+        register(new CustomEnchant("overwhelm", "Overwhelm", EnchantTier.EPIC, EnchantSlot.AXE, 3,
+                "Consecutive hits on same target stack +6%/lvl dmg (max 5 stacks, resets after 3s)"));
+
         // ── ARMOR (7 new — PvP focused) ───────────────────────────────────
         register(new CustomEnchant("counter", "Counter", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
                 "Chance to disarm attacker (forces them to drop their weapon)"));
@@ -102,6 +116,31 @@ public class EnchantRegistry {
                 "Chance to steal 2 HP from attacker on hit"));
         register(new CustomEnchant("callous", "Callous", EnchantTier.RARE, EnchantSlot.ARMOR, 3,
                 "Small chance to take 0 damage from melee hits"));
+
+        // ── ARMOR (v1.2 — PvE focus) ──────────────────────────────────────
+        register(new CustomEnchant("soulwarden", "Soul Warden", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
+                "Regeneration I/II/III for 5s after a mob damages you (60s CD). PvE only."));
+        register(new CustomEnchant("mobslayersward", "Mobslayer's Ward", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
+                "-10%/lvl damage from custom mobs (bosses, minions, elites)"));
+        register(new CustomEnchant("radiantshell", "Radiant Shell", EnchantTier.RARE, EnchantSlot.ARMOR, 4,
+                "-1 flat damage per equipped piece with this enchant (max -4)"));
+        register(new CustomEnchant("dreadmantle", "Dreadmantle", EnchantTier.EPIC, EnchantSlot.HELMET, 3,
+                "When hit, mobs within 8 blocks get Weakness I-III for 3s"));
+
+        // ── v1.3 god-tier armor fillers — pushes aquatic/nightvision/depthstrider
+        //    out of bossset slots. Every one of these is slot-competitive.
+        register(new CustomEnchant("thornback",  "Thornback",   EnchantTier.EPIC,      EnchantSlot.ARMOR,      3,
+                "Reflect 5%/lvl of incoming damage as TRUE damage (stacks per piece)"));
+        register(new CustomEnchant("wardenseye", "Warden's Eye",EnchantTier.EPIC,      EnchantSlot.HELMET,     3,
+                "Mark attackers with a particle ring — reveals position to you"));
+        register(new CustomEnchant("bulwark",    "Bulwark",     EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 3,
+                "-6%/lvl damage from custom mobs · Resistance II below 40% HP"));
+        register(new CustomEnchant("voidwalker", "Voidwalker",  EnchantTier.LEGENDARY, EnchantSlot.BOOTS,      3,
+                "8%/lvl chance to dodge any hit · grants permanent Speed I"));
+        register(new CustomEnchant("oathbound",  "Oathbound",   EnchantTier.EPIC,      EnchantSlot.HELMET,     3,
+                "On hit · cleanse Slow / Weakness / Wither from self (30s CD)"));
+        register(new CustomEnchant("entombed",   "Entombed",    EnchantTier.EPIC,      EnchantSlot.LEGGINGS,   3,
+                "Below 30% HP on hit · Slow IV + Mining Fatigue III to nearby attackers · 60s CD"));
 
         // ── HELMET ────────────────────────────────────────────────────────
         register(new CustomEnchant("drunk", "Drunk", EnchantTier.EPIC, EnchantSlot.HELMET, 4,
@@ -123,8 +162,8 @@ public class EnchantRegistry {
                 "Rare chance (per level) to gain 1 absorption heart on hit — 120s CD"));
         register(new CustomEnchant("implants", "Implants", EnchantTier.RARE, EnchantSlot.CHESTPLATE, 3,
                 "Regeneration when below 50% HP"));
-        register(new CustomEnchant("vital", "Vital", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 5,
-                "+2 max HP per level (up to +10 at V)"));
+        register(new CustomEnchant("vital", "Vital", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 6,
+                "+1 heart per level (+6 hearts = 12 HP at VI; your max becomes 32 HP)"));
         register(new CustomEnchant("laststand", "Last Stand", EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 3,
                 "Resistance buff when below 4 HP"));
         register(new CustomEnchant("blessed", "Blessed", EnchantTier.EPIC, EnchantSlot.WEAPON, 4,

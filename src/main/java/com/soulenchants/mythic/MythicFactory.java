@@ -173,6 +173,10 @@ public final class MythicFactory {
             case "phoenix_feather": return Material.GOLD_SWORD;
             case "soulbinder":      return Material.BOW;
             case "tidecaller":      return Material.FISHING_ROD;
+            // v1.2 — PvE mythics
+            case "graverend":       return Material.DIAMOND_AXE;
+            case "emberlash":       return Material.DIAMOND_SWORD;
+            case "ruinhammer":      return Material.DIAMOND_AXE;
             default:                return Material.DIAMOND_SWORD;
         }
     }

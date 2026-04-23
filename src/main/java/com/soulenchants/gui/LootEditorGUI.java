@@ -85,14 +85,25 @@ public class LootEditorGUI implements Listener {
     }
 
     public void openBossPicker(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, T_PICK_BOSS);
+        Inventory inv = Bukkit.createInventory(null, 36, T_PICK_BOSS);
+        // Legacy bosses (Veilweaver / Colossus use their own encounter code paths).
         inv.setItem(10, bossButton("veilweaver", ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Veilweaver", Material.SKULL_ITEM));
-        inv.setItem(13, bossButton("irongolem",  ChatColor.GOLD        + "" + ChatColor.BOLD + "Ironheart Colossus", Material.IRON_BLOCK));
-        // Hollow King is a CustomMob — link to mob editor for full stats/abilities/drops control
-        inv.setItem(16, bossButton("__hollow_king",
+        inv.setItem(12, bossButton("irongolem",  ChatColor.GOLD        + "" + ChatColor.BOLD + "Ironheart Colossus", Material.IRON_BLOCK));
+        // CustomMob bosses — link straight to the mob editor for stats/abilities/drops.
+        inv.setItem(14, bossButton("__hollow_king",
                 ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "The Hollow King",
                 Material.GOLD_HELMET));
-        inv.setItem(22, backButton());
+        // v1.2 godset-tier elite bosses — each is a CustomMob with its own entry.
+        inv.setItem(16, bossButton("__broodmother",
+                ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "The Broodmother",
+                Material.SPIDER_EYE));
+        inv.setItem(21, bossButton("__wurm_lord",
+                ChatColor.DARK_RED + "" + ChatColor.BOLD + "The Wurm-Lord",
+                Material.MAGMA_CREAM));
+        inv.setItem(23, bossButton("__choirmaster",
+                ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "The Choirmaster",
+                Material.BONE));
+        inv.setItem(31, backButton());
         p.openInventory(inv);
     }
 
@@ -380,13 +391,14 @@ public class LootEditorGUI implements Listener {
 
         if (title.equals(T_PICK_BOSS)) {
             if (slot == 10) { openBoss(p, "veilweaver"); return; }
-            if (slot == 13) { openBoss(p, "irongolem"); return; }
-            if (slot == 16) {
-                // Hollow King is a CustomMob — route to the mob editor for full control
-                openMob(p, "hollow_king");
-                return;
-            }
-            if (slot == 22) { openRoot(p); return; }
+            if (slot == 12) { openBoss(p, "irongolem"); return; }
+            // Hollow King + v1.2 elite bosses are CustomMobs — route straight
+            // to the mob editor for full stats / abilities / drops control.
+            if (slot == 14) { openMob(p, "hollow_king"); return; }
+            if (slot == 16) { openMob(p, "broodmother"); return; }
+            if (slot == 21) { openMob(p, "wurm_lord");   return; }
+            if (slot == 23) { openMob(p, "choirmaster"); return; }
+            if (slot == 31) { openRoot(p); return; }
             return;
         }
 

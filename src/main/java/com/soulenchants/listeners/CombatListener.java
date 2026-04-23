@@ -79,10 +79,25 @@ public class CombatListener implements Listener {
     // (Bloodlust kill-streak tracking removed — bloodlust is now a chestplate
     // proc that heals on nearby Bleed ticks; no stack state needed.)
 
+    // ── v1.2 new-enchant state maps ──────────────────────────────────────
+    /** Exsanguinate DoT — per-victim expiry + original attacker credit. */
+    private final Map<UUID, Long> exsangUntil    = new HashMap<>();
+    private final Map<UUID, UUID> exsangAttacker = new HashMap<>();
+    /** Hunter's Mark — per-victim: which attacker marked, and when it expires. */
+    private final Map<UUID, UUID> markedBy    = new HashMap<>();
+    private final Map<UUID, Long> markedUntil = new HashMap<>();
+    /** Overwhelm — per-attacker: current streak victim, stack count, last hit. */
+    private final Map<UUID, UUID>    owVictim = new HashMap<>();
+    private final Map<UUID, Integer> owStacks = new HashMap<>();
+    private final Map<UUID, Long>    owLast   = new HashMap<>();
+    /** Soul Warden — per-victim cooldown on the Regen proc. */
+    private final Map<UUID, Long>    soulWardenCd = new HashMap<>();
+
     public CombatListener(SoulEnchants plugin) {
         this.plugin = plugin;
         this.cfg = plugin.getEnchantConfig();
         startBleedTicker();
+        startExsanguinateTicker();
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -459,6 +474,77 @@ public class CombatListener implements Listener {
             if (hasDebuff) offBonus += cfg.executionersMarkBonus * em;
         }
 
+        // ─── v1.2 AXE debuffs (PvE-heavy, Dawnbringer-gated like other debuffs) ───
+
+        // Marrowbreak — Weakness II proc
+        int mbrk = ItemUtil.getLevel(hand, "marrowbreak");
+        if (mbrk > 0 && rng.nextDouble() < 0.25 * mbrk
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.WEAKNESS))
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 100, 1));
+
+        // Crushing Blow — Slow III proc
+        int cbl = ItemUtil.getLevel(hand, "crushingblow");
+        if (cbl > 0 && rng.nextDouble() < 0.20 * cbl
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.SLOW))
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, 2));
+
+        // Pulverize — Nausea III + Slow II proc
+        int pv = ItemUtil.getLevel(hand, "pulverize");
+        if (pv > 0 && rng.nextDouble() < 0.15 * pv
+                && !com.soulenchants.util.DebuffImmunity.isImmuneNonSoul(victim, PotionEffectType.SLOW)) {
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 80, 2));
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,      80, 1));
+        }
+
+        // Exsanguinate — start/refresh 5s true-damage DOT (1 HP/s, ticks in startExsanguinateTicker)
+        int exs = ItemUtil.getLevel(hand, "exsanguinate");
+        if (exs > 0 && rng.nextDouble() < 0.10 * exs) {
+            long now = System.currentTimeMillis();
+            exsangUntil.put(victim.getUniqueId(), now + 5_000L);
+            exsangAttacker.put(victim.getUniqueId(), attacker.getUniqueId());
+            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
+                    Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+        }
+
+        // Hunter's Mark — on first hit this attacker marks victim for 10s; subsequent hits
+        // on the marked victim by the SAME attacker get +12%/lvl bonus.
+        int hm = ItemUtil.getLevel(hand, "huntersmark");
+        if (hm > 0) {
+            UUID atkId = attacker.getUniqueId();
+            UUID vid   = victim.getUniqueId();
+            long now   = System.currentTimeMillis();
+            UUID marker = markedBy.get(vid);
+            Long expiry = markedUntil.get(vid);
+            boolean alreadyMine = marker != null && marker.equals(atkId) && expiry != null && expiry > now;
+            if (alreadyMine) {
+                offBonus += 0.12 * hm;
+            } else {
+                markedBy.put(vid, atkId);
+                markedUntil.put(vid, now + 10_000L);
+            }
+        }
+
+        // Overwhelm — consecutive hits on the same target stack 6%/lvl per stack, capped at 5.
+        // Stacks reset on target switch or 3s no-hit gap.
+        int ow = ItemUtil.getLevel(hand, "overwhelm");
+        if (ow > 0) {
+            UUID atkId = attacker.getUniqueId();
+            UUID vid   = victim.getUniqueId();
+            long now   = System.currentTimeMillis();
+            UUID prev  = owVictim.get(atkId);
+            Long last  = owLast.get(atkId);
+            int stacks;
+            if (prev == null || !prev.equals(vid) || last == null || now - last > 3_000L) {
+                stacks = 1;
+            } else {
+                stacks = Math.min(5, owStacks.getOrDefault(atkId, 0) + 1);
+            }
+            owVictim.put(atkId, vid);
+            owStacks.put(atkId, stacks);
+            owLast.put(atkId, now);
+            offBonus += 0.06 * stacks * ow;
+        }
+
         // Soul Strike — bypass-cap special multiplier (rare proc + soul cost = self-throttled).
         // Gem-gated via SoulGemUtil.
         int ss = ItemUtil.getLevel(hand, "soulstrike");
@@ -782,6 +868,128 @@ public class CombatListener implements Listener {
                 victim.sendMessage("§b§l⚔ COUNTER §7— §fdisarmed §e" + atk.getName());
             }
         }
+
+        // ─── v1.2 PvE armor enchants ──────────────────────────────────────
+
+        // Radiant Shell — flat -1 per equipped piece with the enchant (caps at -4 for full set).
+        int radiantPieces = 0;
+        for (ItemStack a : armor) {
+            if (a != null && ItemUtil.getLevel(a, "radiantshell") > 0) radiantPieces++;
+        }
+        if (radiantPieces > 0 && e.getDamage() > 1.0) {
+            e.setDamage(Math.max(1.0, e.getDamage() - radiantPieces));
+        }
+
+        // Mobslayer's Ward — scale damage down when the hitter is a custom mob.
+        int msw = 0;
+        for (ItemStack a : armor) msw = Math.max(msw, ItemUtil.getLevel(a, "mobslayersward"));
+        if (msw > 0 && e.getDamager() instanceof LivingEntity) {
+            LivingEntity raw = (LivingEntity) e.getDamager();
+            if (com.soulenchants.mobs.CustomMob.idOf(raw) != null) {
+                e.setDamage(e.getDamage() * (1.0 - 0.10 * msw));
+            }
+        }
+
+        // Soul Warden — Regen proc after mob damage (60s CD).
+        ItemStack chest = victim.getInventory().getChestplate();
+        int sw = chest == null ? 0 : ItemUtil.getLevel(chest, "soulwarden");
+        if (sw > 0 && e.getDamager() instanceof LivingEntity && !(e.getDamager() instanceof Player)) {
+            long now = System.currentTimeMillis();
+            long last = soulWardenCd.getOrDefault(id, 0L);
+            if (now - last > 60_000L) {
+                soulWardenCd.put(id, now);
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 100, sw - 1));
+                victim.sendMessage("§d§l✦ SOUL WARDEN §7— §fRegeneration for 5s");
+            }
+        }
+
+        // Dreadmantle — nearby mobs get Weakness when you take a hit.
+        ItemStack helm = victim.getInventory().getHelmet();
+        int dm = helm == null ? 0 : ItemUtil.getLevel(helm, "dreadmantle");
+        if (dm > 0) {
+            for (Entity near : victim.getNearbyEntities(8, 4, 8)) {
+                if (!(near instanceof LivingEntity) || near instanceof Player) continue;
+                ((LivingEntity) near).addPotionEffect(
+                        new PotionEffect(PotionEffectType.WEAKNESS, 60, dm - 1, true, false), true);
+            }
+        }
+
+        // ─── v1.3 god-tier armor enchants ────────────────────────────────
+
+        // Voidwalker — outright dodge chance. Fires BEFORE thornback / bulwark
+        // so a dodged hit doesn't consume unrelated procs.
+        ItemStack bootsVw = victim.getInventory().getBoots();
+        int vw = bootsVw == null ? 0 : ItemUtil.getLevel(bootsVw, "voidwalker");
+        if (vw > 0 && rng.nextDouble() < 0.08 * vw) {
+            e.setDamage(0);
+            e.setCancelled(true);
+            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0), Effect.PORTAL, 0);
+            victim.sendMessage("§5§l✦ VOIDWALKER §7— §fphased through the strike");
+            return;
+        }
+
+        // Bulwark — scale incoming damage down when hitter is a custom mob.
+        // Also grants Resistance II while below 40% HP so the wearer has a
+        // reliable "I won't get deleted" floor in boss fights.
+        ItemStack chestBw = victim.getInventory().getChestplate();
+        int bw = chestBw == null ? 0 : ItemUtil.getLevel(chestBw, "bulwark");
+        if (bw > 0) {
+            if (e.getDamager() instanceof LivingEntity
+                    && com.soulenchants.mobs.CustomMob.idOf((LivingEntity) e.getDamager()) != null) {
+                e.setDamage(e.getDamage() * (1.0 - 0.06 * bw));
+            }
+            if (victim.getHealth() / victim.getMaxHealth() < 0.40) {
+                victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 60, 1, true, false), true);
+            }
+        }
+
+        // Thornback — reflect summed-across-pieces percent as TRUE damage.
+        int thornSum = 0;
+        for (ItemStack a : armor) {
+            if (a != null) thornSum += ItemUtil.getLevel(a, "thornback");
+        }
+        if (thornSum > 0 && e.getDamager() instanceof LivingEntity) {
+            aoeDamage((LivingEntity) e.getDamager(), e.getDamage() * 0.05 * thornSum, null);
+        }
+
+        // Warden's Eye — trace a particle halo on the attacker so they're
+        // easy to find through walls / crowds.
+        int we = helm == null ? 0 : ItemUtil.getLevel(helm, "wardenseye");
+        if (we > 0 && e.getDamager() instanceof LivingEntity) {
+            Location mark = e.getDamager().getLocation().add(0, 1, 0);
+            for (int i = 0; i < 8; i++)
+                mark.getWorld().playEffect(mark, Effect.WITCH_MAGIC, 0);
+        }
+
+        // Oathbound — cleanse self of the three most-common CC debuffs when hit.
+        int ob = helm == null ? 0 : ItemUtil.getLevel(helm, "oathbound");
+        if (ob > 0 && plugin.getCooldownManager().isReady("oathbound", id)
+                && (victim.hasPotionEffect(PotionEffectType.SLOW)
+                        || victim.hasPotionEffect(PotionEffectType.WEAKNESS)
+                        || victim.hasPotionEffect(PotionEffectType.WITHER))) {
+            plugin.getCooldownManager().set("oathbound", id, 30_000L);
+            victim.removePotionEffect(PotionEffectType.SLOW);
+            victim.removePotionEffect(PotionEffectType.WEAKNESS);
+            victim.removePotionEffect(PotionEffectType.WITHER);
+            victim.sendMessage("§f§l⚔ OATHBOUND §7— §fcleansed");
+            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0), Effect.MOBSPAWNER_FLAMES, 0);
+        }
+
+        // Entombed — low-HP CC burst on attackers (60s CD).
+        ItemStack legsEn = victim.getInventory().getLeggings();
+        int en = legsEn == null ? 0 : ItemUtil.getLevel(legsEn, "entombed");
+        if (en > 0 && victim.getHealth() / victim.getMaxHealth() < 0.30
+                && plugin.getCooldownManager().isReady("entombed", id)) {
+            plugin.getCooldownManager().set("entombed", id, 60_000L);
+            for (Entity near : victim.getNearbyEntities(8, 4, 8)) {
+                if (!(near instanceof LivingEntity) || near == victim) continue;
+                ((LivingEntity) near).addPotionEffect(
+                        new PotionEffect(PotionEffectType.SLOW, 80, 3, true, false), true);
+                ((LivingEntity) near).addPotionEffect(
+                        new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 2, true, false), true);
+            }
+            victim.sendMessage("§5§l✦ ENTOMBED §7— §fattackers rooted");
+        }
     }
 
     @EventHandler
@@ -918,6 +1126,45 @@ public class CombatListener implements Listener {
         bleedUntil.remove(id);
         bleedAttacker.remove(id);
         bleedCrimsonTongue.remove(id);
+        // v1.2 maps
+        exsangUntil.remove(id);
+        exsangAttacker.remove(id);
+        markedBy.remove(id);
+        markedUntil.remove(id);
+        owVictim.remove(id);
+        owStacks.remove(id);
+        owLast.remove(id);
+        soulWardenCd.remove(id);
+    }
+
+    /** 1 Hz DoT that drains Exsanguinate'd victims for 1 HP each tick until expiry. */
+    private void startExsanguinateTicker() {
+        new BukkitRunnable() {
+            @Override public void run() {
+                long now = System.currentTimeMillis();
+                java.util.Iterator<Map.Entry<UUID, Long>> it = exsangUntil.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry<UUID, Long> entry = it.next();
+                    UUID vid = entry.getKey();
+                    if (now > entry.getValue()) {
+                        it.remove();
+                        exsangAttacker.remove(vid);
+                        continue;
+                    }
+                    LivingEntity victim = lookupLiving(vid);
+                    if (victim == null || victim.isDead()) {
+                        it.remove();
+                        exsangAttacker.remove(vid);
+                        continue;
+                    }
+                    UUID atkId = exsangAttacker.get(vid);
+                    LivingEntity atk = atkId == null ? null : lookupLiving(atkId);
+                    aoeDamage(victim, 1.0, atk);
+                    victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
+                            Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L);
     }
 
     @EventHandler

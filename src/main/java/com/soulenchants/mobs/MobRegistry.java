@@ -370,6 +370,140 @@ public final class MobRegistry {
                         Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.crimsonTongue(), 0.00005),
                         Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.wraithcleaver(), 0.00005)
                 ), null, false, org.bukkit.entity.Skeleton.SkeletonType.WITHER));
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //  GODSET-TIER BOSSES (v1.2) — tuned so unequipped players cannot survive
+        //  the opening minute. All three use particle-heavy telegraphs + bossAttack
+        //  cycles punctuated by taunts. Three-phase roster: swarmer, earth-caster,
+        //  soul-caster. Each has a distinct approach gradient so godsets with
+        //  different strengths (DPS / tank / sustain) each have a "best fit".
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // BROODMOTHER — swarming spider warden. Web-trap aura + periodic minion
+        // summons + venom burst. Tank the legs, kill the pups fast, then chunk her.
+        add(build("broodmother", "The Broodmother", EntityType.SPIDER, CustomMob.Tier.ELITE, 18000, 110, 3500,
+                Arrays.asList(
+                        Abilities.strength(2),
+                        Abilities.fireResistance(),
+                        Abilities.resistance(0),
+                        Abilities.particleAura(Effect.WITCH_MAGIC, 3, 14),
+                        Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW, 0, 5),
+                        Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW_DIGGING, 0, 5),
+                        // Hit triggers — venom + minor lifesteal
+                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.POISON, 2, 140),
+                        Abilities.lifestealOnHit(0.20),
+                        Abilities.regenOnHurt(1.5),
+                        // Forced melee (1.5s cadence, 3.0 reach)
+                        Abilities.meleeEnforcer(100, 3.0, 30),
+                        // Venom-cloud AoE every 24s — radius 8, 160 dmg, chat flavor
+                        Abilities.bossAttack(160, 8, 480, Arrays.asList(
+                                "§2§l✦ §r\"§2§oYour skin is a thin boundary.§r§2§l\"",
+                                "§2§l✦ §r\"§2§oMine eat what yours bleeds.§r§2§l\"",
+                                "§2§l✦ §r\"§2§oI lay where you stand. Always have.§r§2§l\"")),
+                        // Summon a new wave of web-lurkers every ~35s
+                        Abilities.summonReinforcements("web_lurker", 4, 700),
+                        Abilities.meteorStrike(140, 3, 40, 900),
+                        Abilities.ambientTaunt(40, 1400, Arrays.asList(
+                                "§8§o\"The walls breathe for her. The floor drinks for her.\"",
+                                "§8§o\"You will not unknow the smell.\"")),
+                        // Death spawns 8 pups + reagent haul
+                        Abilities.splitSpawn("web_lurker", 8),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.frayedSoul(4), 1.0),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.phantomSilk(4), 1.0),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.veilThread(3), 0.75),
+                        Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS), 0.70),
+                        Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD), 1.0),
+                        // New PvE mythic at razor-thin odds — Graverend
+                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("graverend"), 0.00005)
+                )));
+
+        // WURM-LORD — subterranean pig-zombie. Meteor-barrage phase + magma-cube
+        // summons. Pushes players into cover; godset fire-resist is borderline
+        // mandatory. Fire + earth theme, every attack kicks a dust column.
+        add(build("wurm_lord", "The Wurm-Lord", EntityType.PIG_ZOMBIE, CustomMob.Tier.ELITE, 22000, 170, 4200,
+                Arrays.asList(
+                        Abilities.strength(3),
+                        Abilities.fireResistance(),
+                        Abilities.resistance(0),
+                        Abilities.particleAura(Effect.MOBSPAWNER_FLAMES, 4, 20),
+                        Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW, 0, 7),
+                        // Hits set player on fire + knock back
+                        Abilities.setOnFire(8),
+                        Abilities.knockbackOnHit(1.6),
+                        Abilities.lifestealOnHit(0.25),
+                        Abilities.regenOnHurt(1.5),
+                        // Heavy melee pressure
+                        Abilities.meleeEnforcer(170, 3.2, 28),
+                        // Signature AOE — 25s cadence, radius 9, 200 dmg
+                        Abilities.bossAttack(200, 9, 500, Arrays.asList(
+                                "§4§l✦ §r\"§4§oI was buried. You invited me back.§r§4§l\"",
+                                "§4§l✦ §r\"§4§oBreath of the mountain — mine now.§r§4§l\"",
+                                "§4§l✦ §r\"§4§oYou will lie lower than I did.§r§4§l\"")),
+                        // Meteor barrage — 32s cadence, telegraph 50 ticks, radius 5
+                        Abilities.meteorStrike(200, 5, 50, 640),
+                        // Summon magma jumpers every ~40s
+                        Abilities.summonReinforcements("magma_jumper", 3, 800),
+                        // Ground-burst every ~20s — flat 120 dmg in 6 blocks
+                        Abilities.aoeBurst(120, 6, 400),
+                        Abilities.ambientTaunt(40, 1200, Arrays.asList(
+                                "§8§o\"The earth you love is a lid over an older thing.\"",
+                                "§8§o\"I am what waited between the strata.\"")),
+                        // Death spawns 4 magma cubes + loot
+                        Abilities.splitSpawn("magma_jumper", 4),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.forgedEmber(5), 1.0),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.ironHeartFragment(4), 1.0),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.reinforcedPlating(3), 0.85),
+                        Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS), 0.85),
+                        Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD), 1.0),
+                        // New PvE mythic drop — Ruinhammer (axe, theme match)
+                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("ruinhammer"), 0.00008)
+                )));
+
+        // CHOIRMASTER — soul-caster wither skeleton. Chain lightning + soul steal +
+        // summoned monks. Low HP vs the other two, but his chain + steal can delete
+        // an unshielded back-line in seconds. Dawnbringer shines here; Clarity helps
+        // against the blind ticks.
+        add(build("choirmaster", "The Choirmaster", EntityType.SKELETON, CustomMob.Tier.ELITE, 20000, 140, 4000,
+                Arrays.asList(
+                        Abilities.strength(2),
+                        Abilities.fireResistance(),
+                        Abilities.resistance(0),
+                        Abilities.particleAura(Effect.WITCH_MAGIC, 4, 16),
+                        Abilities.particleAura(Effect.PORTAL, 3, 10),
+                        Abilities.auraEffect(org.bukkit.potion.PotionEffectType.WEAKNESS, 0, 7),
+                        // Hit triggers — wither + blind
+                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.WITHER,    0, 120),
+                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, 0,  80),
+                        Abilities.stealSouls(80),
+                        Abilities.lifestealOnHit(0.30),
+                        Abilities.regenOnHurt(1.5),
+                        Abilities.meleeEnforcer(140, 3.0, 26),
+                        // Signature AOE — rare but brutal: 22s, 10-block radius, 220 dmg
+                        Abilities.bossAttack(220, 10, 440, Arrays.asList(
+                                "§5§l✦ §r\"§5§oSing. Do not make me ask twice.§r§5§l\"",
+                                "§5§l✦ §r\"§5§oEach voice is a coin. Your debt is immense.§r§5§l\"",
+                                "§5§l✦ §r\"§5§oI was a church. Now I am only a bell.§r§5§l\"")),
+                        // Chain lightning — 4 bounces, 180 dmg, 8-block chain range, 18s cadence
+                        Abilities.chainLightning(180, 4, 8, 360),
+                        // Summon spectral monks every ~45s
+                        Abilities.summonReinforcements("spectral_monk", 3, 900),
+                        // Meteor once per minute — soul-marked player punished
+                        Abilities.meteorStrike(190, 4, 40, 1200),
+                        Abilities.ambientTaunt(40, 1000, Arrays.asList(
+                                "§8§o\"The hymn is not over. You are a rest between bars.\"",
+                                "§8§o\"Every name is sung eventually.\"",
+                                "§8§o\"I keep the ledger. You are in it.\"")),
+                        // Death: 6 monks + loot
+                        Abilities.splitSpawn("spectral_monk", 6),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.veilEssence(), 0.30),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.echoShard(3), 1.0),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.frayedSoul(4), 1.0),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.voidEssence(2), 0.65),
+                        Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS), 0.85),
+                        Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD), 1.0),
+                        // New PvE mythic drop — Emberlash (sword, soul-caster theme: offering)
+                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("emberlash"), 0.00008)
+                ), null, false, org.bukkit.entity.Skeleton.SkeletonType.WITHER));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

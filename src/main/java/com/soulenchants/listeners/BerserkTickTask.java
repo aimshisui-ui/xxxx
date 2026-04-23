@@ -91,6 +91,7 @@ public class BerserkTickTask extends BukkitRunnable {
         int depthstrider = boots  == null ? 0 : ItemUtil.getLevel(boots, "depthstrider");
         int jumpboost    = boots  == null ? 0 : ItemUtil.getLevel(boots, "jumpboost");
         int firewalker   = boots  == null ? 0 : ItemUtil.getLevel(boots, "firewalker");
+        int voidwalker   = boots  == null ? 0 : ItemUtil.getLevel(boots, "voidwalker");
 
         Set<PotionEffectType> applyThisTick = new HashSet<>();
 
@@ -108,6 +109,7 @@ public class BerserkTickTask extends BukkitRunnable {
         if (adren > 0 && p.getHealth() <= 7.0 && adren > finalSpeed) finalSpeed = adren;
         if (depthstrider > 0 && p.getLocation().getBlock().isLiquid() && depthstrider > finalSpeed)
             finalSpeed = depthstrider;
+        if (voidwalker > 0 && finalSpeed < 1) finalSpeed = 1; // Voidwalker grants permanent Speed I
         if (finalSpeed > 0) {
             p.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, finalSpeed - 1, true, false), true);
             applyThisTick.add(PotionEffectType.SPEED);
@@ -184,10 +186,10 @@ public class BerserkTickTask extends BukkitRunnable {
         }
         applied.put(id, applyThisTick);
 
-        // Vital + tier bonus + Heart-of-the-Forge stacks — all combined, self-correcting
-        int tierHp  = plugin.getSoulManager().getTier(p).getBonusMaxHp();
+        // Vital + Heart-of-the-Forge stacks — all combined, self-correcting.
+        // (Tier HP bonus was removed — only the Vital enchant grants +max HP now.)
         int heartHp = plugin.getLootProfile().bonusHpFor(p);
-        double expectedMax = 20.0 + (vital * 2.0) + tierHp + heartHp;
+        double expectedMax = 20.0 + (vital * 2.0) + heartHp;
         if (Math.abs(p.getMaxHealth() - expectedMax) > 0.01) {
             p.setMaxHealth(expectedMax);
             if (p.getHealth() > expectedMax) p.setHealth(expectedMax);

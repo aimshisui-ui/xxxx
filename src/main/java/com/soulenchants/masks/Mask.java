@@ -121,6 +121,22 @@ public final class Mask {
         out.add(new Mask("zombie_head",   "Zombie Veil",       Material.SKULL_ITEM,     (short) 2));
         out.add(new Mask("skeleton_head", "Skeletal Crown",    Material.SKULL_ITEM,     (short) 0));
         out.add(new Mask("creeper_head",  "Creeper Mask",      Material.SKULL_ITEM,     (short) 4));
+        // v1.2 roster — six new cosmetic masks themed for PvP + PvE variety.
+        // Visuals reuse skull/pumpkin materials (1.8 only supports helmet/skull/
+        // pumpkin in the helmet slot); identity is carried by the item's name +
+        // lore so collectors still see them as distinct trophies.
+        out.add(new Mask("duelist_mask",   "Duelist's Mask",      Material.SKULL_ITEM,     (short) 4,  null,
+                Arrays.asList("The crowd loves a clean strike.", "Worn in ten tournaments. Returned from nine.")));
+        out.add(new Mask("tyrant_crown",   "Tyrant's Crown",      Material.SKULL_ITEM,     (short) 1,  null,
+                Arrays.asList("Every bone it touched was named.")));
+        out.add(new Mask("battle_scar",    "Battle-Scar",         Material.SKULL_ITEM,     (short) 2,  null,
+                Arrays.asList("Salt and dried sinew — a reminder.", "You were standing when it stopped.")));
+        out.add(new Mask("hunters_veil",   "Hunter's Veil",       Material.PUMPKIN,        (short) 0,  null,
+                Arrays.asList("For moving through what moves away.")));
+        out.add(new Mask("witchwood",      "Witchwood Mask",      Material.SKULL_ITEM,     (short) 0,  null,
+                Arrays.asList("Carved from a tree that had been asked to grow here.")));
+        out.add(new Mask("soulfire_mask",  "Soulfire Mask",       Material.JACK_O_LANTERN, (short) 0,  null,
+                Arrays.asList("Burns on nothing you can name.", "Worn by those who outlive their own stories.")));
         return out;
     }
 }

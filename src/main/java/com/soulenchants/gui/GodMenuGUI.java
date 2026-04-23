@@ -8,6 +8,9 @@ import com.soulenchants.masks.MaskRegistry;
 import com.soulenchants.mythic.MythicFactory;
 import com.soulenchants.mythic.MythicRegistry;
 import com.soulenchants.mythic.MythicWeapon;
+import com.soulenchants.pets.Pet;
+import com.soulenchants.pets.PetItem;
+import com.soulenchants.pets.PetRegistry;
 import com.soulenchants.style.Chat;
 import com.soulenchants.style.MessageStyle;
 import org.bukkit.Bukkit;
@@ -29,18 +32,16 @@ import java.util.List;
  *
  * Layout (45-slot, 5 rows, glass-border framed):
  *
- *   Row 1 — GEAR      : Enchants · Mythics · Masks · Boss Loot · Reagents
- *   Row 2 — SUPPORT   : Consumables · Loot Boxes · Recipes · Godset (action)
- *   Row 3 — SPAWN     : Veilweaver · Colossus · Modock · Custom Mobs list
+ *   Row 1 — GEAR      : Enchants · Mythics · Masks · Boss Loot
+ *   Row 2 — SUPPORT   : Reagents · Consumables · Loot Boxes · Recipes · Pets · Godset · God Set
+ *   Row 3 — SPAWN     : Soul Gem · Summon Boss · Custom Mobs list
  *   Row 4 — border + Close
  *
- * v1.1 deltas vs v1.0:
- *   - Mythics + Masks promoted to row 1 (first-class categories)
- *   - Dropped Shop / Quests tiles — they're one-shot commands with no
- *     discovery value inside a GUI (players already hit /shop and /quests)
- *   - Dropped the openGodset() interstitial — tile now runs the action
- *     directly instead of burying it behind a single-button sub-screen
- *   - Unified Boss Eggs into a single Spawn menu that also includes Modock
+ * v1.2 deltas:
+ *   - Added Pets tile (slot 23) — opens a picker of every registered pet;
+ *     click an egg to mint yourself a fresh Lv.1 egg (admin utility).
+ *   - Tile counts now pull from registries live so they never drift from
+ *     the actual content roster.
  */
 public class GodMenuGUI implements Listener {
 
@@ -54,6 +55,7 @@ public class GodMenuGUI implements Listener {
     private static final String TITLE_MYTHICS    = MessageStyle.TIER_SOUL + "» Mythic Weapons";
     private static final String TITLE_MASKS      = MessageStyle.TIER_EPIC + "» Cosmetic Masks";
     private static final String TITLE_SOUL_GEM   = MessageStyle.TIER_SOUL + "» Soul Gem Mint";
+    private static final String TITLE_PETS       = MessageStyle.TIER_LEGENDARY + "» Pet Registry";
     private static final long[] MINT_PRESETS = { 100L, 500L, 1_000L, 5_000L, 10_000L, 50_000L, 100_000L };
 
     private final SoulEnchants plugin;
@@ -94,7 +96,7 @@ public class GodMenuGUI implements Listener {
         inv.setItem(16, tile(Material.DIAMOND_SWORD, MessageStyle.FRAME, "Boss Loot",
                 "Named drops from every boss —", "hammers, mantles, cores, plates.",
                 MessageStyle.VALUE + "12" + MessageStyle.MUTED + " items · "
-                        + MessageStyle.VALUE + "Legendary tier",
+                        + MessageStyle.VALUE + "Legendary" + MessageStyle.MUTED + " tier",
                 "browse"));
 
         // ── Row 2 — SUPPORT ──────────────────────────────────────────
@@ -119,12 +121,18 @@ public class GodMenuGUI implements Listener {
                 MessageStyle.VALUE + com.soulenchants.loot.LootRecipes.ENTRIES.size()
                         + MessageStyle.MUTED + " recipes",
                 "open recipe book"));
-        inv.setItem(24, tile(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD, "Godset (PvE)",
-                "Full boss-killer loadout —", "sword + four armor pieces.",
-                MessageStyle.VALUE + "Tuned" + MessageStyle.MUTED + " for Veilweaver / Colossus",
+        inv.setItem(23, tile(Material.BONE, MessageStyle.TIER_LEGENDARY, "Pets",
+                "Hybrid companions — egg-in-bag spawns", "a follower + grants passives.",
+                MessageStyle.VALUE + PetRegistry.all().size() + MessageStyle.MUTED + " archetypes · "
+                        + MessageStyle.VALUE + "Lv.1→50" + MessageStyle.MUTED + " progression",
+                "browse / give eggs"));
+        inv.setItem(24, tile(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD, "Boss-Killer Set (PvE)",
+                "Full PvE loadout — armor + 5 mythics,", "every mythic perfectly enchanted.",
+                MessageStyle.VALUE + "4 armor" + MessageStyle.MUTED + " + "
+                        + MessageStyle.VALUE + "7 weapons" + MessageStyle.MUTED + " · boss-tuned",
                 "equip instantly"));
         inv.setItem(25, tile(Material.DIAMOND_HELMET, MessageStyle.TIER_SOUL, "God Set (PvP)",
-                "Full PvP-tuned kit — enchanted", "sword, armor, and effects.",
+                "Full PvP-tuned kit — enchanted", "sword, axe, armor, 2 mythics.",
                 MessageStyle.VALUE + "Tuned" + MessageStyle.MUTED + " for player combat",
                 "equip instantly"));
 
@@ -139,8 +147,9 @@ public class GodMenuGUI implements Listener {
                         + MessageStyle.VALUE + "Veilweaver · Colossus · Modock",
                 "open spawn menu"));
         inv.setItem(31, tile(Material.SKULL_ITEM, MessageStyle.TIER_EPIC, "Custom Mobs",
-                "Every registered custom mob —", "Hollow King, cave roster, rift adds.",
-                MessageStyle.VALUE + "60+" + MessageStyle.MUTED + " mobs · "
+                "Every registered custom mob —", "Hollow King, elites, cave + rift roster.",
+                MessageStyle.VALUE + com.soulenchants.mobs.MobRegistry.all().size()
+                        + MessageStyle.MUTED + " mobs · "
                         + MessageStyle.VALUE + "/mob list",
                 "close and run /mob list"));
 
@@ -216,23 +225,49 @@ public class GodMenuGUI implements Listener {
     }
 
     public void openSpawn(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, TITLE_SPAWN);
-        inv.setItem(11, bossTile(Material.MONSTER_EGG, (short) 5,
+        Inventory inv = Bukkit.createInventory(null, 45, TITLE_SPAWN);
+        ItemStack glass = filler();
+        for (int i = 0; i < 45; i++) {
+            if (i < 9 || i >= 36 || i % 9 == 0 || i % 9 == 8) inv.setItem(i, glass);
+        }
+        // Row 1 — encounter bosses (their own code paths)
+        inv.setItem(10, bossTile(Material.MONSTER_EGG, (short) 5,
                 MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Veilweaver",
                 "3 phases · 15,000 HP",
                 "",
                 MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
-        inv.setItem(13, bossTile(Material.MONSTER_EGG, (short) 99,
+        inv.setItem(12, bossTile(Material.MONSTER_EGG, (short) 99,
                 MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Ironheart Colossus",
                 "2 phases · 8,000 HP",
                 "",
                 MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
-        inv.setItem(15, bossTile(Material.MONSTER_EGG, (short) 68,
+        inv.setItem(14, bossTile(Material.MONSTER_EGG, (short) 68,
                 MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Modock — King of Atlantis",
                 "3-phase rift fight",
                 "",
                 MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/modock summon"));
-        inv.setItem(22, backButton());
+        inv.setItem(16, bossTile(Material.SKULL_ITEM, (short) 1,
+                MessageStyle.TIER_SOUL + MessageStyle.BOLD + "The Hollow King",
+                "25,000 HP · meteor + chain lightning",
+                "",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
+        // Row 2 — v1.2 godset-tier elite bosses
+        inv.setItem(20, bossTile(Material.SPIDER_EYE, (short) 0,
+                MessageStyle.TIER_UNCOMMON + MessageStyle.BOLD + "The Broodmother",
+                "18,000 HP · swarm warden",
+                MessageStyle.MUTED + "Web-aura · venom cloud · 8-pup death-split",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
+        inv.setItem(22, bossTile(Material.MAGMA_CREAM, (short) 0,
+                MessageStyle.BAD + MessageStyle.BOLD + "The Wurm-Lord",
+                "22,000 HP · meteor-storm",
+                MessageStyle.MUTED + "Fire aura · 5-block meteors · magma-cube spawns",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
+        inv.setItem(24, bossTile(Material.BONE, (short) 0,
+                MessageStyle.TIER_LEGENDARY + MessageStyle.BOLD + "The Choirmaster",
+                "20,000 HP · chain-lightning caster",
+                MessageStyle.MUTED + "Soul-steal aura · 4-bounce chain · monk summons",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
+        inv.setItem(40, backButton());
         p.openInventory(inv);
     }
 
@@ -294,6 +329,20 @@ public class GodMenuGUI implements Listener {
         p.openInventory(inv);
     }
 
+    public void openPets(Player p) {
+        List<Pet> list = new ArrayList<>(PetRegistry.all());
+        int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
+        Inventory inv = Bukkit.createInventory(null, rows * 9, TITLE_PETS);
+        int slot = 0;
+        for (Pet pet : list) {
+            // Click gives a fresh Lv.1 egg. Identity is carried by the
+            // egg's NBT so each click mints a distinct instance.
+            inv.setItem(slot++, PetItem.fresh(pet));
+        }
+        inv.setItem(rows * 9 - 5, backButton());
+        p.openInventory(inv);
+    }
+
     public void openMasks(Player p) {
         List<Mask> list = new ArrayList<>(MaskRegistry.all());
         int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
@@ -335,6 +384,7 @@ public class GodMenuGUI implements Listener {
                 case 20: openConsumables(p); return;
                 case 21: openLootBoxes(p); return;
                 case 22: openRecipeBook(p); return;
+                case 23: openPets(p); return;
                 case 24:
                     p.closeInventory();
                     com.soulenchants.items.GodSet.giveBossSet(p);
@@ -388,6 +438,20 @@ public class GodMenuGUI implements Listener {
             return;
         }
 
+        // Pet browser: click gives a fresh Lv.1 egg of that pet archetype.
+        if (title.equals(TITLE_PETS)) {
+            String petId = PetItem.idOf(clicked);
+            if (petId == null) return;
+            Pet pet = PetRegistry.get(petId);
+            if (pet == null) return;
+            p.getInventory().addItem(PetItem.fresh(pet)).values()
+                    .forEach(over -> p.getWorld().dropItemNaturally(p.getLocation(), over));
+            Chat.good(p, "Received " + pet.getRarityColor() + "✦ " + pet.getDisplayName()
+                    + MessageStyle.GOOD + " egg (Lv.1). "
+                    + MessageStyle.MUTED + "Right-click to summon; sneak+right-click to use the active.");
+            return;
+        }
+
         // Mask browser: v1.1 Nordic-style — click gives the mask as an item.
         // Player then drags it onto a helmet to attach. Detach is a
         // right-click on the attached helmet (handled by MaskAttachListener).
@@ -404,20 +468,41 @@ public class GodMenuGUI implements Listener {
             return;
         }
 
-        // Spawn menu — one-click boss summons
+        // Spawn menu — one-click boss summons. Encounter bosses run their
+        // dedicated managers; CustomMob bosses route through /ce summon so
+        // stats/abilities/drops hit the same code path players' spawns do.
         if (title.equals(TITLE_SPAWN)) {
             switch (e.getRawSlot()) {
-                case 11:
+                case 10:
                     p.closeInventory();
                     plugin.getVeilweaverManager().summon(p.getLocation());
                     return;
-                case 13:
+                case 12:
                     p.closeInventory();
                     plugin.getIronGolemManager().summon(p.getLocation());
                     return;
-                case 15:
+                case 14:
                     p.closeInventory();
                     p.performCommand("modock summon");
+                    return;
+                case 16:
+                    p.closeInventory();
+                    p.performCommand("ce summon hollow_king");
+                    return;
+                case 20:
+                    p.closeInventory();
+                    p.performCommand("ce summon broodmother");
+                    return;
+                case 22:
+                    p.closeInventory();
+                    p.performCommand("ce summon wurm_lord");
+                    return;
+                case 24:
+                    p.closeInventory();
+                    p.performCommand("ce summon choirmaster");
+                    return;
+                case 40:
+                    openHub(p);
                     return;
                 default: return;
             }
@@ -443,7 +528,8 @@ public class GodMenuGUI implements Listener {
             || title.equals(TITLE_BOXES)
             || title.equals(TITLE_MYTHICS)
             || title.equals(TITLE_MASKS)
-            || title.equals(TITLE_SOUL_GEM);
+            || title.equals(TITLE_SOUL_GEM)
+            || title.equals(TITLE_PETS);
     }
 
     private ItemStack filler() {

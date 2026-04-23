@@ -41,6 +41,10 @@ public final class MythicRegistry {
         register(new PhoenixFeather(cfg));
         register(new Soulbinder(plugin, cfg));
         register(new Tidecaller(cfg));
+        // v1.2 — PvE-focused mythics
+        register(new Graverend(plugin));
+        register(new Emberlash());
+        register(new Ruinhammer(plugin));
     }
 
     public static void register(MythicWeapon m) { MYTHICS.put(m.getId(), m); }

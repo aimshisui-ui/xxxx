@@ -77,7 +77,7 @@ public final class EnchantEffects {
             case "phoenix":         return "Lethal save → full heal · 500-8000 random souls · 160s CD";
             case "overshield":      return (level * 0.5) + "% chance per hit · +1 absorb heart · 120s CD";
             case "implants":        return "Regen " + roman(level) + " when below 50% HP";
-            case "vital":           return "+" + (level * 2) + " max HP";
+            case "vital":           return "+" + level + " hearts (" + (level * 2) + " max HP)";
             case "laststand":       return "Resistance " + roman(level) + " when below 4 HP";
 
             // ── CHEST OR LEGGINGS ──
@@ -123,6 +123,28 @@ public final class EnchantEffects {
             case "soulburst":       return "On hit (any) · AoE " + (level * 4) + " dmg + knockback · costs 150 souls per proc";
             case "divineimmolation": return "AoE " + level + "-block radius · " + String.format("%.1f", level * 1.1) + " divine dmg · 5 souls per swing";
             case "natureswrath":    return "2% on-hit · root " + (level * 3) + "-block radius for " + (5 + level) + "s · 75 souls per proc";
+
+            // ── v1.2 AXE debuff suite ──
+            case "marrowbreak":     return (level * 25) + "% chance · Weakness II for 5s";
+            case "crushingblow":    return (level * 20) + "% chance · Slow III for 3s";
+            case "pulverize":       return (level * 15) + "% chance · Nausea III + Slow II for 4s";
+            case "exsanguinate":    return (level * 10) + "% chance · 5s true-damage DoT (1 HP/s ignores armor)";
+            case "huntersmark":     return "Mark target for 10s · +" + (level * 12) + "% damage vs your mark";
+            case "overwhelm":       return "Consecutive hits same target · +" + (level * 6) + "% per stack (max 5)";
+
+            // ── v1.2 PvE armor ──
+            case "soulwarden":      return "After mob damage · Regen " + roman(level) + " for 5s · 60s CD";
+            case "mobslayersward":  return "-" + (level * 10) + "% damage from custom mobs (bosses, minions, elites)";
+            case "radiantshell":    return "-1 flat damage per equipped piece (max -4 with full set)";
+            case "dreadmantle":     return "When hit · mobs in 8 blocks get Weakness " + roman(level) + " for 3s";
+
+            // ── v1.3 god-tier armor fillers ──
+            case "thornback":       return "Attackers take " + (level * 5) + "% of their damage as TRUE damage (stacks per piece)";
+            case "wardenseye":      return "Reveal invisible entities in 12 blocks · attackers briefly Glow";
+            case "bulwark":         return "-" + (level * 6) + "% damage from mobs · Resistance II below 40% HP";
+            case "voidwalker":      return (level * 8) + "% chance to dodge any hit · permanent Speed I";
+            case "oathbound":       return "On hit · cleanse Slow/Weakness/Wither on self · 30s CD";
+            case "entombed":        return "Below 30% HP on hit · Slow IV + Mining Fatigue III to attackers in 8 blocks for 4s · 60s CD";
         }
         return null;
     }

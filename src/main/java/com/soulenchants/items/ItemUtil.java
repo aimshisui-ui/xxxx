@@ -21,6 +21,9 @@ public class ItemUtil {
     public static final String NBT_WHITE_SCROLL = "se_white_scroll";
     public static final String NBT_TRANSMOG_SCROLL = "se_transmog_scroll";
 
+    /** Legacy header. Kept as a stripping sentinel so pre-v1.2 items still
+     *  get their old block cleared on re-render; v1.2+ emits NO visible
+     *  header — just a divider-bounded block of enchant rows. */
     private static final String LORE_HEADER = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "✦ Enchants ✦";
 
     public static Map<String, Integer> getEnchants(ItemStack item) {
@@ -108,23 +111,12 @@ public class ItemUtil {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
         List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-        // Strip our prior enchant block: everything from LORE_HEADER through
-        // the next DIVIDER (inclusive). Block contains enchant rows + their
-        // gray effect-description sub-lines.
-        Iterator<String> it = lore.iterator();
-        boolean inBlock = false;
-        while (it.hasNext()) {
-            String line = it.next();
-            if (line.equals(LORE_HEADER)) { inBlock = true; it.remove(); continue; }
-            if (inBlock) {
-                if (line.equals(DIVIDER)) { it.remove(); inBlock = false; continue; }
-                it.remove();
-            }
-        }
+        stripEnchantBlock(lore);
         Map<String, Integer> enchants = getEnchants(item);
         if (!enchants.isEmpty()) {
             List<String> block = new ArrayList<>();
-            block.add(LORE_HEADER);
+            // v1.2: no visible "✦ Enchants ✦" header — just a bordered block.
+            block.add(DIVIDER);
             for (Map.Entry<String, Integer> e : enchants.entrySet()) {
                 CustomEnchant ce = EnchantRegistry.get(e.getKey());
                 if (ce == null) continue;
@@ -141,5 +133,47 @@ public class ItemUtil {
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
+    }
+
+    /**
+     * Strip our prior enchant block from lore. Handles two formats:
+     *   (legacy v1.1) LORE_HEADER + rows + DIVIDER
+     *   (v1.2)        DIVIDER + rows + DIVIDER   (opening divider whose next line is an enchant row)
+     */
+    private static void stripEnchantBlock(List<String> lore) {
+        // Legacy header-based sweep
+        Iterator<String> it = lore.iterator();
+        boolean inBlock = false;
+        while (it.hasNext()) {
+            String line = it.next();
+            if (line.equals(LORE_HEADER)) { inBlock = true; it.remove(); continue; }
+            if (inBlock) {
+                if (line.equals(DIVIDER)) { it.remove(); inBlock = false; continue; }
+                it.remove();
+            }
+        }
+        // v1.2 divider-pair sweep. Only treat a DIVIDER as our opener if the
+        // NEXT line looks like an enchant row (starts with §X▸ ), so mythic
+        // lore blocks (which use the same divider) are untouched.
+        int i = 0;
+        while (i < lore.size() - 1) {
+            if (!lore.get(i).equals(DIVIDER)) { i++; continue; }
+            String next = lore.get(i + 1);
+            if (!isEnchantRow(next)) { i++; continue; }
+            int end = -1;
+            for (int j = i + 1; j < lore.size(); j++) {
+                if (lore.get(j).equals(DIVIDER)) { end = j; break; }
+            }
+            if (end < 0) break;
+            for (int k = end; k >= i; k--) lore.remove(k);
+            // re-scan from i
+        }
+    }
+
+    private static boolean isEnchantRow(String line) {
+        if (line == null || line.length() < 4) return false;
+        // §<color>▸<space>... — color code is 2 chars, then our glyph
+        if (line.charAt(0) != '§') return false;
+        return line.substring(2).startsWith("▸ ");
     }
 }

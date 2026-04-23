@@ -31,63 +31,73 @@ public class GodSet {
         p.getInventory().setBoots(     com.soulenchants.sets.SetRegistry.tag(godBoots(),  "duelist"));
         p.getInventory().addItem(godSword());
         p.getInventory().addItem(godAxe());
-        p.getInventory().addItem(com.soulenchants.loot.BossLootItems.crimsonTongue());
-        p.getInventory().addItem(com.soulenchants.loot.BossLootItems.wraithcleaver());
+        // Same "perfect" mythic stacks the PvE set uses — a fully enchanted
+        // mythic is useful in PvP too (lifesteal, criticalstrike, blessed all
+        // fire against players; PvE-only bonuses are inert in PvP, costless).
+        p.getInventory().addItem(perfectCrimsonTongue());
+        p.getInventory().addItem(perfectWraithcleaver());
     }
 
     private static ItemStack godHelmet() {
+        // PvP helmet: every slot earns its place. No utility filler.
         ItemStack it = baseArmor(Material.DIAMOND_HELMET, "Veilwalker's Crown");
         it = ItemUtil.addEnchant(it, "drunk",       4);
-        it = ItemUtil.addEnchant(it, "nightvision", 1);
-        it = ItemUtil.addEnchant(it, "saturation",  3);
-        it = ItemUtil.addEnchant(it, "aquatic",     1);
         it = ItemUtil.addEnchant(it, "clarity",     3);
         it = ItemUtil.addEnchant(it, "enlightened", 3);
         it = ItemUtil.addEnchant(it, "stormcaller", 2);
         it = ItemUtil.addEnchant(it, "counter",     3);
         it = ItemUtil.addEnchant(it, "reflect",     2);
+        it = ItemUtil.addEnchant(it, "oathbound",   3);
+        it = ItemUtil.addEnchant(it, "wardenseye",  3);
+        it = ItemUtil.addEnchant(it, "thornback",   3);
         return it;
     }
 
     private static ItemStack godChest() {
         ItemStack it = baseArmor(Material.DIAMOND_CHESTPLATE, "Duelist's Bulwark");
-        it = ItemUtil.addEnchant(it, "berserk",     3);
-        it = ItemUtil.addEnchant(it, "overshield",  4);
-        it = ItemUtil.addEnchant(it, "implants",    3);
-        it = ItemUtil.addEnchant(it, "vital",       5);
-        it = ItemUtil.addEnchant(it, "laststand",   3);
-        it = ItemUtil.addEnchant(it, "armored",     4);
-        it = ItemUtil.addEnchant(it, "spite",       3);
-        it = ItemUtil.addEnchant(it, "aegis",       3);
+        it = ItemUtil.addEnchant(it, "berserk",       3);
+        it = ItemUtil.addEnchant(it, "overshield",    4);
+        it = ItemUtil.addEnchant(it, "implants",      3);
+        it = ItemUtil.addEnchant(it, "vital",         6);
+        it = ItemUtil.addEnchant(it, "laststand",     3);
+        it = ItemUtil.addEnchant(it, "armored",       4);
+        it = ItemUtil.addEnchant(it, "spite",         3);
+        it = ItemUtil.addEnchant(it, "aegis",         3);
         it = ItemUtil.addEnchant(it, "vampiricplate", 3);
+        it = ItemUtil.addEnchant(it, "thornback",     3);
+        it = ItemUtil.addEnchant(it, "soulwarden",    3);
         return it;
     }
 
     private static ItemStack godLegs() {
         ItemStack it = baseArmor(Material.DIAMOND_LEGGINGS, "Hunter's Greaves");
-        it = ItemUtil.addEnchant(it, "hardened",     3);
-        it = ItemUtil.addEnchant(it, "antiknockback",2);
-        it = ItemUtil.addEnchant(it, "endurance",    2);
-        it = ItemUtil.addEnchant(it, "ironclad",     3);
-        it = ItemUtil.addEnchant(it, "armored",      4);
-        it = ItemUtil.addEnchant(it, "enlightened",  3);
-        it = ItemUtil.addEnchant(it, "ironskin",     3);
-        it = ItemUtil.addEnchant(it, "callous",      3);
-        it = ItemUtil.addEnchant(it, "molten",       2);
+        it = ItemUtil.addEnchant(it, "hardened",      3);
+        it = ItemUtil.addEnchant(it, "antiknockback", 2);
+        it = ItemUtil.addEnchant(it, "endurance",     2);
+        it = ItemUtil.addEnchant(it, "ironclad",      3);
+        it = ItemUtil.addEnchant(it, "armored",       4);
+        it = ItemUtil.addEnchant(it, "enlightened",   3);
+        it = ItemUtil.addEnchant(it, "ironskin",      3);
+        it = ItemUtil.addEnchant(it, "callous",       3);
+        it = ItemUtil.addEnchant(it, "molten",        2);
+        it = ItemUtil.addEnchant(it, "entombed",      3);
+        it = ItemUtil.addEnchant(it, "thornback",     3);
+        it = ItemUtil.addEnchant(it, "radiantshell",  4);
         return it;
     }
 
     private static ItemStack godBoots() {
+        // Dropped depthstrider/jumpboost/firewalker/magnetism — voidwalker +
+        // thornback pull real weight in a PvP scramble.
         ItemStack it = baseArmor(Material.DIAMOND_BOOTS, "Stormborn Treads");
-        it = ItemUtil.addEnchant(it, "speed",       3);
-        it = ItemUtil.addEnchant(it, "adrenaline",  3);
-        it = ItemUtil.addEnchant(it, "depthstrider",3);
-        it = ItemUtil.addEnchant(it, "jumpboost",   3);
-        it = ItemUtil.addEnchant(it, "firewalker",  1);
-        it = ItemUtil.addEnchant(it, "phoenix",     3);
-        it = ItemUtil.addEnchant(it, "rush",        3);
-        it = ItemUtil.addEnchant(it, "magnetism",   1);
-        it = ItemUtil.addEnchant(it, "enlightened", 3);
+        it = ItemUtil.addEnchant(it, "speed",        3);
+        it = ItemUtil.addEnchant(it, "adrenaline",   3);
+        it = ItemUtil.addEnchant(it, "phoenix",      3);
+        it = ItemUtil.addEnchant(it, "rush",         3);
+        it = ItemUtil.addEnchant(it, "enlightened",  3);
+        it = ItemUtil.addEnchant(it, "voidwalker",   3);
+        it = ItemUtil.addEnchant(it, "thornback",    3);
+        it = ItemUtil.addEnchant(it, "radiantshell", 4);
         return it;
     }
 
@@ -133,6 +143,11 @@ public class GodSet {
 
     // ──────────────────────────────────────────────────────────────────
     //  BOSS SET — PvE focus. Sustain + anti-boss damage + group survival.
+    //  v1.2 — every mythic in the loadout is fully enchanted on top of its
+    //  base MythicFactory kit (Sharpness V/VI, Unbreaking III, Fire Aspect
+    //  II, Looting III, Unbreakable). Custom enchants are layered per
+    //  weapon archetype so swords read sword-flavour and axes read
+    //  axe-flavour without overlap.
     // ──────────────────────────────────────────────────────────────────
     public static void giveBossSet(Player p) {
         // Tag every armor piece with the Boss-Killer set id so the BossKillerSet
@@ -143,63 +158,155 @@ public class GodSet {
         p.getInventory().setBoots(     com.soulenchants.sets.SetRegistry.tag(bossBoots(),  "bosskiller"));
         p.getInventory().addItem(bossSword());
         p.getInventory().addItem(bossAxe());
-        p.getInventory().addItem(com.soulenchants.loot.BossLootItems.crimsonTongue());
-        p.getInventory().addItem(com.soulenchants.loot.BossLootItems.wraithcleaver());
+        p.getInventory().addItem(perfectCrimsonTongue());
+        p.getInventory().addItem(perfectWraithcleaver());
+        p.getInventory().addItem(perfectGraverend());
+        p.getInventory().addItem(perfectEmberlash());
+        p.getInventory().addItem(perfectRuinhammer());
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  "Perfectly enchanted" mythic builders. Each starts from a fresh
+    //  MythicFactory/BossLootItems stack (already carries vanilla
+    //  Sharpness+Unbreaking kit, custom NBT id + mythic_held aura tag)
+    //  and layers thematic custom enchants on top.
+    // ──────────────────────────────────────────────────────────────────
+
+    private static ItemStack perfectCrimsonTongue() {
+        // Base ships with: Sharpness VI, Fire Aspect II, Looting III,
+        // Unbreaking III, bleed 6, deepwounds 3, mythic_held 1, unbreakable.
+        ItemStack it = com.soulenchants.loot.BossLootItems.crimsonTongue();
+        it = ItemUtil.addEnchant(it, "lifesteal",        5);
+        it = ItemUtil.addEnchant(it, "executioner",      3);
+        it = ItemUtil.addEnchant(it, "huntersmark",      3);
+        it = ItemUtil.addEnchant(it, "executionersmark", 3);
+        it = ItemUtil.addEnchant(it, "blessed",          4);
+        return it;
+    }
+
+    private static ItemStack perfectWraithcleaver() {
+        // Base ships with: Sharpness VI, Knockback II, Looting III,
+        // Unbreaking III, cleave 7, earthshaker 3, soulburn 3,
+        // mythic_held 2, unbreakable.
+        ItemStack it = com.soulenchants.loot.BossLootItems.wraithcleaver();
+        it = ItemUtil.addEnchant(it, "holysmite",   3);
+        it = ItemUtil.addEnchant(it, "witherbane",  3);
+        it = ItemUtil.addEnchant(it, "overwhelm",   3);
+        it = ItemUtil.addEnchant(it, "blessed",     4);
+        it = ItemUtil.addEnchant(it, "criticalstrike", 5);
+        return it;
+    }
+
+    /** Graverend — PvE axe, heal-on-kill + anti-boss bonus. Debuff-flavour
+     *  axe stack on top so every swing pressures the target. */
+    private static ItemStack perfectGraverend() {
+        ItemStack it = com.soulenchants.mythic.MythicFactory.create("graverend");
+        it = ItemUtil.addEnchant(it, "bleed",            6);
+        it = ItemUtil.addEnchant(it, "deepwounds",       3);
+        it = ItemUtil.addEnchant(it, "reaver",           4);
+        it = ItemUtil.addEnchant(it, "bloodfury",        3);
+        it = ItemUtil.addEnchant(it, "berserkersedge",   3);
+        it = ItemUtil.addEnchant(it, "exsanguinate",     3);
+        it = ItemUtil.addEnchant(it, "executionersmark", 3);
+        return it;
+    }
+
+    /** Emberlash — PvE sword, per-swing fire splash. Fire + sustain
+     *  stack that turns trash packs into ash while you heal off each hit. */
+    private static ItemStack perfectEmberlash() {
+        ItemStack it = com.soulenchants.mythic.MythicFactory.create("emberlash");
+        it = ItemUtil.addEnchant(it, "lifesteal",        5);
+        it = ItemUtil.addEnchant(it, "slayer",           3);
+        it = ItemUtil.addEnchant(it, "holysmite",        3);
+        it = ItemUtil.addEnchant(it, "criticalstrike",   5);
+        it = ItemUtil.addEnchant(it, "soulburn",         5);
+        it = ItemUtil.addEnchant(it, "divineimmolation", 4);
+        return it;
+    }
+
+    /** Ruinhammer — PvE axe, stacking kill bonus. Loaded with AXE debuff
+     *  enchants so each hit primes the stack for the 10-stack burst. */
+    private static ItemStack perfectRuinhammer() {
+        ItemStack it = com.soulenchants.mythic.MythicFactory.create("ruinhammer");
+        it = ItemUtil.addEnchant(it, "cleave",        7);
+        it = ItemUtil.addEnchant(it, "skullcrush",    3);
+        it = ItemUtil.addEnchant(it, "hamstring",     3);
+        it = ItemUtil.addEnchant(it, "shieldbreaker", 3);
+        it = ItemUtil.addEnchant(it, "rendingblow",   3);
+        it = ItemUtil.addEnchant(it, "pulverize",     3);
+        it = ItemUtil.addEnchant(it, "crushingblow",  3);
+        return it;
     }
 
     private static ItemStack bossHelmet() {
+        // Every slot earns its place — combat-relevant only. Dropped saturation /
+        // aquatic / nightvision / magnetism (utility enchants with no bearing on
+        // a boss fight) in favour of clarity + oathbound + wardenseye + dreadmantle.
         ItemStack it = baseArmor(Material.DIAMOND_HELMET, "Veilseeker's Crown");
         it = ItemUtil.addEnchant(it, "drunk",        4);
-        it = ItemUtil.addEnchant(it, "nightvision",  1);
-        it = ItemUtil.addEnchant(it, "saturation",   3);
-        it = ItemUtil.addEnchant(it, "aquatic",      1);
         it = ItemUtil.addEnchant(it, "clarity",      3);
         it = ItemUtil.addEnchant(it, "enlightened",  3);
         it = ItemUtil.addEnchant(it, "reflect",      2);
         it = ItemUtil.addEnchant(it, "stormcaller",  2);
-        it = ItemUtil.addEnchant(it, "magnetism",    1);
+        it = ItemUtil.addEnchant(it, "oathbound",    3);
+        it = ItemUtil.addEnchant(it, "wardenseye",   3);
+        it = ItemUtil.addEnchant(it, "dreadmantle",  3);
+        it = ItemUtil.addEnchant(it, "thornback",    3);
         return it;
     }
 
     private static ItemStack bossChest() {
+        // Vital bumped to max (6 = +12 HP = +6 hearts → 32 HP total). Bulwark
+        // adds mob-scaled damage reduction + auto Resistance II below 40% HP.
+        // Soul Warden gives Regen after every mob hit (60s CD).
         ItemStack it = baseArmor(Material.DIAMOND_CHESTPLATE, "Ironheart Bulwark");
-        it = ItemUtil.addEnchant(it, "berserk",     3);
-        it = ItemUtil.addEnchant(it, "overshield",  4);
-        it = ItemUtil.addEnchant(it, "implants",    3);
-        it = ItemUtil.addEnchant(it, "vital",       5);
-        it = ItemUtil.addEnchant(it, "laststand",   3);
-        it = ItemUtil.addEnchant(it, "bloodlust",   6);
-        it = ItemUtil.addEnchant(it, "armored",     4);
-        it = ItemUtil.addEnchant(it, "enlightened", 3);
-        it = ItemUtil.addEnchant(it, "guardians",   3);
+        it = ItemUtil.addEnchant(it, "berserk",       3);
+        it = ItemUtil.addEnchant(it, "overshield",    4);
+        it = ItemUtil.addEnchant(it, "implants",      3);
+        it = ItemUtil.addEnchant(it, "vital",         6);
+        it = ItemUtil.addEnchant(it, "laststand",     3);
+        it = ItemUtil.addEnchant(it, "bloodlust",     6);
+        it = ItemUtil.addEnchant(it, "armored",       4);
+        it = ItemUtil.addEnchant(it, "enlightened",   3);
+        it = ItemUtil.addEnchant(it, "guardians",     3);
+        it = ItemUtil.addEnchant(it, "bulwark",       3);
+        it = ItemUtil.addEnchant(it, "soulwarden",    3);
+        it = ItemUtil.addEnchant(it, "thornback",     3);
         return it;
     }
 
     private static ItemStack bossLegs() {
         ItemStack it = baseArmor(Material.DIAMOND_LEGGINGS, "Colossus Greaves");
-        it = ItemUtil.addEnchant(it, "hardened",     3);
-        it = ItemUtil.addEnchant(it, "antiknockback",2);
-        it = ItemUtil.addEnchant(it, "endurance",    2);
-        it = ItemUtil.addEnchant(it, "ironclad",     3);
-        it = ItemUtil.addEnchant(it, "armored",      4);
-        it = ItemUtil.addEnchant(it, "enlightened",  3);
-        it = ItemUtil.addEnchant(it, "molten",       2);
-        it = ItemUtil.addEnchant(it, "lifebloom",    5);
-        it = ItemUtil.addEnchant(it, "natureswrath", 4);
+        it = ItemUtil.addEnchant(it, "hardened",       3);
+        it = ItemUtil.addEnchant(it, "antiknockback",  2);
+        it = ItemUtil.addEnchant(it, "endurance",      2);
+        it = ItemUtil.addEnchant(it, "ironclad",       3);
+        it = ItemUtil.addEnchant(it, "armored",        4);
+        it = ItemUtil.addEnchant(it, "enlightened",    3);
+        it = ItemUtil.addEnchant(it, "molten",         2);
+        it = ItemUtil.addEnchant(it, "lifebloom",      5);
+        it = ItemUtil.addEnchant(it, "natureswrath",   4);
+        it = ItemUtil.addEnchant(it, "entombed",       3);
+        it = ItemUtil.addEnchant(it, "thornback",      3);
+        it = ItemUtil.addEnchant(it, "mobslayersward", 3);
+        it = ItemUtil.addEnchant(it, "radiantshell",   4);
         return it;
     }
 
     private static ItemStack bossBoots() {
+        // Dropped depthstrider/jumpboost/firewalker — swim speed + jump + lava
+        // safety don't move the needle in a boss fight. Voidwalker replaces
+        // them (dodge-chance + permanent Speed I).
         ItemStack it = baseArmor(Material.DIAMOND_BOOTS, "Stormborn Treads");
-        it = ItemUtil.addEnchant(it, "speed",        3);
-        it = ItemUtil.addEnchant(it, "adrenaline",   3);
-        it = ItemUtil.addEnchant(it, "depthstrider", 3);
-        it = ItemUtil.addEnchant(it, "jumpboost",    3);
-        it = ItemUtil.addEnchant(it, "firewalker",   1);
-        it = ItemUtil.addEnchant(it, "phoenix",      3);
-        it = ItemUtil.addEnchant(it, "stormcaller",  2);
-        it = ItemUtil.addEnchant(it, "enlightened",  3);
-        it = ItemUtil.addEnchant(it, "magnetism",    1);
+        it = ItemUtil.addEnchant(it, "speed",         3);
+        it = ItemUtil.addEnchant(it, "adrenaline",    3);
+        it = ItemUtil.addEnchant(it, "phoenix",       3);
+        it = ItemUtil.addEnchant(it, "stormcaller",   2);
+        it = ItemUtil.addEnchant(it, "enlightened",   3);
+        it = ItemUtil.addEnchant(it, "voidwalker",    3);
+        it = ItemUtil.addEnchant(it, "thornback",     3);
+        it = ItemUtil.addEnchant(it, "radiantshell",  4);
+        it = ItemUtil.addEnchant(it, "mobslayersward",3);
         return it;
     }
 

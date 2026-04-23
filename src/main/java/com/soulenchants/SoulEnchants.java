@@ -64,6 +64,7 @@ public class SoulEnchants extends JavaPlugin {
     private MythicAuraTask mythicAuraTask;
     private MaskPacketInjector maskPacketInjector;
     private LunarPingListener lunarPingListener;
+    private com.soulenchants.pets.PetManager petManager;
 
     @Override
     public void onEnable() {
@@ -140,7 +141,6 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CrystalListener(this), this);
         getServer().getPluginManager().registerEvents(new IronSentinelListener(this), this);
         getServer().getPluginManager().registerEvents(new SpawnerTagListener(), this);
-        getServer().getPluginManager().registerEvents(new TierChatPrefix(this), this);
 
         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new EntityDeathListener(this), this);
@@ -257,6 +257,18 @@ public class SoulEnchants extends JavaPlugin {
                 new com.soulenchants.listeners.SoulGemListener(this), this);
         // /soulgem removed — minting is now a /souls withdraw subcommand.
 
+        // ──────────────── Pet system (v1.2) ────────────────
+        // Hybrid pets — egg item in bag, spawns a follower armor stand with
+        // per-pet visuals. Passives tick while summoned, active fires on
+        // sneak + right-click. XP lives on the egg (se_pet_xp), so eggs
+        // trade/sell cleanly without server-side bookkeeping.
+        com.soulenchants.pets.PetRegistry.registerDefaults(this);
+        this.petManager = new com.soulenchants.pets.PetManager(this);
+        this.petManager.start();
+        getServer().getPluginManager().registerEvents(new com.soulenchants.pets.PetListener(this), this);
+        if (getCommand("pet") != null)
+            getCommand("pet").setExecutor(new com.soulenchants.pets.PetCommand(this));
+
         // ──────────────── Lunar Client bridge (v1.1) ────────────────
         LunarBridge.init(this);
         this.lunarPingListener = new LunarPingListener(this);
@@ -291,6 +303,7 @@ public class SoulEnchants extends JavaPlugin {
         if (pvpStats != null) pvpStats.save();
         if (guildManager != null) { guildManager.stop(); guildManager.save(); }
         if (clarityTask != null) clarityTask.stop();
+        if (petManager != null) petManager.stop();
         if (setManager != null) setManager.stop();
         if (veilweaverManager != null && veilweaverManager.getActive() != null)
             veilweaverManager.getActive().stop(false);
@@ -331,4 +344,5 @@ public class SoulEnchants extends JavaPlugin {
     public EnchantConfig getEnchantConfig() { return enchantConfig; }
     public MythicConfig getMythicConfig() { return mythicConfig; }
     public com.soulenchants.masks.MaskPacketInjector getMaskPacketInjector() { return maskPacketInjector; }
+    public com.soulenchants.pets.PetManager getPetManager() { return petManager; }
 }

@@ -16,11 +16,11 @@ import java.util.UUID;
  * variants), we fall back to a plain skull — still functional, just not
  * the custom texture.
  */
-final class SkullUtil {
+public final class SkullUtil {
 
     private SkullUtil() {}
 
-    static ItemStack skull(String base64Texture) {
+    public static ItemStack skull(String base64Texture) {
         ItemStack skull = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
         if (base64Texture == null) return skull;
         SkullMeta meta = (SkullMeta) skull.getItemMeta();

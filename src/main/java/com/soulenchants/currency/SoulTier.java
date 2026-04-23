@@ -4,35 +4,37 @@ import org.bukkit.ChatColor;
 
 /**
  * Lifetime-souls progression tiers. Crossing a threshold is permanent —
- * the perks attached can't be lost by spending souls or dying.
+ * the +souls-per-kill perk on higher tiers can't be lost by spending
+ * souls or dying.
  */
 public enum SoulTier {
-    INITIATE  ("Initiate",  0L,           ChatColor.DARK_GRAY,   0, false),
-    BRONZE    ("Bronze",    5_000L,       ChatColor.GRAY,        1, false),
-    SILVER    ("Silver",    25_000L,      ChatColor.WHITE,       1, true),   // +1 souls/kill
-    GOLD      ("Gold",      100_000L,     ChatColor.YELLOW,      1, true),
-    VEILED    ("Veiled",    300_000L,     ChatColor.LIGHT_PURPLE, 2, true),
-    SOULBOUND ("Soulbound", 1_000_000L,   ChatColor.DARK_RED,    3, true);
+    INITIATE  ("Initiate",  0L,           ChatColor.DARK_GRAY,   false),
+    BRONZE    ("Bronze",    5_000L,       ChatColor.GRAY,        false),
+    SILVER    ("Silver",    25_000L,      ChatColor.WHITE,       true),   // +1 souls/kill
+    GOLD      ("Gold",      100_000L,     ChatColor.YELLOW,      true),
+    VEILED    ("Veiled",    300_000L,     ChatColor.LIGHT_PURPLE, true),
+    SOULBOUND ("Soulbound", 1_000_000L,   ChatColor.DARK_RED,    true);
 
     private final String label;
     private final long threshold;
     private final ChatColor color;
-    private final int bonusMaxHp;       // permanent +HP granted at this tier
     private final boolean bonusPerKill; // adds +1 to mob soul drops
 
-    SoulTier(String label, long threshold, ChatColor color, int bonusMaxHp, boolean bonusPerKill) {
+    SoulTier(String label, long threshold, ChatColor color, boolean bonusPerKill) {
         this.label = label;
         this.threshold = threshold;
         this.color = color;
-        this.bonusMaxHp = bonusMaxHp;
         this.bonusPerKill = bonusPerKill;
     }
 
     public String getLabel() { return label; }
     public long getThreshold() { return threshold; }
     public ChatColor getColor() { return color; }
-    public int getBonusMaxHp() { return bonusMaxHp; }
     public boolean grantsBonusPerKill() { return bonusPerKill; }
+
+    /** Kept for display-only callers that still reference it. Always 0 —
+     *  tier HP bonuses were removed in favour of the Vital enchant. */
+    public int getBonusMaxHp() { return 0; }
 
     /** Pretty-printed prefix for chat / scoreboard. */
     public String prefix() {

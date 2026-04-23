@@ -108,7 +108,6 @@ public class SoulsCommand implements CommandExecutor {
             sender.sendMessage("§7  Tier thresholds:");
             for (SoulTier t : SoulTier.values()) {
                 sender.sendMessage("§7    " + t.prefix() + " §8≥ §f" + t.getThreshold()
-                        + " §7| +" + t.getBonusMaxHp() + " HP"
                         + (t.grantsBonusPerKill() ? " §7| +1 souls/kill" : ""));
             }
             sender.sendMessage("§7  Online players:");
@@ -235,8 +234,6 @@ public class SoulsCommand implements CommandExecutor {
         Chat.banner(to, p.getName() + MessageStyle.FRAME + " — Soul Profile");
         to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.SOUL_ORB + "  "
                 + MessageStyle.MUTED + "Tier:     " + t.prefix()
-                + MessageStyle.FRAME + "   " + MessageStyle.BAR + "   "
-                + MessageStyle.MUTED + "+" + MessageStyle.VALUE + t.getBonusMaxHp() + " HP"
                 + (t.grantsBonusPerKill() ? MessageStyle.FRAME + "   " + MessageStyle.BAR + "   "
                         + MessageStyle.VALUE + "+1 souls/kill" : ""));
         to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.DIAMOND + "  "

@@ -63,6 +63,10 @@ commands:
     description: Lunar Client API bridge — diagnostic + cooldown test
     usage: §8/§elunar §7<status|test>
     aliases: []
+  pet:
+    description: Hybrid pet system — 7 archetypes, eggs, follower armor stands
+    usage: §8/§epet §7<list|info|despawn|give|xp>
+    aliases: [pets]
 
 permissions:
   soulenchants.admin:

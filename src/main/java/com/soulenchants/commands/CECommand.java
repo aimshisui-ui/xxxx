@@ -297,20 +297,23 @@ public class CECommand implements CommandExecutor {
     }
 
     private void help(CommandSender s) {
-        Chat.banner(s, "SoulEnchants " + MessageStyle.MUTED + "v1.1 " + MessageStyle.FRAME + "commands");
+        Chat.banner(s, "SoulEnchants " + MessageStyle.MUTED + "v1.2 " + MessageStyle.FRAME + "commands");
         group(s, "Hub");
-        row(s, "/ce god",                             "hub GUI " + MessageStyle.FRAME + "— everything in one panel");
+        row(s, "/ce god",                             "hub GUI " + MessageStyle.FRAME + "— enchants, mythics, masks, pets, bosses");
         row(s, "/ce menu",                            "paginated enchant catalog");
-        row(s, "/ce mythic",                          MessageStyle.TIER_SOUL + "v1.1 " + MessageStyle.MUTED + "open the mythic browser");
-        row(s, "/ce mask",                            MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "open the mask browser");
-        row(s, "/ce list",                            "list enchants in chat");
+        row(s, "/ce mythic",                          MessageStyle.TIER_SOUL + "12 " + MessageStyle.MUTED + "mythics · open browser");
+        row(s, "/ce mask",                            MessageStyle.TIER_EPIC + "13 " + MessageStyle.MUTED + "masks · open browser");
+        row(s, "/ce list",                            "list every enchant in chat");
         row(s, "/ce reload [all|loot]",               "reload enchants.yml + mythics.yml " + MessageStyle.FRAME + "(+loot)");
 
         group(s, "Give");
         row(s, "/ce book <player> <enchant> <lvl>",   "hand out an enchant book");
         row(s, "/ce dust <player> <25|50|75|100>",    "hand out Magic Dust");
         row(s, "/ce scroll <player> <b|w|transmog>",  "hand out a scroll");
-        row(s, "/ce bossset  " + MessageStyle.FRAME + "|" + MessageStyle.VALUE + "  /ce godset",   "equip a full loadout");
+        row(s, "/ce bossset",                         MessageStyle.SOUL_GOLD + "PvE " + MessageStyle.MUTED
+                + "— armor + 5 perfectly-enchanted mythics");
+        row(s, "/ce godset",                          MessageStyle.TIER_SOUL + "PvP " + MessageStyle.MUTED
+                + "— armor + sword + axe + 2 mythics");
         row(s, "/ce giveloot <id> [player]",          "spawn any registered loot item");
 
         group(s, "Bosses");
@@ -319,6 +322,10 @@ public class CECommand implements CommandExecutor {
         row(s, "/ce killall",                         "remove every custom mob + boss");
         row(s, "/ce loot",                            "GUI editor for mob stats / drops");
         row(s, "/ce fixhp [player]",                  "reset max HP to 20 + clear Heart stacks");
+
+        group(s, "See also");
+        row(s, "/pet list " + MessageStyle.FRAME + "| " + MessageStyle.VALUE + "/pet give <id> [p]",
+                MessageStyle.TIER_LEGENDARY + "v1.2 " + MessageStyle.MUTED + "hybrid pet system");
         Chat.rule(s);
     }
 
