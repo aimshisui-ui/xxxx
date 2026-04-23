@@ -53,6 +53,8 @@ public final class GuardianPet extends Pet {
         return "Bulwark — 8 hearts of Absorption + Resistance III for 8s + knockback pulse. §740s CD.";
     }
 
+    // Bulwark's Absorption amp 7 = 16 HP = 8 hearts, matching the lore.
+
     @Override
     public void onTick(Player owner, ArmorStand companion, int level) {
         owner.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 80, 0, true, false), true);
@@ -71,8 +73,8 @@ public final class GuardianPet extends Pet {
             return false;
         }
         cooldown.put(owner.getUniqueId(), now);
-        // 8 hearts of Absorption + Resistance III for 8s
-        owner.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION,         160, 3, true, false), true);
+        // 8 hearts of Absorption (amp 7 = 16 HP = 8 hearts) + Resistance III for 8s
+        owner.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION,         160, 7, true, false), true);
         owner.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE,  160, 2, true, false), true);
         // Knockback pulse — everything in 6 blocks gets shoved away.
         org.bukkit.Location loc = owner.getLocation();

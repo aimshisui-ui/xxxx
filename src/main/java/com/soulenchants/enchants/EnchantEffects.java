@@ -39,7 +39,13 @@ public final class EnchantEffects {
             case "bonebreaker":     return (level * 4) + "% chance · Weakness " + roman(Math.min(2, level)) + " for " + (level * 3) + "s";
             case "criticalstrike":  return (level * 2) + "% chance · +50% crit damage";
             case "headhunter":      return (level * 2) + "% chance · drops a mob head";
-            case "bleed":           return String.format("%.1f", level * 0.6) + "% chance · stacking Slow on hit (boosted by Deep Wounds)";
+            case "bleed":
+                if (level >= 4) {
+                    int ahPct = (level - 3) * 10;
+                    return String.format("%.1f", level * 0.6) + "% chance · stacking Slow + "
+                            + ahPct + "% Anti-Heal for 6s (Deep Wounds boosts proc)";
+                }
+                return String.format("%.1f", level * 0.6) + "% chance · stacking Slow on hit (boosted by Deep Wounds)";
             case "razorwind":       return "Cone slash · " + (level * 3) + " dmg to enemies in front";
             case "greedy":          return (level * 4) + "% chance per drop to duplicate it";
 
@@ -123,6 +129,10 @@ public final class EnchantEffects {
             case "soulburst":       return "On hit (any) · AoE " + (level * 4) + " dmg + knockback · costs 150 souls per proc";
             case "divineimmolation": return "AoE " + level + "-block radius · " + String.format("%.1f", level * 1.1) + " divine dmg · 5 souls per swing";
             case "natureswrath":    return "2% on-hit · root " + (level * 3) + "-block radius for " + (5 + level) + "s · 75 souls per proc";
+
+            // ── Anti-Healing ──
+            case "severance":       return (level * 20) + "% chance · 25% Anti-Heal for 5s (target's healing cut)";
+            case "reapingslash":    return (level * 15) + "% chance · 40% Anti-Heal for 6s (target's healing cut)";
 
             // ── v1.2 AXE debuff suite ──
             case "marrowbreak":     return (level * 25) + "% chance · Weakness II for 5s";

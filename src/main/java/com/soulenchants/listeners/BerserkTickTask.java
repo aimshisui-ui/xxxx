@@ -137,6 +137,20 @@ public class BerserkTickTask extends BukkitRunnable {
             p.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 60, 0, true, false), true);
             applyThisTick.add(PotionEffectType.WATER_BREATHING);
         }
+        // Mask passive auras — every attached mask grants a small set of
+        // permanent potion effects (Speed, Strength, Resistance, etc.) while
+        // the helmet is worn. Applied BEFORE clarity strip so none of the
+        // mask auras get caught by the Poison/Blindness cleanup below.
+        if (helmet != null) {
+            String maskId = com.soulenchants.masks.MaskRegistry.attachedMaskId(helmet);
+            if (maskId != null) {
+                for (com.soulenchants.masks.Mask.Aura aura : com.soulenchants.masks.Mask.aurasFor(maskId)) {
+                    p.addPotionEffect(new PotionEffect(aura.type, 60, aura.amp, true, false), true);
+                    applyThisTick.add(aura.type);
+                }
+            }
+        }
+
         // Clarity — strip POISON / BLINDNESS proportional to level.
         // L1 ≈ 33% strip-per-tick, L2 ≈ 66%, L3 = full immunity.
         if (clarity > 0) {

@@ -41,18 +41,17 @@ public final class Dawnbringer extends MythicWeapon {
         long intervalMs = cfg.dawnbringerPurgeIntervalTicks * 50L;
         if (now - lastPurge < intervalMs) return;
         lastPurge = now;
-        // Self
+        // Self — strip debuffs, then +1 Regen above current tier (stacks with
+        // Implants / Soul Warden etc. instead of overwriting them).
         stripNegatives(owner);
-        owner.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60,
-                cfg.dawnbringerRegenAmplifier, true, false), true);
+        com.soulenchants.util.AuraStacker.bump(owner, PotionEffectType.REGENERATION, 60);
         // Nearby players (guild-filtering is optional — omit the hard dep and buff all allies)
         for (Entity e : owner.getNearbyEntities(cfg.dawnbringerAuraRadius,
                 cfg.dawnbringerAuraRadius, cfg.dawnbringerAuraRadius)) {
             if (!(e instanceof Player)) continue;
             Player other = (Player) e;
             stripNegatives(other);
-            other.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60,
-                    cfg.dawnbringerRegenAmplifier, true, false), true);
+            com.soulenchants.util.AuraStacker.bump(other, PotionEffectType.REGENERATION, 60);
         }
     }
 

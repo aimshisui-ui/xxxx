@@ -30,11 +30,8 @@ public final class Tidecaller extends MythicWeapon {
         return Arrays.asList(
                 MessageStyle.MUTED + "Carried in the hotbar, answered by the tide.",
                 "",
-                MessageStyle.TIER_RARE + "▸ " + MessageStyle.MUTED + "Water Breathing aura",
-                MessageStyle.TIER_RARE + "▸ " + MessageStyle.MUTED + "Depth Strider " +
-                        MessageStyle.VALUE + (cfg.tidecallerDepthAmp + 1) +
-                        MessageStyle.MUTED + " to allies within " +
-                        MessageStyle.VALUE + (int)cfg.tidecallerAuraRadius + "m"
+                MessageStyle.TIER_RARE + "▸ " + MessageStyle.MUTED + "Water Breathing aura to allies within "
+                        + MessageStyle.VALUE + (int)cfg.tidecallerAuraRadius + "m"
         );
     }
 

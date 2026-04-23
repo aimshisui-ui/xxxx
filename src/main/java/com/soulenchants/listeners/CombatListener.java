@@ -92,6 +92,13 @@ public class CombatListener implements Listener {
     private final Map<UUID, Long>    owLast   = new HashMap<>();
     /** Soul Warden — per-victim cooldown on the Regen proc. */
     private final Map<UUID, Long>    soulWardenCd = new HashMap<>();
+    /** Anti-Healing debuff — per-victim expiry + applied reduction %. Applied
+     *  by Bleed L4+ (10/20/30% at L4/5/6) and by the two dedicated AH enchants
+     *  Severance (sword) / Reaping Slash (axe). Strongest active value wins
+     *  on re-application; the EntityRegainHealthEvent listener multiplies
+     *  regen amount by (1 - pct) while active. */
+    private final Map<UUID, Long>    antiHealUntil = new HashMap<>();
+    private final Map<UUID, Double>  antiHealPct   = new HashMap<>();
 
     public CombatListener(SoulEnchants plugin) {
         this.plugin = plugin;
@@ -522,6 +529,22 @@ public class CombatListener implements Listener {
                 markedBy.put(vid, atkId);
                 markedUntil.put(vid, now + 10_000L);
             }
+        }
+
+        // Severance (sword) — dedicated anti-heal proc. 20%/lvl chance, 25% AH for 5s.
+        int sv = ItemUtil.getLevel(hand, "severance");
+        if (sv > 0 && rng.nextDouble() < 0.20 * sv) {
+            applyAntiHeal(victim, 0.25, 5_000L);
+            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
+                    Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
+        }
+
+        // Reaping Slash (axe) — rarer but stronger AH. 15%/lvl chance, 40% AH for 6s.
+        int rs2 = ItemUtil.getLevel(hand, "reapingslash");
+        if (rs2 > 0 && rng.nextDouble() < 0.15 * rs2) {
+            applyAntiHeal(victim, 0.40, 6_000L);
+            victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
+                    Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
         }
 
         // Overwhelm — consecutive hits on the same target stack 6%/lvl per stack, capped at 5.
@@ -1135,6 +1158,8 @@ public class CombatListener implements Listener {
         owStacks.remove(id);
         owLast.remove(id);
         soulWardenCd.remove(id);
+        antiHealUntil.remove(id);
+        antiHealPct.remove(id);
     }
 
     /** 1 Hz DoT that drains Exsanguinate'd victims for 1 HP each tick until expiry. */
@@ -1224,6 +1249,14 @@ public class CombatListener implements Listener {
         bleedAttacker.put(id, attacker != null ? attacker.getUniqueId() : null);
         bleedCrimsonTongue.put(id, weapon != null && ItemUtil.getLevel(weapon, "mythic_held") == 1);
 
+        // Anti-Healing — bleed at level 4+ applies a healing-reduction debuff
+        // that lasts for the bleed duration. 10/20/30% at L4/5/6.
+        int bleedLvl = weapon == null ? 0 : ItemUtil.getLevel(weapon, "bleed");
+        if (bleedLvl >= 4) {
+            double pct = Math.min(0.30, (bleedLvl - 3) * 0.10);
+            applyAntiHeal(victim, pct, BLEED_DURATION_MS);
+        }
+
         // Slow amp: 1 extra per 5 stacks, cap at 3 (Slow IV). Duration matches
         // remaining bleed so the slow visibly tracks the DOT.
         int amp = Math.min(3, stacks / 5);
@@ -1233,6 +1266,55 @@ public class CombatListener implements Listener {
         finally { BLEED_TICK.set(false); }
         // On-proc burst — bigger than the tick burst to punctuate the initial hit
         spawnBloodBurst(victim, stacks + 2);
+    }
+
+    /**
+     * Apply (or refresh) the Anti-Healing debuff to a victim. Strongest active
+     * pct wins on re-application — re-applying a weaker value never shortens
+     * the stronger one early. Duration extends if the new expiry is later.
+     */
+    private void applyAntiHeal(LivingEntity victim, double pct, long durationMs) {
+        if (victim == null || pct <= 0) return;
+        UUID id = victim.getUniqueId();
+        long now = System.currentTimeMillis();
+        long newUntil = now + durationMs;
+        Long prevUntil = antiHealUntil.get(id);
+        Double prevPct = antiHealPct.get(id);
+        // Strongest pct wins while existing is still active
+        if (prevUntil != null && prevUntil > now && prevPct != null && prevPct > pct) {
+            if (newUntil > prevUntil) antiHealUntil.put(id, newUntil);
+            return;
+        }
+        antiHealUntil.put(id, newUntil);
+        antiHealPct.put(id, pct);
+        if (victim instanceof Player) {
+            ((Player) victim).sendMessage("§c§l⚑ ANTI-HEAL §7— healing reduced §f"
+                    + (int)(pct * 100) + "%§7 for " + (durationMs / 1000) + "s");
+        }
+    }
+
+    /**
+     * Scale down any healing the victim receives while anti-heal is active.
+     * Covers EntityRegainHealthEvent (natural regen, golden apples, regen
+     * potions, /heal etc.). Runs at MONITOR so we never race our own
+     * post-proc heals from other listeners; we just scale the final amount.
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onHealDebuff(org.bukkit.event.entity.EntityRegainHealthEvent e) {
+        if (!(e.getEntity() instanceof LivingEntity)) return;
+        UUID id = e.getEntity().getUniqueId();
+        Long until = antiHealUntil.get(id);
+        if (until == null) return;
+        long now = System.currentTimeMillis();
+        if (now > until) {
+            antiHealUntil.remove(id);
+            antiHealPct.remove(id);
+            return;
+        }
+        Double pct = antiHealPct.get(id);
+        if (pct == null || pct <= 0) return;
+        double scaled = e.getAmount() * (1.0 - pct);
+        e.setAmount(Math.max(0, scaled));
     }
 
     /** Redstone-block step-sound particle burst around a victim. Cosmic uses

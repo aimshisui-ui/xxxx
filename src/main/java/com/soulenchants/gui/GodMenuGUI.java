@@ -95,14 +95,14 @@ public class GodMenuGUI implements Listener {
                 "equip / clear"));
         inv.setItem(16, tile(Material.DIAMOND_SWORD, MessageStyle.FRAME, "Boss Loot",
                 "Named drops from every boss —", "hammers, mantles, cores, plates.",
-                MessageStyle.VALUE + "12" + MessageStyle.MUTED + " items · "
-                        + MessageStyle.VALUE + "Legendary" + MessageStyle.MUTED + " tier",
+                MessageStyle.VALUE + "12" + MessageStyle.MUTED + " named items · "
+                        + MessageStyle.VALUE + "Legendary+" + MessageStyle.MUTED + " tier",
                 "browse"));
 
         // ── Row 2 — SUPPORT ──────────────────────────────────────────
         inv.setItem(19, tile(Material.IRON_BLOCK, MessageStyle.TIER_UNCOMMON, "Reagents",
                 "Crafting materials for every", "custom recipe in the book.",
-                MessageStyle.VALUE + "10" + MessageStyle.MUTED + " reagents · "
+                MessageStyle.VALUE + "15" + MessageStyle.MUTED + " reagents · "
                         + MessageStyle.VALUE + "stackable",
                 "grab a sample"));
         inv.setItem(20, tile(Material.GOLDEN_APPLE, MessageStyle.TIER_EPIC, "Consumables",
@@ -143,8 +143,8 @@ public class GodMenuGUI implements Listener {
                 "open mint menu"));
         inv.setItem(29, tile(Material.MONSTER_EGG, MessageStyle.SOUL_GOLD, "Summon a Boss",
                 "Spawn any registered world boss", "at your current location.",
-                MessageStyle.VALUE + "3" + MessageStyle.MUTED + " bosses · "
-                        + MessageStyle.VALUE + "Veilweaver · Colossus · Modock",
+                MessageStyle.VALUE + "7" + MessageStyle.MUTED + " bosses · "
+                        + MessageStyle.VALUE + "Veilweaver · Colossus · Modock · Hollow · +3 elites",
                 "open spawn menu"));
         inv.setItem(31, tile(Material.SKULL_ITEM, MessageStyle.TIER_EPIC, "Custom Mobs",
                 "Every registered custom mob —", "Hollow King, elites, cave + rift roster.",
@@ -182,7 +182,8 @@ public class GodMenuGUI implements Listener {
     }
 
     public void openReagents(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, TITLE_REAGENTS);
+        Inventory inv = Bukkit.createInventory(null, 36, TITLE_REAGENTS);
+        // Legacy boss reagents (Veilweaver / Colossus)
         ItemStack[] all = new ItemStack[]{
                 BossLootItems.colossusSlag(8),
                 BossLootItems.ironHeartFragment(8),
@@ -193,10 +194,16 @@ public class GodMenuGUI implements Listener {
                 BossLootItems.frayedSoul(8),
                 BossLootItems.echoingStrand(8),
                 BossLootItems.phantomSilk(8),
-                BossLootItems.veilEssence()
+                BossLootItems.veilEssence(),
+                // v1.2 — Hollow King + cave rift + new elite boss reagents
+                BossLootItems.paleShard(8),
+                BossLootItems.echoShard(8),
+                BossLootItems.dripstoneTear(8),
+                BossLootItems.hollowFragment(8),
+                BossLootItems.voidEssence(8)
         };
         for (int i = 0; i < all.length; i++) inv.setItem(i, all[i]);
-        inv.setItem(22, backButton());
+        inv.setItem(31, backButton());
         p.openInventory(inv);
     }
 
@@ -383,7 +390,13 @@ public class GodMenuGUI implements Listener {
                 case 19: openReagents(p); return;
                 case 20: openConsumables(p); return;
                 case 21: openLootBoxes(p); return;
-                case 22: openRecipeBook(p); return;
+                case 22:
+                    // RecipeGUI already handles the paginated list + renders each
+                    // recipe in an actual InventoryType.WORKBENCH view — use it
+                    // directly so the simulated crafting grid is the only path.
+                    p.closeInventory();
+                    plugin.getRecipeGUI().openList(p);
+                    return;
                 case 23: openPets(p); return;
                 case 24:
                     p.closeInventory();

@@ -101,6 +101,12 @@ public class EnchantRegistry {
         register(new CustomEnchant("overwhelm", "Overwhelm", EnchantTier.EPIC, EnchantSlot.AXE, 3,
                 "Consecutive hits on same target stack +6%/lvl dmg (max 5 stacks, resets after 3s)"));
 
+        // ── Anti-Healing suite ──
+        register(new CustomEnchant("severance",    "Severance",     EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
+                "20%/lvl chance · apply 25% Anti-Heal for 5s (reduces target's healing)"));
+        register(new CustomEnchant("reapingslash", "Reaping Slash", EnchantTier.LEGENDARY, EnchantSlot.AXE,   3,
+                "15%/lvl chance · apply 40% Anti-Heal for 6s (reduces target's healing)"));
+
         // ── ARMOR (7 new — PvP focused) ───────────────────────────────────
         register(new CustomEnchant("counter", "Counter", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
                 "Chance to disarm attacker (forces them to drop their weapon)"));

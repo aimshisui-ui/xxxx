@@ -40,7 +40,8 @@ public final class Voidreaver extends MythicWeapon {
 
     @Override
     public void onAuraTick(Player owner) {
-        owner.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, cfg.voidreaverAuraSpeed, true, false), true);
+        // Stacks +1 above whatever the player already has (boots, potions, etc).
+        com.soulenchants.util.AuraStacker.bump(owner, PotionEffectType.SPEED, 40);
     }
 
     @Override

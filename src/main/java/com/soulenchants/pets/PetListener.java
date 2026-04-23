@@ -104,6 +104,27 @@ public final class PetListener implements Listener {
         }
     }
 
+    /**
+     * Owner-deals-melee hook. Fires when the owner hits another LivingEntity.
+     * Currently wired for Hellhound's Bloodfrenzy lifesteal — other pets can
+     * hook in via their own onOwnerDealsMelee method if we add one to the
+     * base Pet class later.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onOwnerDealsMelee(EntityDamageByEntityEvent e) {
+        if (!(e.getDamager() instanceof Player)) return;
+        Player p = (Player) e.getDamager();
+        PetManager.Companion c = plugin.getPetManager().getActive(p);
+        if (c == null) return;
+        // Hellhound routes the hit through its own hook for frenzy lifesteal
+        if (c.pet instanceof com.soulenchants.pets.impl.HellhoundPet) {
+            try { ((com.soulenchants.pets.impl.HellhoundPet) c.pet).onOwnerDealsMelee(p, e); }
+            catch (Throwable t) {
+                plugin.getLogger().warning("[pets] hellhound onOwnerDealsMelee threw: " + t);
+            }
+        }
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         plugin.getPetManager().despawn(e.getPlayer(), false);
