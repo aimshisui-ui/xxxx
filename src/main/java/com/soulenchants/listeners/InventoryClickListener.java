@@ -69,13 +69,20 @@ public class InventoryClickListener implements Listener {
                         + enchant.getDisplayName() + com.soulenchants.style.MessageStyle.BAD + " at max level.");
                 return;
             }
-            // 9-enchant cap (only blocks NEW enchants, upgrades to existing always allowed)
-            Map<String, Integer> currentEnchants = ItemUtil.getEnchants(target);
-            if (existing == 0 && currentEnchants.size() >= 9) {
+            // Per-item slot cap — default 9, raised by Weapon/Armor Orbs up to 14.
+            // Only blocks NEW enchants; upgrades to an existing enchant always pass.
+            // Counts visible enchants only; hidden internal flags (mythic_held
+            // etc.) don't consume slots.
+            int visibleCount = ItemUtil.countVisibleEnchants(target);
+            int slotCap = ItemUtil.getMaxSlots(target);
+            if (existing == 0 && visibleCount >= slotCap) {
                 p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
                         + com.soulenchants.style.MessageStyle.BAD
-                        + "Item at " + com.soulenchants.style.MessageStyle.VALUE + "9-enchant limit"
-                        + com.soulenchants.style.MessageStyle.BAD + ". Remove one with a "
+                        + "Item at " + com.soulenchants.style.MessageStyle.VALUE
+                        + slotCap + "-enchant limit"
+                        + com.soulenchants.style.MessageStyle.BAD + ". Apply a "
+                        + com.soulenchants.style.MessageStyle.TIER_SOUL + "Slot Orb"
+                        + com.soulenchants.style.MessageStyle.BAD + " or remove one with a "
                         + com.soulenchants.style.MessageStyle.FRAME + "Black Scroll"
                         + com.soulenchants.style.MessageStyle.BAD + " first.");
                 return;

@@ -402,7 +402,9 @@ public final class MobRegistry {
                                 "§2§l✦ §r\"§2§oI lay where you stand. Always have.§r§2§l\"")),
                         // Summon a new wave of web-lurkers every ~35s
                         Abilities.summonReinforcements("web_lurker", 4, 700),
-                        Abilities.meteorStrike(140, 3, 40, 900),
+                        // Signature: every 15-30s, encase EVERY player in 30 blocks
+                        // with a 2-block cobweb column that decays after ~4s.
+                        Abilities.webTrap(300, 80),
                         Abilities.ambientTaunt(40, 1400, Arrays.asList(
                                 "§8§o\"The walls breathe for her. The floor drinks for her.\"",
                                 "§8§o\"You will not unknow the smell.\"")),
@@ -414,7 +416,10 @@ public final class MobRegistry {
                         Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS), 0.70),
                         Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD), 1.0),
                         // New PvE mythic at razor-thin odds — Graverend
-                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("graverend"), 0.00005)
+                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("graverend"), 0.00005),
+                        // Boss-tier gear with better odds — not mythic but strong.
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.wraithsteelAxe(), 0.06),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.paleAegis(),      0.04)
                 )));
 
         // WURM-LORD — subterranean pig-zombie. Meteor-barrage phase + magma-cube
@@ -439,8 +444,9 @@ public final class MobRegistry {
                                 "§4§l✦ §r\"§4§oI was buried. You invited me back.§r§4§l\"",
                                 "§4§l✦ §r\"§4§oBreath of the mountain — mine now.§r§4§l\"",
                                 "§4§l✦ §r\"§4§oYou will lie lower than I did.§r§4§l\"")),
-                        // Meteor barrage — 32s cadence, telegraph 50 ticks, radius 5
-                        Abilities.meteorStrike(200, 5, 50, 640),
+                        // Signature: the Wurm dives underground, pops up beneath a
+                        // random player, erupts for big damage + knock-up.
+                        Abilities.burrowStrike(180, 40, 520),
                         // Summon magma jumpers every ~40s
                         Abilities.summonReinforcements("magma_jumper", 3, 800),
                         // Ground-burst every ~20s — flat 120 dmg in 6 blocks
@@ -456,7 +462,10 @@ public final class MobRegistry {
                         Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS), 0.85),
                         Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD), 1.0),
                         // New PvE mythic drop — Ruinhammer (axe, theme match)
-                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("ruinhammer"), 0.00008)
+                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("ruinhammer"), 0.00008),
+                        // Boss-tier gear drops (fire theme).
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.emberforgeHarness(), 0.08),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.sunpiercerBlade(),   0.05)
                 )));
 
         // CHOIRMASTER — soul-caster wither skeleton. Chain lightning + soul steal +
@@ -487,8 +496,9 @@ public final class MobRegistry {
                         Abilities.chainLightning(180, 4, 8, 360),
                         // Summon spectral monks every ~45s
                         Abilities.summonReinforcements("spectral_monk", 3, 900),
-                        // Meteor once per minute — soul-marked player punished
-                        Abilities.meteorStrike(190, 4, 40, 1200),
+                        // Signature: every 3s, stack a soul mark on every player in
+                        // 10 blocks. At 8 stacks the marks detonate for 15/stack.
+                        Abilities.soulMark(15.0, 8, 10, 60),
                         Abilities.ambientTaunt(40, 1000, Arrays.asList(
                                 "§8§o\"The hymn is not over. You are a rest between bars.\"",
                                 "§8§o\"Every name is sung eventually.\"",
@@ -502,7 +512,10 @@ public final class MobRegistry {
                         Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.BOSS), 0.85),
                         Abilities.deathDropItem(com.soulenchants.shop.LootBox.item(com.soulenchants.shop.LootBox.Kind.GOLD), 1.0),
                         // New PvE mythic drop — Emberlash (sword, soul-caster theme: offering)
-                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("emberlash"), 0.00008)
+                        Abilities.deathDropItem(com.soulenchants.mythic.MythicFactory.create("emberlash"), 0.00008),
+                        // Boss-tier gear drops (utility / ranged theme).
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.stormwardenBow(),   0.07),
+                        Abilities.deathDropItem(com.soulenchants.loot.BossLootItems.runeforgedGreaves(), 0.06)
                 ), null, false, org.bukkit.entity.Skeleton.SkeletonType.WITHER));
     }
 

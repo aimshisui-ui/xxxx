@@ -161,7 +161,7 @@ public class GodMenuGUI implements Listener {
 
     // ──────────────────────────── Sub-menus ─────────────────────────────
     public void openLoot(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 36, TITLE_LOOT);
+        Inventory inv = Bukkit.createInventory(null, 45, TITLE_LOOT);
         ItemStack[] all = new ItemStack[]{
                 BossLootItems.ironheartsHammer(),
                 BossLootItems.colossusPlatingCore(),
@@ -174,10 +174,17 @@ public class GodMenuGUI implements Listener {
                 BossLootItems.earthshakerTreads(),
                 BossLootItems.shadowstepSandals(),
                 BossLootItems.stoneskinTonic(),
-                BossLootItems.phasingElixir()
+                BossLootItems.phasingElixir(),
+                // v1.2 — boss-tier mid/late gear (below mythic power-level)
+                BossLootItems.paleAegis(),
+                BossLootItems.emberforgeHarness(),
+                BossLootItems.runeforgedGreaves(),
+                BossLootItems.sunpiercerBlade(),
+                BossLootItems.wraithsteelAxe(),
+                BossLootItems.stormwardenBow()
         };
         for (int i = 0; i < all.length; i++) inv.setItem(i, all[i]);
-        inv.setItem(31, backButton());
+        inv.setItem(40, backButton());
         p.openInventory(inv);
     }
 

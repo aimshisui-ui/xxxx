@@ -62,6 +62,14 @@ public final class CustomLootRegistry {
         add("dripstone_cuirass",      "Dripstone Cuirass",         Category.CRAFTED,   BossLootItems::dripstoneCuirass);
         add("void_spun_boots",        "Void-Spun Boots",           Category.CRAFTED,   BossLootItems::voidSpunBoots);
 
+        // ── v1.2 mid-to-late boss-tier gear (below mythic) ──
+        add("pale_aegis",             "Pale Aegis",                Category.BOSS,      BossLootItems::paleAegis);
+        add("emberforge_harness",     "Emberforge Harness",        Category.BOSS,      BossLootItems::emberforgeHarness);
+        add("runeforged_greaves",     "Runeforged Greaves",        Category.BOSS,      BossLootItems::runeforgedGreaves);
+        add("sunpiercer_blade",       "Sunpiercer Blade",          Category.BOSS,      BossLootItems::sunpiercerBlade);
+        add("wraithsteel_axe",        "Wraithsteel Axe",           Category.BOSS,      BossLootItems::wraithsteelAxe);
+        add("stormwarden_bow",        "Stormwarden Bow",           Category.BOSS,      BossLootItems::stormwardenBow);
+
         // ── Rare gear ──
         add("earthshaker_treads",     "Earthshaker Treads",        Category.RARE_GEAR, BossLootItems::earthshakerTreads);
         add("shadowstep_sandals",     "Shadowstep Sandals",        Category.RARE_GEAR, BossLootItems::shadowstepSandals);

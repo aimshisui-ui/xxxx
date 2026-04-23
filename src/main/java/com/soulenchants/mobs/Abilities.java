@@ -162,6 +162,33 @@ public final class Abilities {
                 "damage", damage, "reach", reach, "interval_ticks", intervalTicks);
     }
 
+    /** Web Trap — every `cooldown_ticks`, pick one of the nearest players and
+     *  encase them in a 2-block-tall column of cobwebs, decaying after
+     *  `decay_ticks`. Broodmother-flavoured. Saves the original block data so
+     *  the revert is exact. */
+    public static AbilitySpec webTrap(int cooldownTicks, int decayTicks) {
+        return AbilitySpec.of("web_trap",
+                "cooldown_ticks", cooldownTicks, "decay_ticks", decayTicks);
+    }
+
+    /** Burrow Strike — boss dives underground, pops up under a random nearby
+     *  player after `telegraph_ticks`, deals `damage` in a small radius and
+     *  launches the victim. Wurm-Lord signature. */
+    public static AbilitySpec burrowStrike(double damage, int telegraphTicks, int cooldownTicks) {
+        return AbilitySpec.of("burrow_strike",
+                "damage", damage, "telegraph_ticks", telegraphTicks, "cooldown_ticks", cooldownTicks);
+    }
+
+    /** Soul Mark — every `cooldown_ticks` every player within `range` gains a
+     *  soul-stack (up to `max_stacks`). When a player hits `max_stacks` their
+     *  stacks detonate for `damage_per_stack * stacks` and reset. Choirmaster
+     *  signature — rewards fighting on the edge of his aura. */
+    public static AbilitySpec soulMark(double damagePerStack, int maxStacks, int range, int cooldownTicks) {
+        return AbilitySpec.of("soul_mark",
+                "damage_per_stack", damagePerStack, "max_stacks", maxStacks,
+                "range", range, "cooldown_ticks", cooldownTicks);
+    }
+
     // ── hit-effect convenience wrappers ──────────────────────────────────
 
     public static AbilitySpec wither(int seconds)           { return hitEffect(PotionEffectType.WITHER,    0,   seconds * 20); }
@@ -713,6 +740,182 @@ public final class Abilities {
                     String tSub  = ChatColor.LIGHT_PURPLE + "The hollow ones answer the king";
                     for (Entity n : e.getNearbyEntities(30, 30, 30)) {
                         if (n instanceof Player) try { ((Player) n).sendTitle(tMain, tSub); } catch (Throwable ignored) {}
+                    }
+                }
+            };
+        });
+
+        // ─────── WEB TRAP — Broodmother signature ───────────────────────
+        // Every cooldown cycle (randomised 15-30s), ensnare EVERY player in a
+        // 30-block radius of the boss. Each caught player gets a 2-block
+        // cobweb column at their feet which auto-decays after decay_ticks.
+        AbilityFactory.register("web_trap", spec -> {
+            final int cdTicks = spec.geti("cooldown_ticks", 400);
+            final int decayTicks = spec.geti("decay_ticks", 80);
+            return new MobAbility() {
+                int cd = 6;
+                @Override public void onTick(final LivingEntity e) {
+                    if (cd-- > 0) return;
+                    // Randomise 15-30s cadence on each firing — player-asked behavior.
+                    cd = (cdTicks / 20) + RNG.nextInt(Math.max(1, cdTicks / 20));
+                    java.util.List<Player> nearby = new java.util.ArrayList<>();
+                    for (Entity n : e.getNearbyEntities(30, 12, 30)) {
+                        if (n instanceof Player) nearby.add((Player) n);
+                    }
+                    if (nearby.isEmpty()) return;
+                    final com.soulenchants.SoulEnchants pl = (com.soulenchants.SoulEnchants)
+                            org.bukkit.Bukkit.getPluginManager().getPlugin("SoulEnchants");
+                    if (pl == null) return;
+                    e.getWorld().playSound(e.getLocation(), Sound.SPIDER_IDLE, 1.8f, 0.6f);
+
+                    // Trap every player in range. Each gets their own revert task so
+                    // their webs clear independently if decay were to drift.
+                    for (final Player target : nearby) {
+                        Location base = target.getLocation();
+                        final org.bukkit.block.Block[] blocks = new org.bukkit.block.Block[] {
+                                base.getBlock(),
+                                base.clone().add(0, 1, 0).getBlock()
+                        };
+                        final Material[] prev = new Material[blocks.length];
+                        final byte[]     prevData = new byte[blocks.length];
+                        for (int i = 0; i < blocks.length; i++) {
+                            prev[i] = blocks[i].getType();
+                            prevData[i] = blocks[i].getData();
+                            if (prev[i] == Material.AIR) {
+                                blocks[i].setType(Material.WEB);
+                            }
+                        }
+                        try {
+                            target.sendTitle("§2§l✦ CAUGHT ✦", "§aCut free before she closes in");
+                        } catch (Throwable ignored) {}
+                        for (int i = 0; i < 12; i++) {
+                            target.getWorld().playEffect(
+                                    target.getLocation().add(0, 0.5, 0), Effect.SMOKE, 4);
+                        }
+                        new BukkitRunnable() {
+                            @Override public void run() {
+                                // Revert only blocks we placed; if a player broke
+                                // the web between now and decay, leave it broken.
+                                for (int i = 0; i < blocks.length; i++) {
+                                    if (blocks[i].getType() == Material.WEB && prev[i] == Material.AIR) {
+                                        blocks[i].setType(Material.AIR);
+                                    } else if (blocks[i].getType() == Material.WEB && prev[i] != Material.AIR) {
+                                        blocks[i].setType(prev[i]);
+                                        blocks[i].setData(prevData[i]);
+                                    }
+                                }
+                            }
+                        }.runTaskLater(pl, decayTicks);
+                    }
+                }
+            };
+        });
+
+        // ─────── BURROW STRIKE — Wurm-Lord signature ────────────────────
+        AbilityFactory.register("burrow_strike", spec -> {
+            final double damage = spec.getd("damage", 160.0);
+            final int telegraph = spec.geti("telegraph_ticks", 40);
+            final int cdTicks = spec.geti("cooldown_ticks", 480);
+            return new MobAbility() {
+                int cd = 8;
+                @Override public void onTick(final LivingEntity e) {
+                    if (cd-- > 0) return;
+                    cd = cdTicks / 20;
+                    java.util.List<Player> nearby = new java.util.ArrayList<>();
+                    for (Entity n : e.getNearbyEntities(24, 10, 24)) {
+                        if (n instanceof Player) nearby.add((Player) n);
+                    }
+                    if (nearby.isEmpty()) return;
+                    final Player target = nearby.get(RNG.nextInt(nearby.size()));
+                    final Location eruption = target.getLocation().clone();
+                    try {
+                        target.sendTitle("§4§l✦ BURROW ✦", "§cHe is directly beneath you");
+                    } catch (Throwable ignored) {}
+                    e.getWorld().playSound(e.getLocation(), Sound.ZOMBIE_METAL, 1.5f, 0.4f);
+                    // Sink the boss briefly into the ground (visual + untargetable)
+                    final Location pre = e.getLocation().clone();
+                    e.teleport(pre.clone().add(0, -2.5, 0));
+                    final com.soulenchants.SoulEnchants pl = (com.soulenchants.SoulEnchants)
+                            org.bukkit.Bukkit.getPluginManager().getPlugin("SoulEnchants");
+                    if (pl == null) { e.teleport(pre); return; }
+                    new BukkitRunnable() {
+                        int t = 0;
+                        @Override public void run() {
+                            if (t++ >= telegraph / 2) {
+                                // Erupt — teleport boss to target location, explode, knock target up.
+                                e.teleport(eruption);
+                                eruption.getWorld().createExplosion(
+                                        eruption.getX(), eruption.getY(), eruption.getZ(), 0f, false);
+                                eruption.getWorld().playSound(eruption, Sound.EXPLODE, 2.0f, 0.5f);
+                                for (Entity nn : eruption.getWorld().getNearbyEntities(eruption, 4, 4, 4)) {
+                                    if (nn instanceof Player) {
+                                        Player v = (Player) nn;
+                                        v.damage(damage, e);
+                                        v.setVelocity(v.getVelocity().setY(1.3));
+                                    }
+                                }
+                                cancel();
+                                return;
+                            }
+                            // Dust column particles at the eruption site telegraphing the strike
+                            for (int i = 0; i < 12; i++) {
+                                double off = RNG.nextDouble() * Math.PI * 2;
+                                Location p = eruption.clone().add(Math.cos(off) * 2, 0, Math.sin(off) * 2);
+                                p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.DIRT.getId());
+                            }
+                        }
+                    }.runTaskTimer(pl, 0L, 2L);
+                }
+            };
+        });
+
+        // ─────── SOUL MARK — Choirmaster signature ──────────────────────
+        AbilityFactory.register("soul_mark", spec -> {
+            final double dmgPerStack = spec.getd("damage_per_stack", 15.0);
+            final int maxStacks = spec.geti("max_stacks", 8);
+            final int range = spec.geti("range", 10);
+            final int cdTicks = spec.geti("cooldown_ticks", 60);
+            return new MobAbility() {
+                final java.util.Map<java.util.UUID, Integer> stacks = new java.util.HashMap<>();
+                int cd = 4;
+                @Override public void onTick(final LivingEntity e) {
+                    if (cd-- > 0) return;
+                    cd = cdTicks / 20;
+                    for (Entity n : e.getNearbyEntities(range, 6, range)) {
+                        if (!(n instanceof Player)) continue;
+                        Player v = (Player) n;
+                        int next = stacks.getOrDefault(v.getUniqueId(), 0) + 1;
+                        if (next >= maxStacks) {
+                            // Detonate — mass damage, reset stacks.
+                            double total = dmgPerStack * next;
+                            v.damage(total, e);
+                            for (int i = 0; i < 24; i++) {
+                                Location p = v.getLocation().add(
+                                        (RNG.nextDouble() - 0.5) * 2, 1, (RNG.nextDouble() - 0.5) * 2);
+                                p.getWorld().playEffect(p, Effect.WITCH_MAGIC, 0);
+                            }
+                            try { v.sendTitle("§5§l✦ SOUL COLLAPSE ✦",
+                                    "§dYour stacks burst — take §l" + (int) total + " §ddamage"); }
+                            catch (Throwable ignored) {}
+                            v.getWorld().playSound(v.getLocation(), Sound.GHAST_SCREAM2, 1.2f, 0.6f);
+                            stacks.remove(v.getUniqueId());
+                        } else {
+                            stacks.put(v.getUniqueId(), next);
+                            try { v.sendTitle(" ",
+                                    "§5§lSoul Mark §7» §d" + next + "§7/" + maxStacks); }
+                            catch (Throwable ignored) {}
+                            v.getWorld().playEffect(v.getLocation().add(0, 1, 0), Effect.WITCH_MAGIC, 0);
+                        }
+                    }
+                    // Clean out stacks for players who have moved out of range.
+                    java.util.Iterator<java.util.Map.Entry<java.util.UUID, Integer>> it = stacks.entrySet().iterator();
+                    while (it.hasNext()) {
+                        java.util.UUID id = it.next().getKey();
+                        Player p = org.bukkit.Bukkit.getPlayer(id);
+                        if (p == null || p.isDead()
+                                || p.getLocation().distanceSquared(e.getLocation()) > (range + 4) * (range + 4)) {
+                            it.remove();
+                        }
                     }
                 }
             };

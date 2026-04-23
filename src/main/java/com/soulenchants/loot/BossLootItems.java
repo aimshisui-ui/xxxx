@@ -660,4 +660,146 @@ public final class BossLootItems {
         it.setItemMeta(m);
         return tag(it, "void_spun_boots");
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  v1.2 — MID/LATE boss-tier gear. Below mythic power-level but clearly
+    //  above vanilla-diamond. Every piece ships with vanilla Prot IV + a
+    //  curated 4-enchant custom stack, leaving room under the 9-slot cap for
+    //  players to round out the build with books of their choice.
+    // ════════════════════════════════════════════════════════════════════════
+
+    public static ItemStack paleAegis() {
+        ItemStack it = make(Material.DIAMOND_HELMET, 1, LootRarity.BOSS,
+                "Pale Aegis",
+                ChatColor.WHITE + "" + ChatColor.ITALIC + "A crown cut from the sound",
+                ChatColor.WHITE + "" + ChatColor.ITALIC + "of a bell that hasn't rung yet.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Sharper eyes, quieter mind."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 4, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "clarity",    2);
+        it = ItemUtil.addEnchant(it, "oathbound",  2);
+        it = ItemUtil.addEnchant(it, "wardenseye", 2);
+        it = ItemUtil.addEnchant(it, "nightvision", 1);
+        return tag(it, "pale_aegis");
+    }
+
+    public static ItemStack emberforgeHarness() {
+        ItemStack it = make(Material.DIAMOND_CHESTPLATE, 1, LootRarity.BOSS,
+                "Emberforge Harness",
+                ChatColor.GOLD + "" + ChatColor.ITALIC + "Hammered cold — the heat kept anyway,",
+                ChatColor.GOLD + "" + ChatColor.ITALIC + "the way a grudge keeps a name.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Burns the things that touch you."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 4, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+            m.addEnchant(Enchantment.PROTECTION_FIRE, 4, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "vital",     4);
+        it = ItemUtil.addEnchant(it, "armored",   3);
+        it = ItemUtil.addEnchant(it, "molten",    2);
+        it = ItemUtil.addEnchant(it, "laststand", 2);
+        return tag(it, "emberforge_harness");
+    }
+
+    public static ItemStack runeforgedGreaves() {
+        ItemStack it = make(Material.DIAMOND_LEGGINGS, 1, LootRarity.BOSS,
+                "Runeforged Greaves",
+                ChatColor.DARK_AQUA + "" + ChatColor.ITALIC + "Every rune is a name",
+                ChatColor.DARK_AQUA + "" + ChatColor.ITALIC + "the wearer has out-lived.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Hardened by the count."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 4, true);
+            m.addEnchant(Enchantment.DURABILITY, 3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "hardened",  2);
+        it = ItemUtil.addEnchant(it, "endurance", 2);
+        it = ItemUtil.addEnchant(it, "entombed",  2);
+        it = ItemUtil.addEnchant(it, "ironclad",  2);
+        return tag(it, "runeforged_greaves");
+    }
+
+    public static ItemStack sunpiercerBlade() {
+        ItemStack it = make(Material.DIAMOND_SWORD, 1, LootRarity.BOSS,
+                "Sunpiercer Blade",
+                ChatColor.YELLOW + "" + ChatColor.ITALIC + "A morning that arrives early",
+                ChatColor.YELLOW + "" + ChatColor.ITALIC + "and only visits the undead.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "+25% damage vs undead · ignites on hit"
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.DAMAGE_ALL,      5, true);
+            m.addEnchant(Enchantment.FIRE_ASPECT,     2, true);
+            m.addEnchant(Enchantment.LOOT_BONUS_MOBS, 3, true);
+            m.addEnchant(Enchantment.DURABILITY,      3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "lifesteal",       3);
+        it = ItemUtil.addEnchant(it, "holysmite",       3);
+        it = ItemUtil.addEnchant(it, "criticalstrike",  3);
+        it = ItemUtil.addEnchant(it, "executioner",     2);
+        return tag(it, "sunpiercer_blade");
+    }
+
+    public static ItemStack wraithsteelAxe() {
+        ItemStack it = make(Material.DIAMOND_AXE, 1, LootRarity.BOSS,
+                "Wraithsteel Axe",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "Cold to the grip — cold after,",
+                ChatColor.DARK_PURPLE + "" + ChatColor.ITALIC + "cold for whoever it finds.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Bleed + Cleave · softens everything it meets."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.DAMAGE_ALL,      5, true);
+            m.addEnchant(Enchantment.LOOT_BONUS_MOBS, 3, true);
+            m.addEnchant(Enchantment.DURABILITY,      3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "bleed",         4);
+        it = ItemUtil.addEnchant(it, "cleave",        4);
+        it = ItemUtil.addEnchant(it, "skullcrush",    2);
+        it = ItemUtil.addEnchant(it, "shieldbreaker", 2);
+        return tag(it, "wraithsteel_axe");
+    }
+
+    public static ItemStack stormwardenBow() {
+        ItemStack it = make(Material.BOW, 1, LootRarity.BOSS,
+                "Stormwarden Bow",
+                ChatColor.BLUE + "" + ChatColor.ITALIC + "Drawn strings hum the weather",
+                ChatColor.BLUE + "" + ChatColor.ITALIC + "before the weather arrives.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Power V · infinity · fires through crowds."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.ARROW_DAMAGE,   5, true);
+            m.addEnchant(Enchantment.ARROW_KNOCKBACK,2, true);
+            m.addEnchant(Enchantment.ARROW_FIRE,     1, true);
+            m.addEnchant(Enchantment.ARROW_INFINITE, 1, true);
+            m.addEnchant(Enchantment.DURABILITY,     3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        return tag(it, "stormwarden_bow");
+    }
 }

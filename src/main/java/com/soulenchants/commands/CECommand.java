@@ -81,6 +81,27 @@ public class CECommand implements CommandExecutor {
                     + MessageStyle.GOOD + " scroll.");
             return true;
         }
+        if (sub.equals("orb")) {
+            // /ce orb <weapon|armor> <slots> <success%> [player]
+            if (args.length < 4) {
+                Chat.info(sender, "Usage: /ce orb <weapon|armor> <slots 10-14> <success 1-100> [player]");
+                return true;
+            }
+            com.soulenchants.items.OrbBuilder.OrbType type =
+                    com.soulenchants.items.OrbBuilder.OrbType.parse(args[1]);
+            if (type == null) { Chat.err(sender, "Orb type must be 'weapon' or 'armor'."); return true; }
+            int slots, succ;
+            try { slots = Integer.parseInt(args[2]); succ = Integer.parseInt(args[3]); }
+            catch (NumberFormatException ex) { Chat.err(sender, "Slots + success% must be integers."); return true; }
+            Player target = args.length >= 5 ? Bukkit.getPlayer(args[4])
+                    : (sender instanceof Player ? (Player) sender : null);
+            if (target == null) { Chat.err(sender, "Target player required from console."); return true; }
+            target.getInventory().addItem(com.soulenchants.items.OrbBuilder.build(type, slots, succ));
+            Chat.good(sender, "Gave " + MessageStyle.VALUE + target.getName()
+                    + MessageStyle.GOOD + " a " + MessageStyle.TIER_SOUL + slots + "-slot "
+                    + type.label + " Orb " + MessageStyle.MUTED + "(" + succ + "% success).");
+            return true;
+        }
         if (sub.equals("bossset")) {
             if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
             Player p = (Player) sender;
@@ -355,6 +376,13 @@ public class CECommand implements CommandExecutor {
             case "forged_bulwark_plate":  return com.soulenchants.loot.BossLootItems.forgedBulwarkPlate();
             case "veiled_edge":           return com.soulenchants.loot.BossLootItems.veiledEdge();
             case "aether_bow":            return com.soulenchants.loot.BossLootItems.aetherBow();
+            // v1.2 mid/late-tier named gear
+            case "pale_aegis":            return com.soulenchants.loot.BossLootItems.paleAegis();
+            case "emberforge_harness":    return com.soulenchants.loot.BossLootItems.emberforgeHarness();
+            case "runeforged_greaves":    return com.soulenchants.loot.BossLootItems.runeforgedGreaves();
+            case "sunpiercer_blade":      return com.soulenchants.loot.BossLootItems.sunpiercerBlade();
+            case "wraithsteel_axe":       return com.soulenchants.loot.BossLootItems.wraithsteelAxe();
+            case "stormwarden_bow":       return com.soulenchants.loot.BossLootItems.stormwardenBow();
             // Rare gear
             case "earthshaker_treads":    return com.soulenchants.loot.BossLootItems.earthshakerTreads();
             case "shadowstep_sandals":    return com.soulenchants.loot.BossLootItems.shadowstepSandals();

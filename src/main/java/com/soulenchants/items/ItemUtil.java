@@ -21,10 +21,59 @@ public class ItemUtil {
     public static final String NBT_WHITE_SCROLL = "se_white_scroll";
     public static final String NBT_TRANSMOG_SCROLL = "se_transmog_scroll";
 
+    /** Per-item max-enchant-slot capacity — default 9 (matches our baseline).
+     *  Orbs raise this NBT value up to {@link #DEFAULT_CEILING} so god-tier
+     *  gear can carry more concurrent enchants than standard loadouts. */
+    public static final String NBT_ITEM_SLOTS = "se_item_slots";
+    public static final int DEFAULT_MAX_SLOTS = 9;
+    public static final int DEFAULT_CEILING   = 14;
+
+    /** Current max-enchant-slot capacity for this item. Reads NBT if present,
+     *  otherwise returns {@link #DEFAULT_MAX_SLOTS}. Never returns &gt; CEILING. */
+    public static int getMaxSlots(ItemStack item) {
+        if (item == null || item.getType() == org.bukkit.Material.AIR || item.getAmount() <= 0) {
+            return DEFAULT_MAX_SLOTS;
+        }
+        NBTItem nbt = new NBTItem(item);
+        if (!nbt.hasKey(NBT_ITEM_SLOTS)) return DEFAULT_MAX_SLOTS;
+        int raw = nbt.getInteger(NBT_ITEM_SLOTS);
+        return Math.min(DEFAULT_CEILING, Math.max(DEFAULT_MAX_SLOTS, raw));
+    }
+
+    /** Writes a new max-slot value to the item. Caps at {@link #DEFAULT_CEILING}.
+     *  Returns the updated stack. */
+    public static ItemStack setMaxSlots(ItemStack item, int slots) {
+        if (item == null || item.getType() == org.bukkit.Material.AIR || item.getAmount() <= 0) {
+            return item;
+        }
+        int clamped = Math.min(DEFAULT_CEILING, Math.max(DEFAULT_MAX_SLOTS, slots));
+        NBTItem nbt = new NBTItem(item);
+        nbt.setInteger(NBT_ITEM_SLOTS, clamped);
+        return renderLore(nbt.getItem());
+    }
+
     /** Legacy header. Kept as a stripping sentinel so pre-v1.2 items still
      *  get their old block cleared on re-render; v1.2+ emits NO visible
      *  header — just a divider-bounded block of enchant rows. */
     private static final String LORE_HEADER = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "✦ Enchants ✦";
+
+    /** NBT keys that live in the enchant compound but are NOT player-visible
+     *  enchants. These are internal aura/identity flags that should never
+     *  count against the per-item slot cap or appear in lore. */
+    private static final java.util.Set<String> HIDDEN_ENCHANTS =
+            new java.util.HashSet<>(java.util.Arrays.asList("mythic_held"));
+
+    /** Count of player-visible custom enchants on this item. Used by the
+     *  9-slot cap check + the "N/M slots" lore footer. Hidden internal
+     *  flags (mythic_held, etc.) are excluded. */
+    public static int countVisibleEnchants(ItemStack item) {
+        Map<String, Integer> all = getEnchants(item);
+        int count = 0;
+        for (String key : all.keySet()) {
+            if (!HIDDEN_ENCHANTS.contains(key.toLowerCase())) count++;
+        }
+        return count;
+    }
 
     public static Map<String, Integer> getEnchants(ItemStack item) {
         Map<String, Integer> map = new LinkedHashMap<>();
@@ -127,6 +176,11 @@ public class ItemUtil {
                     block.add(ChatColor.GRAY + "    " + effect);
                 }
             }
+            // Footer — show slot usage so orbs feel meaningful. Counts only
+            // VISIBLE enchants so internal flags like mythic_held don't lie
+            // about the item's real capacity.
+            int max = getMaxSlots(item);
+            block.add(ChatColor.DARK_GRAY + "  " + countVisibleEnchants(item) + "/" + max + " slots");
             block.add(DIVIDER);
             lore.addAll(0, block);
         }

@@ -147,19 +147,23 @@ public final class Mask {
         AURAS.put("dragon_head",   Collections.singletonList(new Aura(PotionEffectType.INCREASE_DAMAGE, 0)));    // +3 dmg
         AURAS.put("wither_head",   Arrays.asList(new Aura(PotionEffectType.NIGHT_VISION, 0),
                                                  new Aura(PotionEffectType.DAMAGE_RESISTANCE, 0)));
-        AURAS.put("zombie_head",   Collections.singletonList(new Aura(PotionEffectType.REGENERATION, 0)));
+        // Regen was dropped from mask auras — free HP-over-time is too strong
+        // stacked with Implants/Soul Warden. Replaced with Saturation (slows
+        // hunger drain) + Haste / Speed / Strength at low amps so masks still
+        // feel earned without healing on top of god-tier defensive enchants.
+        AURAS.put("zombie_head",   Collections.singletonList(new Aura(PotionEffectType.SATURATION, 0)));
         AURAS.put("skeleton_head", Collections.singletonList(new Aura(PotionEffectType.SPEED, 1)));
         AURAS.put("creeper_head",  Arrays.asList(new Aura(PotionEffectType.JUMP, 1),
                                                  new Aura(PotionEffectType.SPEED, 0)));
         // v1.2 roster — tuned buffs.
         AURAS.put("duelist_mask",  Collections.singletonList(new Aura(PotionEffectType.SPEED, 2)));             // Speed III
         AURAS.put("tyrant_crown",  Collections.singletonList(new Aura(PotionEffectType.INCREASE_DAMAGE, 1)));   // Strength II
-        AURAS.put("battle_scar",   Arrays.asList(new Aura(PotionEffectType.REGENERATION, 1),
-                                                 new Aura(PotionEffectType.DAMAGE_RESISTANCE, 0)));
+        AURAS.put("battle_scar",   Arrays.asList(new Aura(PotionEffectType.DAMAGE_RESISTANCE, 0),
+                                                 new Aura(PotionEffectType.SATURATION, 0)));
         AURAS.put("hunters_veil",  Arrays.asList(new Aura(PotionEffectType.SPEED, 1),
                                                  new Aura(PotionEffectType.FAST_DIGGING, 0)));
-        AURAS.put("witchwood",     Arrays.asList(new Aura(PotionEffectType.REGENERATION, 0),
-                                                 new Aura(PotionEffectType.FIRE_RESISTANCE, 0)));
+        AURAS.put("witchwood",     Arrays.asList(new Aura(PotionEffectType.FIRE_RESISTANCE, 0),
+                                                 new Aura(PotionEffectType.NIGHT_VISION, 0)));
         AURAS.put("soulfire_mask", Arrays.asList(new Aura(PotionEffectType.INCREASE_DAMAGE, 0),
                                                  new Aura(PotionEffectType.FIRE_RESISTANCE, 0)));
     }
@@ -189,6 +193,7 @@ public final class Mask {
         if (t == PotionEffectType.SPEED)               return "Speed";
         if (t == PotionEffectType.NIGHT_VISION)        return "Night Vision";
         if (t == PotionEffectType.WATER_BREATHING)     return "Water Breathing";
+        if (t == PotionEffectType.SATURATION)          return "Saturation";
         return t.getName();
     }
 
