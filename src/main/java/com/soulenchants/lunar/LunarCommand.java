@@ -67,12 +67,23 @@ public final class LunarCommand implements CommandExecutor {
                     "Manual /lunar rpc test @ " + System.currentTimeMillis() % 100000,
                     "Test Map", null);
             if (ok) {
-                Chat.good(p, "Rich Presence pushed. " + MessageStyle.MUTED
-                        + "Check your Discord — it should now show FabledMC · SoulEnchants.");
-                Chat.info(p, "If Discord still says \"playing a local server\", verify:");
-                Chat.info(p, "  1. Lunar Client → Settings → Discord Integration is §fON§7.");
-                Chat.info(p, "  2. Discord → User Settings → Activity Privacy → §fshow current activity§7.");
-                Chat.info(p, "  3. Apollo plugin is installed server-side (see /lunar status).");
+                Chat.good(p, "Rich Presence packet sent. " + MessageStyle.MUTED
+                        + "If Discord still shows \"playing a local server\", read below:");
+                Chat.rule(p);
+                Chat.info(p, MessageStyle.BAD + "IMPORTANT: §7Lunar's RichPresence module requires your");
+                Chat.info(p, "server to be listed in §fLunar's ServerMappings §7— a curated");
+                Chat.info(p, "allow-list of public servers. The client IGNORES rich-presence");
+                Chat.info(p, "packets from unlisted/local servers.");
+                Chat.info(p, "");
+                Chat.info(p, "Verbatim from Lunar docs:");
+                Chat.info(p, MessageStyle.MUTED + MessageStyle.ITALIC
+                        + "  \"Your server must be a part of Lunar Client's ServerMappings");
+                Chat.info(p, MessageStyle.MUTED + MessageStyle.ITALIC
+                        + "   to use this module.\"");
+                Chat.info(p, "");
+                Chat.info(p, "To register: open a PR at §fgithub.com/LunarClient/ServerMappings");
+                Chat.info(p, "Until then, RPC will not work — rest of Apollo (titles, toasts,");
+                Chat.info(p, "waypoints, cooldowns, holograms) works fine without ServerMappings.");
             } else {
                 Chat.err(p, "Rich Presence push failed — Apollo not resolved or player not on Lunar.");
             }

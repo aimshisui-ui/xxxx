@@ -54,21 +54,20 @@ public final class LunarRichPresenceTask implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
-        // Lunar's Apollo handshake can take a few seconds after the vanilla
-        // join packet, and Discord RPC requires BOTH (a) Apollo registered
-        // the player and (b) the client's Discord Integration is enabled.
-        // Retry a few times so late-connecting Lunar users still get a push
-        // even if the first attempt fired before Apollo saw them.
-        for (long delay : new long[]{ 40L, 100L, 200L, 400L, 800L }) {
-            new BukkitRunnable() {
-                @Override public void run() {
-                    if (!e.getPlayer().isOnline()) return;
-                    // Drop cached state so the retry always pushes.
-                    lastState.remove(e.getPlayer().getUniqueId());
-                    updatePresence(e.getPlayer());
-                }
-            }.runTaskLater(plugin, delay);
-        }
+        // Apollo's per-player handshake can lag slightly behind the vanilla
+        // join packet; 40 ticks (2s) is enough for the lookup to succeed.
+        //
+        // Note: the RichPresence module is gated by Lunar's ServerMappings
+        // allow-list server-side. Unlisted/local servers will NEVER have their
+        // rich-presence rendered on Discord regardless of how many times we
+        // push — the client drops the packet. See /lunar rpc for the docs
+        // reference. We keep pushing anyway so that once the server gets
+        // listed, RPC will "just work" without a code change.
+        new BukkitRunnable() {
+            @Override public void run() {
+                if (e.getPlayer().isOnline()) updatePresence(e.getPlayer());
+            }
+        }.runTaskLater(plugin, 40L);
     }
 
     @EventHandler
