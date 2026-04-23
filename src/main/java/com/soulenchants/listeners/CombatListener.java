@@ -367,9 +367,16 @@ public class CombatListener implements Listener {
         if (exec > 0 && victim.getHealth() / victim.getMaxHealth() < cfg.executionerHpThreshold)
             offBonus += cfg.executionerBonus * exec;
 
-        // Slayer — additive bonus vs active bosses + their minions
+        // Slayer — additive bonus vs active bosses + their minions, PLUS a
+        // flat TRUE-damage add that bypasses armor. The additive bonus alone
+        // multiplies post-armor damage, which gets crushed by diamond-armored
+        // bosses — the TRUE-damage add is what actually makes Slayer feel
+        // like an anti-boss enchant.
         int slayer = ItemUtil.getLevel(hand, "slayer");
-        if (slayer > 0 && isBossOrMinionTarget(victim)) offBonus += cfg.slayerBonus * slayer;
+        if (slayer > 0 && isBossOrMinionTarget(victim)) {
+            offBonus += cfg.slayerBonus * slayer;
+            flatAdd  += 5.0 * slayer;   // L3 = +15 TRUE dmg per hit vs bosses
+        }
 
         // Holy Smite — additive bonus vs undead
         int holy = ItemUtil.getLevel(hand, "holysmite");

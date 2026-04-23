@@ -21,7 +21,7 @@ public final class EnchantEffects {
             case "deepwounds":      return "Boosts your Bleed proc chance by " + level + " level(s)";
             case "featherweight":   return (level * 20) + "% chance · Haste " + roman(level) + " for " + level + "s";
             case "blessed":         return (level * 20) + "% chance on hit · strip your own debuffs";
-            case "slayer":          return "+" + (level * 15) + "% damage to bosses + minions";
+            case "slayer":          return "+" + (level * 25) + "% damage + " + (level * 5) + " TRUE damage vs bosses + minions (bypasses armor)";
             case "holysmite":       return "+" + (level * 20) + "% damage to undead";
             case "witherbane":      return "+" + (level * 25) + "% damage to wither variants";
             case "cleave":          return "5% chance · 3 dmg to all enemies in " + level + "-block radius";

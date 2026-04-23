@@ -405,7 +405,15 @@ public class CustomMob {
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(name);
         try { meta.spigot().setUnbreakable(true); } catch (Throwable ignored) {}
-        try { meta.addEnchant(org.bukkit.enchantments.Enchantment.PROTECTION_ENVIRONMENTAL, protLevel, true); } catch (Throwable ignored) {}
+        // Balance pass: elite bosses already have 20k+ HP. Stacking Protection
+        // IV on top of diamond armor meant ~84% flat damage reduction, which
+        // eats all the player's enchant bonuses (they multiply post-armor
+        // damage) and makes TTK unplayable. Cap at Protection I regardless of
+        // requested level so the armor slot still looks the part but players'
+        // damage actually registers.
+        int cappedProt = Math.min(1, protLevel);
+        if (cappedProt > 0)
+            try { meta.addEnchant(org.bukkit.enchantments.Enchantment.PROTECTION_ENVIRONMENTAL, cappedProt, true); } catch (Throwable ignored) {}
         if (withThorns) {
             try { meta.addEnchant(org.bukkit.enchantments.Enchantment.THORNS, 2, true); } catch (Throwable ignored) {}
         }
