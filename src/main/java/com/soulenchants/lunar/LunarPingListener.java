@@ -69,6 +69,23 @@ public final class LunarPingListener extends BukkitRunnable implements Listener 
             }
         }
 
+        // Elite CustomMob bosses (Broodmother / Wurm-Lord / Choirmaster).
+        // Scan loaded worlds for live entities carrying a known elite id and
+        // use their EliteBossHooks spec for waypoint colour + name.
+        for (org.bukkit.World w : plugin.getServer().getWorlds()) {
+            for (org.bukkit.entity.Entity ent : w.getEntities()) {
+                if (!(ent instanceof org.bukkit.entity.LivingEntity)) continue;
+                org.bukkit.entity.LivingEntity le = (org.bukkit.entity.LivingEntity) ent;
+                if (le.isDead()) continue;
+                String id = com.soulenchants.mobs.CustomMob.idOf(le);
+                com.soulenchants.bosses.EliteBossHooks.Spec spec =
+                        com.soulenchants.bosses.EliteBossHooks.specOf(id);
+                if (spec == null) continue;
+                pushToEveryone(spec.scoreboardName, le.getLocation(), spec.waypointRgb);
+                nowAlive.add(spec.scoreboardName);
+            }
+        }
+
         // Clear any waypoints that were alive last tick but aren't now.
         for (String id : lastAliveIds) {
             if (!nowAlive.contains(id)) {

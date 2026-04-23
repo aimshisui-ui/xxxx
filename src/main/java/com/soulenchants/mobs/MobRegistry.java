@@ -326,7 +326,7 @@ public final class MobRegistry {
         // ── BOSS — The Hollow King (END-GAME tier) ─────────────────────
         // The hardest single fight in the plugin. 25k HP, 110 bonus dmg, slow and
         // measured attack pacing. Diamond armor + Veiled Edge sword. No stacked AOEs.
-        add(build("hollow_king",       "The Hollow King",  EntityType.SKELETON, CustomMob.Tier.ELITE, 25000, 330, 5000,
+        add(build("hollow_king",       "The Hollow King",  EntityType.SKELETON, CustomMob.Tier.ELITE, 25000, 110, 5000,
                 Arrays.asList(
                         Abilities.strength(3),                                                  // Strength IV
                         // No Resistance potion — diamond + Prot IV armor already gives ~75% reduction.
@@ -425,22 +425,22 @@ public final class MobRegistry {
         // WURM-LORD — subterranean pig-zombie. Meteor-barrage phase + magma-cube
         // summons. Pushes players into cover; godset fire-resist is borderline
         // mandatory. Fire + earth theme, every attack kicks a dust column.
-        add(build("wurm_lord", "The Wurm-Lord", EntityType.PIG_ZOMBIE, CustomMob.Tier.ELITE, 22000, 170, 4200,
+        add(build("wurm_lord", "The Wurm-Lord", EntityType.PIG_ZOMBIE, CustomMob.Tier.ELITE, 22000, 240, 4200,
                 Arrays.asList(
                         Abilities.strength(3),
                         Abilities.fireResistance(),
                         Abilities.resistance(0),
                         Abilities.particleAura(Effect.MOBSPAWNER_FLAMES, 4, 20),
                         Abilities.auraEffect(org.bukkit.potion.PotionEffectType.SLOW, 0, 7),
-                        // Hits set player on fire + knock back
+                        // Hits set player on fire — knockback intentionally removed so
+                        // he can't kite players into his own meteor drops by punting them.
                         Abilities.setOnFire(8),
-                        Abilities.knockbackOnHit(1.6),
                         Abilities.lifestealOnHit(0.25),
                         Abilities.regenOnHurt(1.5),
                         // Heavy melee pressure
-                        Abilities.meleeEnforcer(170, 3.2, 28),
-                        // Signature AOE — 25s cadence, radius 9, 200 dmg
-                        Abilities.bossAttack(200, 9, 500, Arrays.asList(
+                        Abilities.meleeEnforcer(220, 3.2, 28),
+                        // Signature AOE — 25s cadence, radius 9, 260 dmg
+                        Abilities.bossAttack(260, 9, 500, Arrays.asList(
                                 "§4§l✦ §r\"§4§oI was buried. You invited me back.§r§4§l\"",
                                 "§4§l✦ §r\"§4§oBreath of the mountain — mine now.§r§4§l\"",
                                 "§4§l✦ §r\"§4§oYou will lie lower than I did.§r§4§l\"")),
@@ -472,7 +472,7 @@ public final class MobRegistry {
         // summoned monks. Low HP vs the other two, but his chain + steal can delete
         // an unshielded back-line in seconds. Dawnbringer shines here; Clarity helps
         // against the blind ticks.
-        add(build("choirmaster", "The Choirmaster", EntityType.SKELETON, CustomMob.Tier.ELITE, 20000, 140, 4000,
+        add(build("choirmaster", "The Choirmaster", EntityType.SKELETON, CustomMob.Tier.ELITE, 20000, 210, 4000,
                 Arrays.asList(
                         Abilities.strength(2),
                         Abilities.fireResistance(),
@@ -486,19 +486,19 @@ public final class MobRegistry {
                         Abilities.stealSouls(80),
                         Abilities.lifestealOnHit(0.30),
                         Abilities.regenOnHurt(1.5),
-                        Abilities.meleeEnforcer(140, 3.0, 26),
-                        // Signature AOE — rare but brutal: 22s, 10-block radius, 220 dmg
-                        Abilities.bossAttack(220, 10, 440, Arrays.asList(
+                        Abilities.meleeEnforcer(200, 3.0, 26),
+                        // Signature AOE — rare but brutal: 22s, 10-block radius, 280 dmg
+                        Abilities.bossAttack(280, 10, 440, Arrays.asList(
                                 "§5§l✦ §r\"§5§oSing. Do not make me ask twice.§r§5§l\"",
                                 "§5§l✦ §r\"§5§oEach voice is a coin. Your debt is immense.§r§5§l\"",
                                 "§5§l✦ §r\"§5§oI was a church. Now I am only a bell.§r§5§l\"")),
-                        // Chain lightning — 4 bounces, 180 dmg, 8-block chain range, 18s cadence
-                        Abilities.chainLightning(180, 4, 8, 360),
+                        // Chain lightning — 4 bounces, 240 dmg, 8-block chain range, 18s cadence
+                        Abilities.chainLightning(240, 4, 8, 360),
                         // Summon spectral monks every ~45s
                         Abilities.summonReinforcements("spectral_monk", 3, 900),
                         // Signature: every 3s, stack a soul mark on every player in
-                        // 10 blocks. At 8 stacks the marks detonate for 15/stack.
-                        Abilities.soulMark(15.0, 8, 10, 60),
+                        // 10 blocks. At 8 stacks the marks detonate for 25/stack.
+                        Abilities.soulMark(25.0, 8, 10, 60),
                         Abilities.ambientTaunt(40, 1000, Arrays.asList(
                                 "§8§o\"The hymn is not over. You are a rest between bars.\"",
                                 "§8§o\"Every name is sung eventually.\"",

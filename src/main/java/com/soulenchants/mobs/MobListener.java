@@ -72,7 +72,12 @@ public class MobListener implements Listener {
         CustomMob def = MobRegistry.get(mid);
         if (def != null && def.tier == CustomMob.Tier.ELITE) {
             new BukkitRunnable() {
-                @Override public void run() { CustomMob.refreshHpBar(v, def); }
+                @Override public void run() {
+                    CustomMob.refreshHpBar(v, def);
+                    // Elite-boss phase-transition watcher — emits the Phase II
+                    // and Phase III chat banners at 66% / 33% HP thresholds.
+                    com.soulenchants.bosses.EliteBossHooks.onDamaged(v);
+                }
             }.runTaskLater(plugin, 1L);
         }
     }

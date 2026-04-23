@@ -148,6 +148,7 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new OrbListener(this), this);
         getServer().getPluginManager().registerEvents(new VeilweaverDamageListener(this), this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.bosses.BossDamageImmunity(this), this);
+        getServer().getPluginManager().registerEvents(new com.soulenchants.bosses.EliteBossHooks(this), this);
         getServer().getPluginManager().registerEvents(new IronGolemDamageListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new GrindingListener(this), this);

@@ -134,24 +134,27 @@ public class ScoreboardManager {
         // ── BOSS SECTION ────────────────
         Veilweaver vw = plugin.getVeilweaverManager().getActive();
         IronGolemBoss ig = plugin.getIronGolemManager().getActive();
-        // Hollow King is a CustomMob, not a managed Boss class — find the live
-        // entity by scanning loaded worlds. ELITE-tier scan stays cheap because
-        // there's typically <=1 instance alive.
+
+        // CustomMob bosses — one world scan that collects the Hollow King AND
+        // every elite boss (Broodmother / Wurm-Lord / Choirmaster) in a single pass.
         org.bukkit.entity.LivingEntity hk = null;
+        java.util.List<org.bukkit.entity.LivingEntity> elites = new java.util.ArrayList<>();
         for (org.bukkit.World w : Bukkit.getWorlds()) {
             for (org.bukkit.entity.Entity e : w.getEntities()) {
                 if (!(e instanceof org.bukkit.entity.LivingEntity)) continue;
-                if ("hollow_king".equals(com.soulenchants.mobs.CustomMob.idOf((org.bukkit.entity.LivingEntity) e))) {
-                    hk = (org.bukkit.entity.LivingEntity) e;
-                    break;
-                }
+                org.bukkit.entity.LivingEntity le = (org.bukkit.entity.LivingEntity) e;
+                if (le.isDead()) continue;
+                String cid = com.soulenchants.mobs.CustomMob.idOf(le);
+                if (cid == null) continue;
+                if ("hollow_king".equals(cid) && hk == null) { hk = le; continue; }
+                if (com.soulenchants.bosses.EliteBossHooks.isElite(cid)) elites.add(le);
             }
-            if (hk != null) break;
         }
 
         boolean anyBoss = (vw != null && !vw.getEntity().isDead())
                        || (ig != null && !ig.getEntity().isDead())
-                       || (hk != null && !hk.isDead());
+                       || (hk != null && !hk.isDead())
+                       || !elites.isEmpty();
         if (anyBoss) {
             lines.add(divRed);
             lines.add(ChatColor.RED + "" + ChatColor.BOLD + "▎ Boss");
@@ -176,6 +179,18 @@ public class ScoreboardManager {
             lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
                     + (int) hk.getHealth() + ChatColor.DARK_GRAY + "/"
                     + ChatColor.GRAY + (int) hk.getMaxHealth());
+        }
+        for (org.bukkit.entity.LivingEntity le : elites) {
+            com.soulenchants.bosses.EliteBossHooks.Spec spec =
+                    com.soulenchants.bosses.EliteBossHooks.specOf(le);
+            if (spec == null) continue;
+            int phase = com.soulenchants.bosses.EliteBossHooks.phaseByEntity
+                    .getOrDefault(le.getUniqueId(), 1);
+            String phaseTag = phase == 1 ? "I" : phase == 2 ? "II" : "III";
+            lines.add(spec.color + " " + spec.scoreboardName + " " + ChatColor.GRAY + "[" + phaseTag + "]");
+            lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
+                    + (int) le.getHealth() + ChatColor.DARK_GRAY + "/"
+                    + ChatColor.GRAY + (int) le.getMaxHealth());
         }
 
         // ── RIFT SECTION ────────────────
