@@ -475,31 +475,37 @@ public final class MobRegistry {
         // summoned monks. Low HP vs the other two, but his chain + steal can delete
         // an unshielded back-line in seconds. Dawnbringer shines here; Clarity helps
         // against the blind ticks.
-        add(build("choirmaster", "The Choirmaster", EntityType.SKELETON, CustomMob.Tier.ELITE, 20000, 210, 4000,
+        // Balance pass: every damage number in this block was nuked down. The
+        // old chain-lightning at 240 dmg + a 210 base-bonus + 200-dmg
+        // meleeEnforcer was deleting unshielded players in one tick. New
+        // numbers leave Choirmaster painful but survivable — he's still
+        // the back-line cleaner via chain + soul-mark, just not a one-shot.
+        add(build("choirmaster", "The Choirmaster", EntityType.SKELETON, CustomMob.Tier.ELITE, 20000, 110, 4000,
                 Arrays.asList(
-                        Abilities.strength(2),
+                        Abilities.strength(1),
                         Abilities.fireResistance(),
                         Abilities.particleAura(Effect.WITCH_MAGIC, 4, 16),
                         Abilities.particleAura(Effect.PORTAL, 3, 10),
                         Abilities.auraEffect(org.bukkit.potion.PotionEffectType.WEAKNESS, 0, 7),
-                        // Hit triggers — wither + blind
-                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.WITHER,    0, 120),
-                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, 0,  80),
-                        Abilities.stealSouls(80),
-                        Abilities.lifestealOnHit(0.30),
-                        Abilities.meleeEnforcer(200, 3.0, 26),
-                        // Signature AOE — rare but brutal: 22s, 10-block radius, 280 dmg
-                        Abilities.bossAttack(280, 10, 440, Arrays.asList(
+                        // Hit triggers — wither + blind (durations trimmed too)
+                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.WITHER,    0, 80),
+                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.BLINDNESS, 0, 60),
+                        Abilities.stealSouls(50),
+                        Abilities.lifestealOnHit(0.20),
+                        Abilities.meleeEnforcer(110, 3.0, 26),
+                        // Signature AOE — 22s cadence, 9-block radius, 140 dmg (was 280)
+                        Abilities.bossAttack(140, 9, 440, Arrays.asList(
                                 "§5§l✦ §r\"§5§oSing. Do not make me ask twice.§r§5§l\"",
                                 "§5§l✦ §r\"§5§oEach voice is a coin. Your debt is immense.§r§5§l\"",
                                 "§5§l✦ §r\"§5§oI was a church. Now I am only a bell.§r§5§l\"")),
-                        // Chain lightning — 4 bounces, 240 dmg, 8-block chain range, 18s cadence
-                        Abilities.chainLightning(240, 4, 8, 360),
+                        // Chain lightning — was the one-shotter. 240 → 110,
+                        // 4 bounces → 3, 8-block chain range unchanged.
+                        Abilities.chainLightning(110, 3, 8, 360),
                         // Summon spectral monks every ~45s
                         Abilities.summonReinforcements("spectral_monk", 3, 900),
-                        // Signature: every 3s, stack a soul mark on every player in
-                        // 10 blocks. At 8 stacks the marks detonate for 25/stack.
-                        Abilities.soulMark(25.0, 8, 10, 60),
+                        // Soul mark: 25/stack × 8 = 200 dmg detonation → 12/stack
+                        // × 8 = 96 dmg ceiling. Same mechanic, far softer payoff.
+                        Abilities.soulMark(12.0, 8, 10, 60),
                         Abilities.ambientTaunt(40, 1000, Arrays.asList(
                                 "§8§o\"The hymn is not over. You are a rest between bars.\"",
                                 "§8§o\"Every name is sung eventually.\"",
