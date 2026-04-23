@@ -28,6 +28,12 @@ import java.util.UUID;
 public class CombatListener implements Listener {
 
     private final SoulEnchants plugin;
+    /**
+     * Live handle to the bound config. Every balance literal in this file now
+     * reads from cfg.* — /ce reload re-fills these same fields in place, so
+     * tuning flows through without a restart.
+     */
+    private final com.soulenchants.config.EnchantConfig cfg;
     private final Random rng = new Random();
     /** Set during a cleave splash so the resulting damage events don't recursively re-cleave. */
     private static final ThreadLocal<Boolean> CLEAVE_GUARD = ThreadLocal.withInitial(() -> Boolean.FALSE);
@@ -75,6 +81,7 @@ public class CombatListener implements Listener {
 
     public CombatListener(SoulEnchants plugin) {
         this.plugin = plugin;
+        this.cfg = plugin.getEnchantConfig();
         startBleedTicker();
     }
 
@@ -96,11 +103,12 @@ public class CombatListener implements Listener {
         // Featherweight is now a SWORD enchant (Haste burst on hit, Nordic-style)
         // and no longer reduces fall damage.
 
-        // Ironclad (explosion damage)
+        // Ironclad — explosion damage reduction, stackable-cap per cfg
         if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
                 || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) {
             int ic = maxArmor(victim, "ironclad");
-            if (ic > 0) e.setDamage(e.getDamage() * (1.0 - Math.min(0.15, 0.05 * ic)));
+            if (ic > 0) e.setDamage(e.getDamage() * (1.0
+                    - Math.min(cfg.ironcladReductionCap, cfg.ironcladReductionPerLevel * ic)));
         }
 
         // Lethal-hit save enchants (Phoenix, Soul Shield) via unified helper
@@ -161,11 +169,7 @@ public class CombatListener implements Listener {
         return false;
     }
 
-    /** Hard cap on summed offensive bonus — final dmg can be at most 3x base
-     *  from stacked enchants (Witherbane + Demonslayer + Slayer + Executioner +
-     *  Reaver + Crit + ...). Soul Strike is a soul-cost ability and bypasses the
-     *  cap by design. Soul Burn's flat add stays additive after the multiplier. */
-    private static final double OFFENSIVE_BONUS_CAP = 2.00;
+    // Offensive bonus cap moved to EnchantConfig.offensiveBonusCap — read via cfg.
 
     private void handleSwordEnchants(Player attacker, LivingEntity victim, EntityDamageByEntityEvent e) {
         // Re-entry from our own enchant-driven secondary damage (AOE splash, reflect,
@@ -180,7 +184,7 @@ public class CombatListener implements Listener {
         // so it can't stack ridiculously with Blood Fury / Soul Drain.
         int ls = ItemUtil.getLevel(hand, "lifesteal");
         if (ls > 0) {
-            double heal = Math.min(e.getDamage() * 0.05 * ls, 5.0);
+            double heal = Math.min(e.getDamage() * cfg.lifestealHealPerLevelPct * ls, cfg.lifestealHealCapHp);
             attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
         }
 
@@ -206,126 +210,126 @@ public class CombatListener implements Listener {
         int bleed = ItemUtil.getLevel(hand, "bleed");
         if (bleed > 0) {
             int dw = ItemUtil.getLevel(hand, "deepwounds");
-            double procChance = 0.015 * bleed + 0.008 * dw;  // L1=1.5%, L6=9%, +2.4% per DW3
+            double procChance = cfg.bleedProcPerLevel * bleed + cfg.bleedDeepWoundsBonus * dw;
             long now = System.currentTimeMillis();
             long activeUntil = bleedUntil.getOrDefault(victim.getUniqueId(), 0L);
-            // Lockout = entire active DOT window + 2s grace after it ends
-            boolean inLockout = now < activeUntil + 2_000L;
+            boolean inLockout = now < activeUntil + cfg.bleedLockoutGraceMs;
             if (!inLockout && rng.nextDouble() < procChance) {
                 applyBleedProc(victim, attacker, hand);
             }
         }
 
-        // Cripple — heavy proc nerf (was 8%/lvl) + 5s CD per attacker
+        // Cripple — proc + short CD per attacker
         int cr = ItemUtil.getLevel(hand, "cripple");
-        if (cr > 0 && rng.nextDouble() < 0.03 * cr
+        if (cr > 0 && rng.nextDouble() < cfg.crippleProc * cr
                 && plugin.getCooldownManager().isReady("cripple", attacker.getUniqueId())) {
-            plugin.getCooldownManager().set("cripple", attacker.getUniqueId(), 5_000L);
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 60, cr - 1));
-            victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 60, cr - 1));
+            plugin.getCooldownManager().set("cripple", attacker.getUniqueId(), cfg.crippleCdMs);
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     cfg.crippleSlowTicks, cr - 1));
+            victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, cfg.crippleSlowTicks, cr - 1));
         }
 
-        // Venom — heavy proc nerf (was 10%/lvl)
+        // Venom — proc-gated Poison
         int ven = ItemUtil.getLevel(hand, "venom");
-        if (ven > 0 && rng.nextDouble() < 0.04 * ven)
+        if (ven > 0 && rng.nextDouble() < cfg.venomProc * ven)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.POISON, 40 * ven, 0));
 
         // Wither Bane → additive
         int wb = ItemUtil.getLevel(hand, "witherbane");
-        if (wb > 0 && isWitherFamily(victim)) offBonus += 0.35 * wb;
+        if (wb > 0 && isWitherFamily(victim)) offBonus += cfg.witherbaneBonus * wb;
 
         // Demon Slayer → additive
         int demon = ItemUtil.getLevel(hand, "demonslayer");
-        if (demon > 0 && isNetherMob(victim)) offBonus += 0.30 * demon;
+        if (demon > 0 && isNetherMob(victim)) offBonus += cfg.demonSlayerBonus * demon;
 
         // Beast Slayer → additive
         int beast = ItemUtil.getLevel(hand, "beastslayer");
-        if (beast > 0 && isArthropod(victim)) offBonus += 0.25 * beast;
+        if (beast > 0 && isArthropod(victim)) offBonus += cfg.beastSlayerBonus * beast;
 
-        // Executioner → additive
+        // Executioner → additive, fires when victim is below HP threshold
         int exec = ItemUtil.getLevel(hand, "executioner");
-        if (exec > 0 && victim.getHealth() / victim.getMaxHealth() < 0.30)
-            offBonus += 0.25 * exec;
+        if (exec > 0 && victim.getHealth() / victim.getMaxHealth() < cfg.executionerHpThreshold)
+            offBonus += cfg.executionerBonus * exec;
 
-        // Slayer (was in PvEDamageListener — moved here for melee so it joins the cap).
+        // Slayer — additive bonus vs active bosses + their minions
         int slayer = ItemUtil.getLevel(hand, "slayer");
-        if (slayer > 0 && isBossOrMinionTarget(victim)) offBonus += 0.25 * slayer;
+        if (slayer > 0 && isBossOrMinionTarget(victim)) offBonus += cfg.slayerBonus * slayer;
 
-        // Holy Smite (was in PvEDamageListener — moved here for melee).
+        // Holy Smite — additive bonus vs undead
         int holy = ItemUtil.getLevel(hand, "holysmite");
-        if (holy > 0 && isUndead(victim)) offBonus += 0.30 * holy;
+        if (holy > 0 && isUndead(victim)) offBonus += cfg.holySmiteBonus * holy;
 
-        // Cleave (Nordic-style) — flat 5% chance to deal a fixed 3 dmg to all valid
-        // proc targets in (level)-block radius. AOE_GUARD via aoeDamage() prevents
-        // recursive cleave-of-cleave; CLEAVE_GUARD retained as belt-and-suspenders.
+        // Cleave (Nordic-style) — flat chance AoE hit. AOE_GUARD via aoeDamage()
+        // prevents recursive cleave-of-cleave; CLEAVE_GUARD retained as belt-
+        // and-suspenders on top.
         int cleave = ItemUtil.getLevel(hand, "cleave");
-        if (cleave > 0 && !CLEAVE_GUARD.get() && rng.nextDouble() < 0.05) {
+        if (cleave > 0 && !CLEAVE_GUARD.get() && rng.nextDouble() < cfg.cleaveProc) {
             CLEAVE_GUARD.set(true);
             try {
                 for (Entity near : attacker.getNearbyEntities(cleave, 10.0, cleave)) {
                     if (!(near instanceof LivingEntity) || near.equals(attacker) || near.equals(victim)) continue;
                     if (!isValidProcTarget((LivingEntity) near)) continue;
-                    aoeDamage((LivingEntity) near, 3.0, attacker);
+                    aoeDamage((LivingEntity) near, cfg.cleaveDmg, attacker);
                 }
             } finally {
                 CLEAVE_GUARD.set(false);
             }
-            // Wraithcleaver (mythic_held = 2) — heal 1 HP per Cleave proc
+            // Wraithcleaver (mythic_held = 2) — heal per Cleave proc
             if (ItemUtil.getLevel(hand, "mythic_held") == 2) {
-                attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + 1.0));
+                attacker.setHealth(Math.min(attacker.getMaxHealth(),
+                        attacker.getHealth() + plugin.getMythicConfig().wraithcleaverHealPerCleave));
             }
         }
 
-        // Frost Aspect — heavy proc nerf (was 12%/lvl)
+        // Frost Aspect — proc Slow + Mining Fatigue
         int frost = ItemUtil.getLevel(hand, "frostaspect");
-        if (frost > 0 && rng.nextDouble() < 0.05 * frost) {
+        if (frost > 0 && rng.nextDouble() < cfg.frostProc * frost) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40 * frost, frost - 1));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 40 * frost, frost - 1));
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.PACKED_ICE.getId());
         }
 
-        // Cursed Edge — heavy proc nerf (was 7%/lvl)
+        // Cursed Edge — proc Wither II
         int curse = ItemUtil.getLevel(hand, "cursededge");
-        if (curse > 0 && rng.nextDouble() < 0.03 * curse)
+        if (curse > 0 && rng.nextDouble() < cfg.cursedEdgeProc * curse)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
 
-        // Soul Burn — flat add (stays additive AFTER multiplier so the cap doesn't eat it)
+        // Soul Burn — flat add stays additive AFTER multiplier so the cap doesn't eat it
         int sb = ItemUtil.getLevel(hand, "soulburn");
-        if (sb > 0 && rng.nextDouble() < 0.05 * sb) {
-            victim.setFireTicks(60 * sb);
-            flatAdd += 1.0 * sb;
+        if (sb > 0 && rng.nextDouble() < cfg.soulBurnProc * sb) {
+            victim.setFireTicks(cfg.soulBurnFireTicks * sb);
+            flatAdd += cfg.soulBurnFlatAdd * sb;
         }
 
-        // Phantom Strike — heavy proc nerf (was 4%/lvl)
+        // Phantom Strike — teleport-behind mob (player targets excluded)
         int ps = ItemUtil.getLevel(hand, "phantomstrike");
-        if (ps > 0 && rng.nextDouble() < 0.02 * ps && !(victim instanceof Player)) {
+        if (ps > 0 && rng.nextDouble() < cfg.phantomStrikeProc * ps && !(victim instanceof Player)) {
             Location behind = victim.getLocation().add(victim.getLocation().getDirection().multiply(-1.2));
             behind.setYaw(victim.getLocation().getYaw());
             attacker.teleport(behind);
             attacker.getWorld().playEffect(behind, Effect.PORTAL, 0);
         }
 
-        // Earthshaker
+        // Earthshaker — AoE around victim
         int es = ItemUtil.getLevel(hand, "earthshaker");
         if (es > 0) {
-            double aoeDmg = 1.0 + (1.0 * es);
-            for (Entity near : victim.getNearbyEntities(2.0, 1.5, 2.0)) {
+            double aoeDmg = cfg.earthshakerFlatBase + (cfg.earthshakerFlatPerLevel * es);
+            for (Entity near : victim.getNearbyEntities(cfg.earthshakerRadius, 1.5, cfg.earthshakerRadius)) {
                 if (!(near instanceof LivingEntity) || near.equals(attacker) || near.equals(victim)) continue;
                 if (near instanceof Player) continue;
                 aoeDamage((LivingEntity) near, aoeDmg, attacker);
             }
         }
 
-        // Bonebreaker — heavy proc nerf (was 10%/lvl)
+        // Bonebreaker — proc Weakness
         int bb = ItemUtil.getLevel(hand, "bonebreaker");
-        if (bb > 0 && rng.nextDouble() < 0.04 * bb)
+        if (bb > 0 && rng.nextDouble() < cfg.bonebreakerProc * bb)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 60 * bb, 0));
 
-        // Critical Strike — proc-gated, contributes +50% to additive pool
+        // Critical Strike — proc-gated additive bonus
         int crit = ItemUtil.getLevel(hand, "criticalstrike");
-        if (crit > 0 && rng.nextDouble() < 0.02 * crit) {
-            offBonus += 0.50;
+        if (crit > 0 && rng.nextDouble() < cfg.critProc * crit) {
+            offBonus += cfg.critBonus;
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
         }
@@ -340,7 +344,7 @@ public class CombatListener implements Listener {
                 Vector to = near.getLocation().toVector().subtract(attacker.getLocation().toVector()).setY(0);
                 if (to.lengthSquared() == 0) continue;
                 if (to.normalize().dot(forward) > 0.4) {
-                    aoeDamage((LivingEntity) near, 1.5 * rw, attacker);
+                    aoeDamage((LivingEntity) near, cfg.razorWindPerLevel * rw, attacker);
                 }
             }
         }
@@ -351,21 +355,19 @@ public class CombatListener implements Listener {
         // Drunk's strength buff is applied passively in tick task.
         // Bloodlust is a CHESTPLATE proc (heal-on-nearby-bleed-tick) — handled by the global Bleed ticker.
 
-        // Feather Weight (Nordic-style) — 20%/lvl chance to gain Haste burst
+        // Feather Weight — proc Haste burst
         int fw = ItemUtil.getLevel(hand, "featherweight");
         if (fw > 0 && !attacker.hasPotionEffect(PotionEffectType.FAST_DIGGING)
-                && rng.nextDouble() <= 0.2 * fw) {
+                && rng.nextDouble() <= cfg.featherProc * fw) {
             attacker.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, fw * 20, fw - 1, true, false), true);
         }
 
-        // Blessed (Nordic-style) — 20%/lvl chance on hit to strip your own debuffs.
-        // Effect still procs every roll; chat message is throttled to once per 6s
-        // so it doesn't flood the chat during sustained combat.
+        // Blessed — proc strips own debuffs. Message throttled per cfg.blessedMsgCdMs.
         int blessed = ItemUtil.getLevel(hand, "blessed");
-        if (blessed > 0 && rng.nextDouble() < 0.2 * blessed) {
+        if (blessed > 0 && rng.nextDouble() < cfg.blessedProc * blessed) {
             blessSelf(attacker);
             if (plugin.getCooldownManager().isReady("blessed_msg", attacker.getUniqueId())) {
-                plugin.getCooldownManager().set("blessed_msg", attacker.getUniqueId(), 6_000L);
+                plugin.getCooldownManager().set("blessed_msg", attacker.getUniqueId(), cfg.blessedMsgCdMs);
                 attacker.sendMessage("§e§l** BLESSED **");
                 attacker.playSound(attacker.getLocation(), org.bukkit.Sound.SPLASH, 1.2f, 2.0f);
             }
@@ -373,31 +375,29 @@ public class CombatListener implements Listener {
 
         // ─── AXE enchants (PvE/PvP, fire whether wielding sword OR axe) ───
 
-        // Reaver → additive (scales with attacker's missing HP)
+        // Reaver → additive, scales with attacker's missing HP
         int reaver = ItemUtil.getLevel(hand, "reaver");
         if (reaver > 0) {
             double missingPct = 1.0 - (attacker.getHealth() / attacker.getMaxHealth());
-            offBonus += 0.08 * reaver * missingPct;
+            offBonus += cfg.reaverBonus * reaver * missingPct;
         }
         // Skullcrush — proc Nausea + Weakness II. Previously player-only; now
         // fires against bosses + minions too (victim is already gated by
         // isValidProcTarget at the top of this method).
         int skull = ItemUtil.getLevel(hand, "skullcrush");
-        if (skull > 0 && rng.nextDouble() < 0.04 * skull) {
+        if (skull > 0 && rng.nextDouble() < cfg.skullcrushProc * skull) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.CONFUSION, 60 * skull, 0));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS,  60 * skull, 1));
         }
         // Hamstring — root victim (Slow IV) for 2s
         int ham = ItemUtil.getLevel(hand, "hamstring");
-        if (ham > 0 && rng.nextDouble() < 0.03 * ham) {
+        if (ham > 0 && rng.nextDouble() < cfg.hamstringProc * ham) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 40, 3));
         }
-        // Blood Fury — heal 25%/lvl of damage dealt while below 30% HP. Cap at
-        // 5 HP per hit so it doesn't combo with Lifesteal/Soul Drain into
-        // perma-sustain.
+        // Blood Fury — heal scaled to damage dealt while below HP threshold
         int bf = ItemUtil.getLevel(hand, "bloodfury");
-        if (bf > 0 && attacker.getHealth() < attacker.getMaxHealth() * 0.30) {
-            double heal = Math.min(e.getDamage() * (0.25 * bf), 5.0);
+        if (bf > 0 && attacker.getHealth() < attacker.getMaxHealth() * cfg.bloodFuryHpThreshold) {
+            double heal = Math.min(e.getDamage() * (cfg.bloodFuryHealPct * bf), cfg.bloodFuryHealCapHp);
             attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
         }
         // Shieldbreaker — proc TRUE bonus damage (ignores armor). Sourceless damage
@@ -405,36 +405,37 @@ public class CombatListener implements Listener {
         // re-enter onAttack — but guard anyway since handleArmorOnHit/onAnyDamage
         // would still process it.
         int sb2 = ItemUtil.getLevel(hand, "shieldbreaker");
-        if (sb2 > 0 && rng.nextDouble() < 0.05 * sb2) {
-            double trueDmg = e.getDamage() * 0.25;
+        if (sb2 > 0 && rng.nextDouble() < cfg.shieldbreakerProc * sb2) {
+            double trueDmg = e.getDamage() * cfg.shieldbreakerTrueDmgPct;
             aoeDamage(victim, trueDmg, null);
         }
         // Frostshatter — Slow III + Mining Fatigue III for 4s
         int fs = ItemUtil.getLevel(hand, "frostshatter");
-        if (fs > 0 && rng.nextDouble() < 0.05 * fs) {
+        if (fs > 0 && rng.nextDouble() < cfg.frostshatterProc * fs) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 80, 2));
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 2));
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.PACKED_ICE.getId());
         }
-        // Wraithcleave → additive (only if victim is alone)
+        // Wraithcleave → additive, only if victim is alone within configured radius
         int wc = ItemUtil.getLevel(hand, "wraithcleave");
         if (wc > 0) {
             boolean alone = true;
-            for (Entity near : victim.getNearbyEntities(8, 8, 8)) {
+            double r = cfg.wraithcleaveRadius;
+            for (Entity near : victim.getNearbyEntities(r, r, r)) {
                 if (near == attacker) continue;
                 if (near instanceof LivingEntity && !(near instanceof Player)) {
                     alone = false; break;
                 }
             }
-            if (alone) offBonus += 0.25 * wc;
+            if (alone) offBonus += cfg.wraithcleaveBonus * wc;
         }
         // Rending Blow — Wither III for 5s
         int rb = ItemUtil.getLevel(hand, "rendingblow");
-        if (rb > 0 && rng.nextDouble() < 0.04 * rb) {
+        if (rb > 0 && rng.nextDouble() < cfg.rendingBlowProc * rb) {
             victim.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 100, 2));
         }
-        // Executioner's Mark → additive (when victim has any debuff)
+        // Executioner's Mark → additive when victim has any debuff
         int em = ItemUtil.getLevel(hand, "executionersmark");
         if (em > 0) {
             boolean hasDebuff = victim.hasPotionEffect(PotionEffectType.SLOW)
@@ -444,35 +445,35 @@ public class CombatListener implements Listener {
                     || victim.hasPotionEffect(PotionEffectType.SLOW_DIGGING)
                     || victim.hasPotionEffect(PotionEffectType.CONFUSION)
                     || victim.hasPotionEffect(PotionEffectType.BLINDNESS);
-            if (hasDebuff) offBonus += 0.15 * em;
+            if (hasDebuff) offBonus += cfg.executionersMarkBonus * em;
         }
 
         // Soul Strike — bypass-cap special multiplier (rare proc + soul cost = self-throttled).
-        // v1.1: soul cost routed through SoulGemUtil — requires a Soul Gem in inventory.
+        // Gem-gated via SoulGemUtil.
         int ss = ItemUtil.getLevel(hand, "soulstrike");
-        if (ss > 0 && rng.nextDouble() < 0.05) {
-            int cost = 100;
+        if (ss > 0 && rng.nextDouble() < cfg.soulStrikeProc) {
+            int cost = cfg.soulStrikeCost;
             if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, cost)) {
-                specialMult *= (1.5 + 0.5 * ss);
+                specialMult *= (cfg.soulStrikeMultBase + cfg.soulStrikeMultPerLevel * ss);
                 attacker.getWorld().strikeLightningEffect(victim.getLocation());
                 attacker.sendMessage("§4✦ Soul Strike! §7(-" + cost + ")");
             }
         }
 
-        // Soul Drain — 50 souls per hit, gem-gated.
+        // Soul Drain — gem-gated heal per hit
         int sd = ItemUtil.getLevel(hand, "souldrain");
         if (sd > 0) {
-            int cost = 50;
+            int cost = cfg.soulDrainCost;
             if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, cost)) {
-                double heal = e.getDamage() * (0.25 * sd);
+                double heal = e.getDamage() * (cfg.soulDrainHealPct * sd);
                 attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
             }
         }
 
-        // Divine Immolation — 5 souls per swing, gem-gated. Self-rate-limited by soul cost.
+        // Divine Immolation — gem-gated, soul-cost-throttled splash every swing
         int di = ItemUtil.getLevel(hand, "divineimmolation");
-        if (di > 0 && com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, 5)) {
-            double splash = di * 1.1;
+        if (di > 0 && com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, cfg.divineImmolationCost)) {
+            double splash = di * cfg.divineImmolationSplashPerLevel;
             double radius = di;
             for (Entity near : victim.getNearbyEntities(radius, radius, radius)) {
                 if (near == attacker) continue;
@@ -491,7 +492,7 @@ public class CombatListener implements Listener {
         // FINAL DAMAGE APPLICATION
         // base * (1 + min(offBonus, CAP)) * specialMult + flatAdd
         // ──────────────────────────────────────────────────────────────
-        double cappedBonus = Math.min(offBonus, OFFENSIVE_BONUS_CAP);
+        double cappedBonus = Math.min(offBonus, cfg.offensiveBonusCap);
         double finalDmg = baseDmg * (1.0 + cappedBonus) * specialMult + flatAdd;
         if (finalDmg != baseDmg) e.setDamage(finalDmg);
     }
@@ -561,23 +562,23 @@ public class CombatListener implements Listener {
         }
         final UUID id = victim.getUniqueId();
 
-        // Armored: stacks across chestplate + leggings.
-        // proc = 2% × sum_level (max 16% at 4+4)   reduction = 1% × sum_level (max 8%)
+        // Armored — stackable across chestplate + leggings. Proc + reduction
+        // scales with summed level; both values hard-capped per cfg.
         if (armoredSum > 0 && e.getDamager() instanceof Player) {
             ItemStack hand = ((Player) e.getDamager()).getItemInHand();
             if (hand != null && hand.getType().name().endsWith("_SWORD")) {
-                double proc = Math.min(0.16, 0.02 * armoredSum);
+                double proc = Math.min(cfg.armoredProcCap, cfg.armoredProcPerLevel * armoredSum);
                 if (rng.nextDouble() < proc) {
-                    double reduction = Math.min(0.08, 0.01 * armoredSum);
+                    double reduction = Math.min(cfg.armoredReductionCap,
+                            cfg.armoredReductionPerLevel * armoredSum);
                     e.setDamage(e.getDamage() * (1.0 - reduction));
                 }
             }
         }
 
-        // Enlightened — heavy nerf. 0.2% × sum_level, hard-capped at 2%.
-        // (was 0.5% × sum_level, max 6%)
+        // Enlightened — stackable proc, hard-capped per cfg.enlightenedProcCap.
         if (enlightenedSum > 0) {
-            double proc = Math.min(0.02, 0.002 * enlightenedSum);
+            double proc = Math.min(cfg.enlightenedProcCap, cfg.enlightenedProcPerLevel * enlightenedSum);
             if (rng.nextDouble() < proc) {
                 double dmg = e.getDamage();
                 int healCap = (int) Math.min(6.0, Math.max(1.0, dmg));
@@ -592,10 +593,10 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Hardened (Nordic-style) — 20%/lvl chance to RESTORE durability across all
-        // armor pieces. Each piece's durability shifts down by (level+2). Lower
-        // durability values = more uses left in 1.8.x's anvil-side numbering.
-        if (hardened > 0 && rng.nextDouble() < 0.2 * hardened) {
+        // Hardened — proc restores durability across all armor pieces.
+        // Each piece's durability shifts down by (level+2). Lower durability
+        // values = more uses left in 1.8.x's anvil-side numbering.
+        if (hardened > 0 && rng.nextDouble() < cfg.hardenedProc * hardened) {
             for (ItemStack piece : armor) {
                 if (piece == null) continue;
                 if (!piece.getType().name().endsWith("_HELMET")
@@ -615,7 +616,7 @@ public class CombatListener implements Listener {
             long now = System.currentTimeMillis();
             if (now - antiKbCd.getOrDefault(id, 0L) > 200) {
                 antiKbCd.put(id, now);
-                final double reduceTo = 1.0 - (0.25 * antikb);
+                final double reduceTo = 1.0 - (cfg.antiknockbackReduction * antikb);
                 final Vector before = victim.getVelocity().clone();
                 new BukkitRunnable() {
                     @Override public void run() {
@@ -626,73 +627,76 @@ public class CombatListener implements Listener {
                 }.runTask(plugin);
             }
         }
-        // Molten — heavy proc nerf (was 12%/lvl)
-        if (molten > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < 0.05 * molten)
-            ((LivingEntity) e.getDamager()).setFireTicks(60 * molten);
-        if (lastStand > 0 && victim.getHealth() <= 4.0)
+        // Molten — proc ignite attacker
+        if (molten > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < cfg.moltenProc * molten)
+            ((LivingEntity) e.getDamager()).setFireTicks(cfg.moltenFireTicks * molten);
+        if (lastStand > 0 && victim.getHealth() <= cfg.lastStandHpThreshold)
             victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 30, Math.max(0, lastStand - 2)));
-        // Stormcaller — added a proc gate. Was: always when dmg>=6 + CD only.
-        // Now: 5% × lvl chance ON TOP of CD, so it's a rare lightning rather than reliable.
-        if (stormcall > 0 && e.getDamage() >= 6 && e.getDamager() instanceof LivingEntity
+        // Stormcaller — proc + CD. CD scales down with level (faster procs at higher level).
+        if (stormcall > 0 && e.getDamage() >= cfg.stormcallerMinDmg && e.getDamager() instanceof LivingEntity
                 && plugin.getCooldownManager().isReady("stormcaller", id)
-                && rng.nextDouble() < 0.05 * stormcall) {
-            long cd = 14000L - (2000L * (stormcall - 1));
+                && rng.nextDouble() < cfg.stormcallerProc * stormcall) {
+            long cd = cfg.stormcallerCdBaseMs - (cfg.stormcallerCdReduceMs * (stormcall - 1));
             plugin.getCooldownManager().set("stormcaller", id, cd);
             e.getDamager().getWorld().strikeLightning(e.getDamager().getLocation());
         }
-        // Guardians — heavy nerf (was 3%/lvl, max 9% at L3 → now 1%/lvl, max 3%)
+        // Guardians — rare Absorption proc
         if (guardians > 0 && plugin.getCooldownManager().isReady("guardians", id)
-                && rng.nextDouble() < 0.01 * guardians) {
-            plugin.getCooldownManager().set("guardians", id, 120_000L);
+                && rng.nextDouble() < cfg.guardiansProc * guardians) {
+            plugin.getCooldownManager().set("guardians", id, cfg.guardiansCdMs);
             victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 100, 0));
-            victim.sendMessage("§6✦ §eGuardians §7— §a+1 absorption heart §7(120s CD)");
+            victim.sendMessage("§6✦ §eGuardians §7— §a+1 absorption heart §7("
+                    + (cfg.guardiansCdMs / 1000) + "s CD)");
         }
-        // Overshield — heavy nerf (was 2%/lvl, max 8% at L4 → now 0.5%/lvl, max 2%)
+        // Overshield — rare Absorption proc
         if (overshield > 0 && plugin.getCooldownManager().isReady("overshield", id)
-                && rng.nextDouble() < 0.005 * overshield) {
-            plugin.getCooldownManager().set("overshield", id, 120_000L);
+                && rng.nextDouble() < cfg.overshieldProc * overshield) {
+            plugin.getCooldownManager().set("overshield", id, cfg.overshieldCdMs);
             victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 100, 0));
-            victim.sendMessage("§6✦ §eOvershield §7— §a+1 absorption heart §7(120s CD)");
+            victim.sendMessage("§6✦ §eOvershield §7— §a+1 absorption heart §7("
+                    + (cfg.overshieldCdMs / 1000) + "s CD)");
         }
         if (reflect > 0 && e.getDamager() instanceof LivingEntity
                 && plugin.getCooldownManager().isReady("reflect", id)) {
-            plugin.getCooldownManager().set("reflect", id, 5_000L);
-            aoeDamage((LivingEntity) e.getDamager(), e.getDamage() * (0.06 * reflect), victim);
+            plugin.getCooldownManager().set("reflect", id, cfg.reflectCdMs);
+            aoeDamage((LivingEntity) e.getDamager(), e.getDamage() * (cfg.reflectPctPerLevel * reflect), victim);
         }
-        // Endurance: capped at 6% (was 12%)
+        // Endurance — stackable reduction while recently in combat (capped per cfg)
         if (endurance > 0) {
             long now = System.currentTimeMillis();
             long last = lastCombatTick.getOrDefault(id, 0L);
-            if (now - last < 10_000L)
-                e.setDamage(e.getDamage() * (1.0 - Math.min(0.06, 0.01 * endurance)));
+            if (now - last < cfg.enduranceCombatWindowMs)
+                e.setDamage(e.getDamage() * (1.0
+                        - Math.min(cfg.enduranceReductionCap, cfg.enduranceReductionPerLevel * endurance)));
             lastCombatTick.put(id, now);
         }
         if (vengeance > 0 && e.getDamager() instanceof LivingEntity)
-            aoeDamage((LivingEntity) e.getDamager(), 0.5 + 0.3 * vengeance, victim);
+            aoeDamage((LivingEntity) e.getDamager(), cfg.vengeanceBase + cfg.vengeancePerLevel * vengeance, victim);
         // Nature's Wrath — 2% on-hit proc, 10s per-victim CD. Roots all enemy
         // LivingEntities in level*3 radius for (5+level)s + lightning every
         // second for `level` damage. 75 souls per cast. Soul-tier ARMOR.
-        if (naturesWrath > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < 0.02) {
+        if (naturesWrath > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < cfg.naturesWrathProc) {
             long now = System.currentTimeMillis();
             long lastCast = naturesWrathCd.getOrDefault(id, 0L);
-            if (now - lastCast >= 10_000L
-                    && com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, victim, 75)) {
+            if (now - lastCast >= cfg.naturesWrathCdMs
+                    && com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, victim, cfg.naturesWrathCost)) {
                 naturesWrathCd.put(id, now);
                 triggerNaturesWrath(victim, naturesWrath);
             }
         }
 
-        // Soul Burst — 150 souls, gem-gated.
+        // Soul Burst — gem-gated AoE knockback + damage
         if (soulburst > 0) {
-            int cost = 150;
+            int cost = cfg.soulBurstCost;
             if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, victim, cost)) {
-                for (Entity near : victim.getNearbyEntities(4, 3, 4)) {
+                double r = cfg.soulBurstRadius;
+                for (Entity near : victim.getNearbyEntities(r, 3, r)) {
                     if (!(near instanceof LivingEntity)) continue;
                     Vector push = near.getLocation().toVector().subtract(victim.getLocation().toVector())
                             .setY(0).normalize().multiply(1.2);
                     push.setY(0.5);
                     near.setVelocity(push);
-                    ((LivingEntity) near).damage(4 * soulburst, victim);
+                    ((LivingEntity) near).damage(cfg.soulBurstDmgPerLevel * soulburst, victim);
                 }
                 victim.getWorld().createExplosion(victim.getLocation().getX(), victim.getLocation().getY(),
                         victim.getLocation().getZ(), 0f, false);
@@ -701,65 +705,62 @@ public class CombatListener implements Listener {
 
         // ─── New PvP armor enchants ───────────────────────────────────────
 
-        // Callous — % chance to take 0 melee damage. Checked first so it can short-circuit.
-        if (callous > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < 0.02 * callous) {
+        // Callous — proc dodges melee entirely
+        if (callous > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < cfg.callousProc * callous) {
             e.setDamage(0);
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.IRON_BLOCK.getId());
             return;
         }
-        // Iron Skin — chance to negate critical hits. We approximate "crit" as
-        // attacker airborne + their dmg event being marked CRITICAL by Bukkit
-        // isn't available pre-1.9; use airborne as the cheap heuristic.
-        if (ironskin > 0 && e.getDamager() instanceof Player && rng.nextDouble() < 0.12 * ironskin) {
+        // Iron Skin — chance to negate critical hits (attacker airborne heuristic, 1.8 lacks Bukkit crit flag)
+        if (ironskin > 0 && e.getDamager() instanceof Player && rng.nextDouble() < cfg.ironskinProc * ironskin) {
             Player atk = (Player) e.getDamager();
             if (atk.getFallDistance() > 0 && !atk.isOnGround()) {
-                e.setDamage(e.getDamage() / 1.5); // strip the 1.5x crit bonus
+                e.setDamage(e.getDamage() / 1.5); // strip the vanilla 1.5x crit bonus
                 victim.sendMessage("§7§l⛨ Iron Skin §8— §fcritical hit absorbed.");
             }
         }
-        // Aegis — Resistance II for 4s when below 6 HP, 30s CD
-        if (aegis > 0 && victim.getHealth() <= 6.0
+        // Aegis — low-HP Resistance II proc
+        if (aegis > 0 && victim.getHealth() <= cfg.aegisHpThreshold
                 && plugin.getCooldownManager().isReady("aegis", id)) {
-            plugin.getCooldownManager().set("aegis", id, 30_000L);
+            plugin.getCooldownManager().set("aegis", id, cfg.aegisCdMs);
             victim.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 80, 1));
             victim.sendMessage("§b§l⛨ AEGIS §7— §fResistance II for 4s");
         }
-        // Rush — chance for Speed II burst on hit, 10s CD
+        // Rush — proc Speed II burst on hit
         if (rush > 0 && plugin.getCooldownManager().isReady("rush", id)
-                && rng.nextDouble() < 0.06 * rush) {
-            plugin.getCooldownManager().set("rush", id, 10_000L);
+                && rng.nextDouble() < cfg.rushProc * rush) {
+            plugin.getCooldownManager().set("rush", id, cfg.rushCdMs);
             victim.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 60, 1));
             victim.sendMessage("§e§l✦ RUSH §7— §fSpeed II for 3s");
         }
-        // Spite — reflect 8%/lvl as TRUE damage (ignores armor)
+        // Spite — reflect true damage (ignores armor)
         if (spite > 0 && e.getDamager() instanceof LivingEntity) {
-            double trueDmg = e.getDamage() * 0.08 * spite;
+            double trueDmg = e.getDamage() * cfg.spitePctPerLevel * spite;
             aoeDamage((LivingEntity) e.getDamager(), trueDmg, null);
         }
-        // Vampiric Plate — chance to steal 2 HP from attacker
+        // Vampiric Plate — proc steals HP from attacker
         if (vampiricplate > 0 && e.getDamager() instanceof LivingEntity
-                && rng.nextDouble() < 0.04 * vampiricplate) {
+                && rng.nextDouble() < cfg.vampiricPlateProc * vampiricplate) {
             LivingEntity atk = (LivingEntity) e.getDamager();
-            aoeDamage(atk, 2.0, null);
-            victim.setHealth(Math.min(victim.getMaxHealth(), victim.getHealth() + 2.0));
+            aoeDamage(atk, cfg.vampiricPlateHeal, null);
+            victim.setHealth(Math.min(victim.getMaxHealth(), victim.getHealth() + cfg.vampiricPlateHeal));
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0),
                     Effect.STEP_SOUND, Material.REDSTONE_BLOCK.getId());
         }
-        // Counter — chance to disarm attacker. 30s CD per victim.
-        // Player-only by design; bosses + custom mobs are LivingEntity not Player
-        // so they can't trigger this. The extra custom-mob NBT/metadata check
-        // below is belt-and-suspenders against any plugin spawning fake-Players.
+        // Counter — proc disarm (player-only; bosses + minions can't trigger).
+        // The extra custom-mob + boss-minion checks below are belt-and-suspenders
+        // against any plugin spawning fake-Players.
         if (counter > 0 && e.getDamager() instanceof Player
                 && plugin.getCooldownManager().isReady("counter", id)
-                && rng.nextDouble() < 0.04 * counter) {
+                && rng.nextDouble() < cfg.counterProc * counter) {
             Player atk = (Player) e.getDamager();
             // Skip if the "Player" is somehow tagged as a custom mob or registered
             // as an active boss / boss-minion in our trackers.
             if (com.soulenchants.mobs.CustomMob.idOf(atk) != null) return;
             if (isBossOrMinionAttacker(atk)) return;
 
-            plugin.getCooldownManager().set("counter", id, 30_000L);
+            plugin.getCooldownManager().set("counter", id, cfg.counterCdMs);
             ItemStack atkHand = atk.getItemInHand();
             if (atkHand != null && atkHand.getType() != Material.AIR) {
                 atk.setItemInHand(null);
@@ -778,33 +779,33 @@ public class CombatListener implements Listener {
         ItemStack hand = killer.getItemInHand();
         if (hand == null) return;
 
-        // Reaper heal-on-kill
+        // Reaper — flat heal on kill
         int reaper = ItemUtil.getLevel(hand, "reaper");
         if (reaper > 0)
-            killer.setHealth(Math.min(killer.getMaxHealth(), killer.getHealth() + 2.0 * reaper));
+            killer.setHealth(Math.min(killer.getMaxHealth(),
+                    killer.getHealth() + cfg.reaperHealPerLevel * reaper));
 
-        // Berserker's Edge — Strength I for (level * 5)s on kill (refreshable)
+        // Berserker's Edge — refreshable Strength I on kill, duration scales with level
         int be = ItemUtil.getLevel(hand, "berserkersedge");
         if (be > 0) {
-            killer.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, be * 5 * 20, 0), true);
+            killer.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE,
+                    be * cfg.berserkersEdgeStrengthSecondsPerLevel * 20, 0), true);
         }
 
-        // (Bloodlust is now a CHESTPLATE enchant that heals on nearby Bleed ticks.)
-
-        // Headhunter — heavy proc nerf (was 4%/lvl)
+        // Headhunter — proc skull drop on kill
         int hh = ItemUtil.getLevel(hand, "headhunter");
-        if (hh > 0 && rng.nextDouble() < 0.02 * hh) {
+        if (hh > 0 && rng.nextDouble() < cfg.headhunterProc * hh) {
             ItemStack skull = new ItemStack(Material.SKULL_ITEM, 1, (short) 0);
             e.getDrops().add(skull);
         }
 
-        // Greedy — proc nerf (was 10%/lvl → 4%/lvl)
+        // Greedy — proc duplicate each drop on kill
         int greedy = ItemUtil.getLevel(hand, "greedy");
         if (greedy > 0) {
             java.util.List<ItemStack> bonus = new java.util.ArrayList<>();
             for (ItemStack drop : e.getDrops()) {
                 if (drop == null) continue;
-                if (rng.nextDouble() < 0.04 * greedy) {
+                if (rng.nextDouble() < cfg.greedyProc * greedy) {
                     ItemStack extra = drop.clone();
                     extra.setAmount(1);
                     bonus.add(extra);
@@ -840,8 +841,8 @@ public class CombatListener implements Listener {
      * task expiry, death, or quit (handled in PvEDamageListener / quit hooks).
      */
     private void triggerNaturesWrath(Player caster, int level) {
-        int radius = level * 3;
-        int durTicks = (5 + level) * 20;
+        int radius = (int) (level * cfg.naturesWrathRadiusPerLevel);
+        int durTicks = (cfg.naturesWrathDurationSecondsBase + level) * 20;
         java.util.List<Player> rooted = new java.util.ArrayList<>();
         for (Entity near : caster.getNearbyEntities(radius, radius, radius)) {
             if (!(near instanceof Player)) continue;
@@ -927,8 +928,8 @@ public class CombatListener implements Listener {
                 : plugin.getGuildManager().getByMember(victim.getUniqueId());
         if (g == null) return;                          // not in a guild → no proc
         if (!plugin.getCooldownManager().isReady("lifebloom", victim.getUniqueId())) return;
-        plugin.getCooldownManager().set("lifebloom", victim.getUniqueId(), 100_000L);
-        int range = 20;
+        plugin.getCooldownManager().set("lifebloom", victim.getUniqueId(), cfg.lifebloomCdMs);
+        int range = cfg.lifebloomRadius;
         for (Entity near : victim.getNearbyEntities(range, range, range)) {
             if (!(near instanceof Player) || near == victim) continue;
             Player ally = (Player) near;

@@ -268,6 +268,22 @@ public final class EnchantConfig {
     @ConfigValue("counter.cd-ms")
     public long counterCdMs = 30_000L;
 
+    // ──────────────── Lifebloom (guild-heal on death) ────────────────
+    @ConfigValue("lifebloom.cd-ms")
+    public long lifebloomCdMs = 100_000L;
+    @ConfigValue("lifebloom.radius")
+    public int lifebloomRadius = 20;
+
+    // ──────────────── Kill-event enchants ────────────────
+    @ConfigValue("reaper.heal-per-level")
+    public double reaperHealPerLevel = 2.0;
+    @ConfigValue("berserkersedge.strength-seconds-per-level")
+    public int berserkersEdgeStrengthSecondsPerLevel = 5;
+    @ConfigValue("headhunter.proc-per-level")
+    public double headhunterProc = 0.02;
+    @ConfigValue("greedy.proc-per-level")
+    public double greedyProc = 0.04;
+
     // ──────────────── Ironclad (explosion armor) ────────────────
     @ConfigValue("ironclad.reduction-per-level")
     public double ironcladReductionPerLevel = 0.05;

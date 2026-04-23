@@ -218,6 +218,21 @@ counter:
   proc-per-level: 0.04
   cd-ms: 30000
 
+# ─── Lifebloom (guild-heal on death) ─────────────────────────────────────
+lifebloom:
+  cd-ms: 100000
+  radius: 20
+
+# ─── Kill-event enchants (on-kill procs, not on-hit) ─────────────────────
+reaper:
+  heal-per-level: 2.0
+berserkersedge:
+  strength-seconds-per-level: 5
+headhunter:
+  proc-per-level: 0.02
+greedy:
+  proc-per-level: 0.04
+
 # ─── Explosion armor ──────────────────────────────────────────────────────
 ironclad:
   reduction-per-level: 0.05
