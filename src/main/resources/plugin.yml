@@ -8,68 +8,68 @@ softdepend: [ProtocolLib, LunarClient-API, LunarAPI]
 
 commands:
   souls:
-    description: Check or modify your Souls balance
-    usage: /souls [give|take|set] [player] [amount]
+    description: View or manage your Souls balance and tier
+    usage: §8/§esouls §7[show|tier|rules|give|take|set|settier]
     aliases: [bal, soul]
   ce:
-    description: Custom Enchants admin/utility
-    usage: /ce <give|book|dust|scroll|list|reload>
+    description: SoulEnchants admin hub — books, dust, scrolls, bosses, reload
+    usage: §8/§ece §7<list|menu|god|reload|book|dust|scroll|summon|despawn|loot>
     aliases: [customenchants]
   bless:
-    description: Remove all negative potion effects from a player
-    usage: /bless [player]
+    description: Cleanse all negative potion effects from a player
+    usage: §8/§ebless §7[player]
     aliases: [cleanse]
   boss:
-    description: Boss control (list/kill)
-    usage: /boss <list|kill>
+    description: Boss control (list / kill)
+    usage: §8/§eboss §7<list|kill>
     aliases: [bosses]
   shop:
     description: Open the Quartermaster shop
-    usage: /shop [refresh]
+    usage: §8/§eshop §7[refresh]
     aliases: [quartermaster]
   quests:
-    description: Open the quest log
-    usage: /quests [status|reset]
+    description: Open the quest log (active / completed / claimable)
+    usage: §8/§equests §7[status|reset]
     aliases: [quest]
   mob:
-    description: Custom mob registry / spawn
-    usage: /mob <list|spawn|killall>
+    description: Custom mob registry, spawn control, cleanup
+    usage: §8/§emob §7<list|spawn|killall>
     aliases: [mobs]
   rift:
-    description: Toggle travel between main world and rift_world
-    usage: /rift [tp|setspawn]
+    description: Travel between the main world and the Void Rift
+    usage: §8/§erift §7[tp|setspawn|loadchunks]
     aliases: [riftworld]
   lootfilter:
     description: Per-player blacklist for custom mob drops
-    usage: /lootfilter [togglemessage]
+    usage: §8/§elootfilter §7[togglemessage]
     aliases: [lootft, lootfilters, ftloot]
   guild:
-    description: Guild management (max 10 players, friendly-fire blocked)
-    usage: /guild <create|invite|join|leave|disband|vault|info|top>
+    description: Guild — 10 players max, friendly-fire blocked, shared vault
+    usage: §8/§eguild §7<create|invite|join|leave|disband|vault|info|top>
     aliases: [guilds, g]
   modock:
-    description: Modock — King of Atlantis (3-phase rift boss)
-    usage: /modock <status|spawns|give|summon|abort|setspawn|tp>
+    description: Modock — King of Atlantis (three-phase rift boss)
+    usage: §8/§emodock §7<status|spawns|give|summon|abort|setspawn|tp>
     aliases: [atlantis]
   mythic:
-    description: Mythic weapon admin/utility
-    usage: /mythic <list|give|aura>
+    description: Mythic weapons — 9 named gear items with unique effects
+    usage: §8/§emythic §7<list|give §8<§7id§8> §7[player]>
     aliases: [mw]
   mask:
-    description: Cosmetic mask equipping (ProtocolLib-driven helmet override)
-    usage: /mask [list|equip|clear]
+    description: Cosmetic masks — client-side helmet overrides (ProtocolLib)
+    usage: §8/§emask §7<list|equip §8<§7id§8>|clear>
     aliases: [masks]
 
 permissions:
   soulenchants.admin:
-    description: Admin permission
+    description: Administrate — /ce book/dust/scroll/reload, /mythic give, etc.
     default: op
   soulenchants.use:
-    description: Use enchants normally
+    description: Baseline — receive enchant procs, mythic effects, etc.
     default: true
   soulenchants.mythic.use:
     description: Wield mythic weapons
     default: true
   soulenchants.mask.use:
-    description: Equip cosmetic masks
+    description: Equip cosmetic masks via /mask
     default: true

@@ -56,18 +56,28 @@ public class InventoryClickListener implements Listener {
 
             e.setCancelled(true);
             if (!enchant.getSlot().matches(target.getType())) {
-                p.sendMessage("§cThat enchant cannot be applied to this item.");
+                p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                        + com.soulenchants.style.MessageStyle.BAD
+                        + "That enchant cannot be applied to this item.");
                 return;
             }
             int existing = ItemUtil.getLevel(target, id);
             if (existing >= enchant.getMaxLevel()) {
-                p.sendMessage("§cThis item already has " + enchant.getDisplayName() + " at max level.");
+                p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                        + com.soulenchants.style.MessageStyle.BAD
+                        + "This item already has " + com.soulenchants.style.MessageStyle.tier(enchant.getTier())
+                        + enchant.getDisplayName() + com.soulenchants.style.MessageStyle.BAD + " at max level.");
                 return;
             }
             // 9-enchant cap (only blocks NEW enchants, upgrades to existing always allowed)
             Map<String, Integer> currentEnchants = ItemUtil.getEnchants(target);
             if (existing == 0 && currentEnchants.size() >= 9) {
-                p.sendMessage("§cThis item is at the §49-enchant limit§c. Remove one with a Black Scroll first.");
+                p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                        + com.soulenchants.style.MessageStyle.BAD
+                        + "Item at " + com.soulenchants.style.MessageStyle.VALUE + "9-enchant limit"
+                        + com.soulenchants.style.MessageStyle.BAD + ". Remove one with a "
+                        + com.soulenchants.style.MessageStyle.FRAME + "Black Scroll"
+                        + com.soulenchants.style.MessageStyle.BAD + " first.");
                 return;
             }
 
@@ -97,7 +107,11 @@ public class InventoryClickListener implements Listener {
                     if (success) {
                         ItemStack updated = ItemUtil.addEnchant(originalTarget, id, targetLevel);
                         clickedInv.setItem(slot, updated);
-                        p.sendMessage("§a✦ Applied " + enchant.formatLore(targetLevel) + " §a to your item!");
+                        p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                                + com.soulenchants.style.MessageStyle.GOOD
+                                + com.soulenchants.style.MessageStyle.BOLD + "✦ APPLIED "
+                                + com.soulenchants.style.MessageStyle.RESET + enchant.formatLore(targetLevel));
+                        p.playSound(p.getLocation(), org.bukkit.Sound.LEVEL_UP, 0.9f, 1.8f);
                         if (plugin.getQuestManager() != null) {
                             plugin.getQuestManager().onEvent(p,
                                     com.soulenchants.quests.QuestEvent.bookApplied(updated));
@@ -107,13 +121,26 @@ public class InventoryClickListener implements Listener {
                         if (itemNbt.hasKey(ItemUtil.NBT_WHITE_SCROLL) && itemNbt.getBoolean(ItemUtil.NBT_WHITE_SCROLL)) {
                             itemNbt.removeKey(ItemUtil.NBT_WHITE_SCROLL);
                             clickedInv.setItem(slot, itemNbt.getItem());
-                            p.sendMessage("§e✦ Enchant failed and would have destroyed your item, but White Scroll protected it.");
+                            p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                                    + com.soulenchants.style.MessageStyle.TIER_EPIC
+                                    + com.soulenchants.style.MessageStyle.BOLD + "✦ SAVED "
+                                    + com.soulenchants.style.MessageStyle.RESET
+                                    + com.soulenchants.style.MessageStyle.MUTED
+                                    + "White Scroll absorbed the destruction.");
+                            p.playSound(p.getLocation(), org.bukkit.Sound.ORB_PICKUP, 0.9f, 1.4f);
                         } else {
                             clickedInv.setItem(slot, new ItemStack(Material.AIR));
-                            p.sendMessage("§c✦ Enchant failed and your item was destroyed!");
+                            p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                                    + com.soulenchants.style.MessageStyle.BAD
+                                    + com.soulenchants.style.MessageStyle.BOLD + "✗ DESTROYED "
+                                    + com.soulenchants.style.MessageStyle.RESET
+                                    + com.soulenchants.style.MessageStyle.BAD + "Enchant failed catastrophically.");
+                            p.playSound(p.getLocation(), org.bukkit.Sound.ANVIL_BREAK, 1.0f, 0.6f);
                         }
                     } else {
-                        p.sendMessage("§7✦ Enchant failed, but your item is intact.");
+                        p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                                + com.soulenchants.style.MessageStyle.MUTED
+                                + "Enchant failed, but your item is intact.");
                     }
                     p.updateInventory();
                 }
@@ -137,7 +164,13 @@ public class InventoryClickListener implements Listener {
                         p.setItemOnCursor(new ItemStack(Material.AIR));
                     }
                     dustOverride.put(p.getUniqueId(), rate);
-                    p.sendMessage("§d✦ Magic Dust armed: §fnext enchant has §a" + rate + "% §fsuccess.");
+                    p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                            + com.soulenchants.style.MessageStyle.TIER_EPIC
+                            + com.soulenchants.style.MessageStyle.BOLD + "✦ ARMED  "
+                            + com.soulenchants.style.MessageStyle.RESET
+                            + com.soulenchants.style.MessageStyle.MUTED + "next book will succeed at "
+                            + com.soulenchants.style.MessageStyle.VALUE + rate + "%"
+                            + com.soulenchants.style.MessageStyle.MUTED + ".");
                     p.updateInventory();
                 }
             }.runTask(plugin);
@@ -170,7 +203,12 @@ public class InventoryClickListener implements Listener {
                     }
                     p.getInventory().addItem(com.soulenchants.items.ItemFactories.book(ce, lvl)).values()
                             .forEach(over -> p.getWorld().dropItemNaturally(p.getLocation(), over));
-                    p.sendMessage("§7✦ Extracted §f" + ce.formatLore(lvl) + " §7back to a book.");
+                    p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                            + com.soulenchants.style.MessageStyle.FRAME
+                            + com.soulenchants.style.MessageStyle.BOLD + "✦ EXTRACTED "
+                            + com.soulenchants.style.MessageStyle.RESET + ce.formatLore(lvl)
+                            + com.soulenchants.style.MessageStyle.MUTED + " → fresh book.");
+                    p.playSound(p.getLocation(), org.bukkit.Sound.ITEM_PICKUP, 0.9f, 1.2f);
                     p.updateInventory();
                 }
             }.runTask(plugin);
@@ -188,7 +226,9 @@ public class InventoryClickListener implements Listener {
                 @Override public void run() {
                     NBTItem targetNbt = new NBTItem(originalTarget);
                     if (targetNbt.hasKey(ItemUtil.NBT_WHITE_SCROLL) && targetNbt.getBoolean(ItemUtil.NBT_WHITE_SCROLL)) {
-                        p.sendMessage("§cThis item already has a White Scroll bound.");
+                        p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                                + com.soulenchants.style.MessageStyle.BAD
+                                + "This item already has a White Scroll bound.");
                         p.updateInventory();
                         return;
                     }
@@ -201,7 +241,13 @@ public class InventoryClickListener implements Listener {
                     } else {
                         p.setItemOnCursor(new ItemStack(Material.AIR));
                     }
-                    p.sendMessage("§f✦ White Scroll bound to your item.");
+                    p.sendMessage(com.soulenchants.style.MessageStyle.PREFIX
+                            + com.soulenchants.style.MessageStyle.VALUE
+                            + com.soulenchants.style.MessageStyle.BOLD + "✦ BOUND  "
+                            + com.soulenchants.style.MessageStyle.RESET
+                            + com.soulenchants.style.MessageStyle.MUTED
+                            + "White Scroll guards your next enchant attempt.");
+                    p.playSound(p.getLocation(), org.bukkit.Sound.LEVEL_UP, 0.9f, 1.9f);
                     p.updateInventory();
                 }
             }.runTask(plugin);

@@ -1,6 +1,8 @@
 package com.soulenchants.commands;
 
 import com.soulenchants.SoulEnchants;
+import com.soulenchants.style.Chat;
+import com.soulenchants.style.MessageStyle;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
@@ -36,19 +38,19 @@ public class BlessCommand implements CommandExecutor {
         Player target;
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage("§cConsole must specify a player: /bless <player>");
+                Chat.err(sender, "Console must specify a player: /bless <player>");
                 return true;
             }
             target = (Player) sender;
         } else {
             if (!sender.hasPermission("soulenchants.admin")
                     && !(sender instanceof Player && ((Player) sender).getName().equalsIgnoreCase(args[0]))) {
-                sender.sendMessage("§cNo permission to bless others.");
+                Chat.err(sender, "No permission to bless others.");
                 return true;
             }
             target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sender.sendMessage("§cPlayer not found.");
+                Chat.err(sender, "Player not online: " + args[0]);
                 return true;
             }
         }
@@ -72,10 +74,12 @@ public class BlessCommand implements CommandExecutor {
                     Effect.HAPPY_VILLAGER, 0);
         }
 
-        String msg = ChatColor.GOLD + "" + ChatColor.BOLD + "✦ Blessed! " + ChatColor.YELLOW
-                + "Cleansed " + ChatColor.WHITE + removed + ChatColor.YELLOW + " negative effect(s).";
-        target.sendMessage(msg);
-        if (!target.equals(sender)) sender.sendMessage("§a✦ Blessed §f" + target.getName() + "§a.");
+        target.sendMessage(MessageStyle.PREFIX + MessageStyle.SOUL_GOLD + MessageStyle.BOLD
+                + "✦ BLESSED " + MessageStyle.RESET + MessageStyle.MUTED
+                + "Cleansed " + MessageStyle.VALUE + removed
+                + MessageStyle.MUTED + " negative effect" + (removed == 1 ? "" : "s") + ".");
+        if (!target.equals(sender)) Chat.good(sender, "Blessed " + MessageStyle.VALUE + target.getName()
+                + MessageStyle.GOOD + ".");
         return true;
     }
 }

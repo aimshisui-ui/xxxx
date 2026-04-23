@@ -2,6 +2,8 @@ package com.soulenchants.commands;
 
 import com.soulenchants.SoulEnchants;
 import com.soulenchants.currency.SoulTier;
+import com.soulenchants.style.Chat;
+import com.soulenchants.style.MessageStyle;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -170,17 +172,26 @@ public class SoulsCommand implements CommandExecutor {
             return true;
         }
 
-        sender.sendMessage("§5✦ §dSouls commands:");
-        sender.sendMessage("§7  /souls §8(your profile)");
-        sender.sendMessage("§7  /souls show <player>");
-        sender.sendMessage("§7  /souls tier [player]");
-        sender.sendMessage("§7  /souls give|take|set <player> <amount> §8(admin)");
-        sender.sendMessage("§7  /souls setlifetime <player> <amount> §8(admin, only goes up)");
-        sender.sendMessage("§7  /souls settier <player> <tier> §8(admin, jump to a tier)");
-        sender.sendMessage("§7  /souls debug §8(admin)");
-        sender.sendMessage("§7  /souls simkill [count] [per] §8(admin)");
-        sender.sendMessage("§7  /souls rules §8(mob drop table)");
+        Chat.banner(sender, "Souls " + MessageStyle.FRAME + "commands");
+        row(sender, "/souls",                                "view your profile");
+        row(sender, "/souls show <player>",                  "view any player's profile");
+        row(sender, "/souls tier [player]",                  "show tier + progress to next");
+        row(sender, "/souls rules",                          "mob drop table");
+        sender.sendMessage(MessageStyle.FRAME + "  " + MessageStyle.BAR + MessageStyle.BAR + " "
+                + MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Admin " + MessageStyle.FRAME + MessageStyle.BAR + MessageStyle.BAR);
+        row(sender, "/souls give|take|set <player> <amt>",   "modify balance");
+        row(sender, "/souls setlifetime <player> <amt>",     "only goes up");
+        row(sender, "/souls settier <player> <tier>",        "jump to a tier");
+        row(sender, "/souls debug",                          "verbose state dump");
+        row(sender, "/souls simkill [count] [per]",          "simulate mob kills");
+        Chat.rule(sender);
         return true;
+    }
+
+    private static void row(CommandSender s, String cmd, String desc) {
+        s.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.ARROW + " "
+                + MessageStyle.VALUE + cmd + MessageStyle.FRAME + "  " + MessageStyle.BAR + "  "
+                + MessageStyle.MUTED + desc);
     }
 
     private void showProfile(CommandSender to, OfflinePlayer p) {
@@ -188,17 +199,28 @@ public class SoulsCommand implements CommandExecutor {
         long lt  = plugin.getSoulManager().getLifetime(p);
         SoulTier t = plugin.getSoulManager().getTier(p);
         SoulTier next = t.next();
-        to.sendMessage("§5✦ §d" + p.getName() + "§7's Soul Profile");
-        to.sendMessage("§7  Tier: " + t.prefix() + " §8| +" + t.getBonusMaxHp() + " HP"
-                + (t.grantsBonusPerKill() ? " §8| +1 souls/kill" : ""));
-        to.sendMessage("§7  Souls: §f" + now);
-        to.sendMessage("§7  Lifetime: §f" + lt);
+        Chat.banner(to, p.getName() + MessageStyle.FRAME + " — Soul Profile");
+        to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.SOUL_ORB + "  "
+                + MessageStyle.MUTED + "Tier:     " + t.prefix()
+                + MessageStyle.FRAME + "   " + MessageStyle.BAR + "   "
+                + MessageStyle.MUTED + "+" + MessageStyle.VALUE + t.getBonusMaxHp() + " HP"
+                + (t.grantsBonusPerKill() ? MessageStyle.FRAME + "   " + MessageStyle.BAR + "   "
+                        + MessageStyle.VALUE + "+1 souls/kill" : ""));
+        to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.DIAMOND + "  "
+                + MessageStyle.MUTED + "Souls:    " + MessageStyle.VALUE + now);
+        to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.DIAMOND + "  "
+                + MessageStyle.MUTED + "Lifetime: " + MessageStyle.VALUE + lt);
         if (next != null) {
             long need = next.getThreshold() - lt;
-            to.sendMessage("§7  Next: " + next.prefix() + " §8(in §f" + need + "§8)");
+            to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.ARROW + "  "
+                    + MessageStyle.MUTED + "Next:     " + next.prefix()
+                    + MessageStyle.FRAME + "   " + MessageStyle.BAR + "   "
+                    + MessageStyle.MUTED + "need " + MessageStyle.VALUE + need);
         } else {
-            to.sendMessage("§7  §6Maximum tier reached.");
+            to.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.STAR + "  "
+                    + MessageStyle.SOUL_GOLD + "Maximum tier reached.");
         }
+        Chat.rule(to);
     }
 
     private int safeInt(String s, int dflt) {

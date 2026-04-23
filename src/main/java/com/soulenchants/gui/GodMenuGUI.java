@@ -3,6 +3,13 @@ package com.soulenchants.gui;
 import com.soulenchants.SoulEnchants;
 import com.soulenchants.items.ItemFactories;
 import com.soulenchants.loot.BossLootItems;
+import com.soulenchants.masks.Mask;
+import com.soulenchants.masks.MaskRegistry;
+import com.soulenchants.mythic.MythicFactory;
+import com.soulenchants.mythic.MythicRegistry;
+import com.soulenchants.mythic.MythicWeapon;
+import com.soulenchants.style.Chat;
+import com.soulenchants.style.MessageStyle;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -14,42 +21,77 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Hub GUI for /ce god — central catalog of every plugin asset.
  * Click a category to drill in, click an item to receive a copy.
+ * v1.1: Mythics + Masks integrated as first-class categories.
  */
 public class GodMenuGUI implements Listener {
 
-    private static final String TITLE_HUB        = ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "✦ Soul Vault ✦";
-    private static final String TITLE_LOOT       = ChatColor.DARK_BLUE + "» Loot Items";
-    private static final String TITLE_REAGENTS   = ChatColor.GREEN     + "» Crafting Reagents";
-    private static final String TITLE_BOSS_EGGS  = ChatColor.GOLD      + "» Boss Spawn Eggs";
-    private static final String TITLE_GODSET     = ChatColor.GOLD      + "» Godset Items";
-    private static final String TITLE_RECIPES    = ChatColor.AQUA      + "» Recipe Book";
-    private static final String TITLE_CONSUMABLE = ChatColor.DARK_PURPLE + "» Consumables";
-    private static final String TITLE_BOXES      = ChatColor.GOLD      + "» Loot Boxes";
+    // Titles are the "which menu am I on" sentinel. Keep them unique per screen.
+    private static final String TITLE_HUB        = MessageStyle.FRAME + MessageStyle.BOLD + "✦ Soul Vault ✦";
+    private static final String TITLE_LOOT       = MessageStyle.FRAME + "» Loot Items";
+    private static final String TITLE_REAGENTS   = MessageStyle.TIER_UNCOMMON + "» Crafting Reagents";
+    private static final String TITLE_BOSS_EGGS  = MessageStyle.SOUL_GOLD + "» Boss Spawn Eggs";
+    private static final String TITLE_GODSET     = MessageStyle.SOUL_GOLD + "» Godset Items";
+    private static final String TITLE_RECIPES    = MessageStyle.TIER_RARE + "» Recipe Book";
+    private static final String TITLE_CONSUMABLE = MessageStyle.TIER_EPIC + "» Consumables";
+    private static final String TITLE_BOXES      = MessageStyle.SOUL_GOLD + "» Loot Boxes";
+    // v1.1 additions
+    private static final String TITLE_MYTHICS    = MessageStyle.TIER_SOUL + "» Mythic Weapons";
+    private static final String TITLE_MASKS      = MessageStyle.TIER_EPIC + "» Cosmetic Masks";
 
     private final SoulEnchants plugin;
 
     public GodMenuGUI(SoulEnchants plugin) { this.plugin = plugin; }
 
     public void openHub(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 36, TITLE_HUB);
-        inv.setItem(10, button(Material.BOOK,               ChatColor.LIGHT_PURPLE + "Enchants",        "All custom enchant books"));
-        inv.setItem(11, button(Material.DIAMOND_CHESTPLATE, ChatColor.GOLD         + "Godset",          "/ce bossset loadout"));
-        inv.setItem(12, button(Material.DIAMOND_SWORD,      ChatColor.DARK_BLUE    + "Boss Loot",       "Every named boss drop"));
-        inv.setItem(13, button(Material.IRON_BLOCK,         ChatColor.GREEN        + "Reagents",        "Crafting materials"));
-        inv.setItem(14, button(Material.MONSTER_EGG,        ChatColor.GOLD         + "Boss Spawn",      "Summon Veilweaver / Colossus"));
-        inv.setItem(15, button(Material.WORKBENCH,          ChatColor.AQUA         + "Recipes",         "All custom recipes"));
-        inv.setItem(16, button(Material.GOLDEN_APPLE,       ChatColor.DARK_PURPLE  + "Consumables",     "Dust, scrolls, permanent buffs"));
-        inv.setItem(19, button(Material.CHEST,              ChatColor.GOLD         + "Loot Boxes",      "Bronze, Silver, Gold, Boss"));
-        inv.setItem(20, button(Material.SKULL_ITEM,         ChatColor.LIGHT_PURPLE + "Custom Mobs",     "60 unique mobs — /mob list"));
-        inv.setItem(21, button(Material.GOLD_INGOT,         ChatColor.YELLOW       + "Shop",            "Open the Quartermaster"));
-        inv.setItem(22, button(Material.WRITTEN_BOOK,       ChatColor.AQUA         + "Quests",          "Tutorial + Daily quest log"));
-        inv.setItem(31, button(Material.BARRIER,            ChatColor.RED          + "Close",           ""));
+        Inventory inv = Bukkit.createInventory(null, 45, TITLE_HUB);
+        ItemStack glass = filler();
+        // Full outline makes the grid read like a panel, not a raw inventory.
+        for (int i = 0; i < 45; i++) {
+            if (i < 9 || i >= 36 || i % 9 == 0 || i % 9 == 8) inv.setItem(i, glass);
+        }
+        // Row 1 — progression core
+        inv.setItem(10, button(Material.BOOK,               MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Enchants",
+                "Every custom enchant book",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "open catalog"));
+        inv.setItem(11, button(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Godset",
+                "Boss-killer loadout",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip full kit"));
+        inv.setItem(12, button(Material.DIAMOND_SWORD,      MessageStyle.FRAME + MessageStyle.BOLD + "Boss Loot",
+                "Every named boss drop"));
+        inv.setItem(13, button(Material.IRON_BLOCK,         MessageStyle.TIER_UNCOMMON + MessageStyle.BOLD + "Reagents",
+                "Crafting materials"));
+        inv.setItem(14, button(Material.MONSTER_EGG,        MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Boss Spawn",
+                "Summon Veilweaver / Colossus"));
+        inv.setItem(15, button(Material.WORKBENCH,          MessageStyle.TIER_RARE + MessageStyle.BOLD + "Recipes",
+                "All custom recipes"));
+        inv.setItem(16, button(Material.GOLDEN_APPLE,       MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Consumables",
+                "Dust, scrolls, permanent buffs"));
+        // Row 2 — ancillary
+        inv.setItem(19, button(Material.CHEST,              MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Loot Boxes",
+                "Bronze, Silver, Gold, Boss"));
+        inv.setItem(20, button(Material.SKULL_ITEM,         MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Custom Mobs",
+                "60 unique mobs — /mob list"));
+        inv.setItem(21, button(Material.GOLD_INGOT,         MessageStyle.TIER_LEGENDARY + MessageStyle.BOLD + "Shop",
+                "Open the Quartermaster"));
+        inv.setItem(22, button(Material.WRITTEN_BOOK,       MessageStyle.TIER_RARE + MessageStyle.BOLD + "Quests",
+                "Tutorial + Daily quest log"));
+        // v1.1 — mythics + masks
+        inv.setItem(23, button(Material.NETHER_STAR,        MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Mythic Weapons",
+                "v1.1 " + MessageStyle.TIER_SOUL + "— " + MessageStyle.MUTED + MythicRegistry.all().size()
+                        + " weapons",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse / give"));
+        inv.setItem(24, button(Material.PUMPKIN,            MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Cosmetic Masks",
+                "v1.1 " + MessageStyle.TIER_EPIC + "— " + MessageStyle.MUTED + MaskRegistry.all().size()
+                        + " masks",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse / equip"));
+        // Close
+        inv.setItem(40, button(Material.BARRIER,            MessageStyle.BAD + MessageStyle.BOLD + "Close", ""));
         p.openInventory(inv);
     }
 
@@ -95,17 +137,14 @@ public class GodMenuGUI implements Listener {
 
     public void openConsumables(Player p) {
         Inventory inv = Bukkit.createInventory(null, 36, TITLE_CONSUMABLE);
-        // Permanent-buff items
         inv.setItem(10, BossLootItems.heartOfTheForge());
         inv.setItem(11, BossLootItems.veilSigil());
-        // Magic dust (success rates)
-        inv.setItem(13, com.soulenchants.items.ItemFactories.dust(25));
-        inv.setItem(14, com.soulenchants.items.ItemFactories.dust(50));
-        inv.setItem(15, com.soulenchants.items.ItemFactories.dust(75));
-        inv.setItem(16, com.soulenchants.items.ItemFactories.dust(100));
-        // Scrolls
-        inv.setItem(19, com.soulenchants.items.ItemFactories.whiteScroll());
-        inv.setItem(20, com.soulenchants.items.ItemFactories.blackScroll());
+        inv.setItem(13, ItemFactories.dust(25));
+        inv.setItem(14, ItemFactories.dust(50));
+        inv.setItem(15, ItemFactories.dust(75));
+        inv.setItem(16, ItemFactories.dust(100));
+        inv.setItem(19, ItemFactories.whiteScroll());
+        inv.setItem(20, ItemFactories.blackScroll());
         inv.setItem(31, backButton());
         p.openInventory(inv);
     }
@@ -123,15 +162,17 @@ public class GodMenuGUI implements Listener {
     public void openBossEggs(Player p) {
         Inventory inv = Bukkit.createInventory(null, 27, TITLE_BOSS_EGGS);
         ItemStack veilEgg = bossEgg(Material.MONSTER_EGG, (short) 5,
-                ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "Veilweaver Spawn",
+                MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Veilweaver Spawn",
                 "Right-click to summon",
                 "the Veilweaver",
-                "(uses /ce summon veilweaver)");
+                "",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/ce summon veilweaver");
         ItemStack golemEgg = bossEgg(Material.MONSTER_EGG, (short) 99,
-                ChatColor.GOLD + "" + ChatColor.BOLD + "Ironheart Colossus Spawn",
+                MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Ironheart Colossus Spawn",
                 "Right-click to summon",
                 "the Ironheart Colossus",
-                "(uses /ce summon irongolem)");
+                "",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/ce summon irongolem");
         inv.setItem(11, veilEgg);
         inv.setItem(15, golemEgg);
         inv.setItem(22, backButton());
@@ -140,9 +181,11 @@ public class GodMenuGUI implements Listener {
 
     public void openGodset(Player p) {
         Inventory inv = Bukkit.createInventory(null, 27, TITLE_GODSET);
-        ItemStack info = button(Material.BOOK_AND_QUILL, ChatColor.GOLD + "Godset",
-                "Equips full boss-killer", "loadout — sword + 4 armor.",
-                "", ChatColor.YELLOW + "» Run /ce bossset");
+        ItemStack info = button(Material.BOOK_AND_QUILL, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Godset",
+                "Equips full boss-killer",
+                "loadout — sword + 4 armor.",
+                "",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/ce bossset");
         inv.setItem(13, info);
         inv.setItem(22, backButton());
         p.openInventory(inv);
@@ -158,6 +201,53 @@ public class GodMenuGUI implements Listener {
         p.openInventory(inv);
     }
 
+    // ──────────────── v1.1 — Mythic weapons browser ────────────────
+    public void openMythics(Player p) {
+        List<MythicWeapon> list = new ArrayList<>(MythicRegistry.all());
+        int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
+        Inventory inv = Bukkit.createInventory(null, rows * 9, TITLE_MYTHICS);
+        int slot = 0;
+        for (MythicWeapon m : list) {
+            inv.setItem(slot++, MythicFactory.create(m.getId()));
+        }
+        inv.setItem(rows * 9 - 5, backButton());
+        p.openInventory(inv);
+    }
+
+    // ──────────────── v1.1 — Cosmetic masks browser ────────────────
+    public void openMasks(Player p) {
+        List<Mask> list = new ArrayList<>(MaskRegistry.all());
+        int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
+        Inventory inv = Bukkit.createInventory(null, rows * 9, TITLE_MASKS);
+        int slot = 0;
+        for (Mask m : list) {
+            inv.setItem(slot++, maskTile(m, plugin.getMaskManager().getEquipped(p)));
+        }
+        inv.setItem(rows * 9 - 5, backButton());
+        p.openInventory(inv);
+    }
+
+    private ItemStack maskTile(Mask m, String currentlyEquippedId) {
+        ItemStack it = m.buildVisual();
+        ItemMeta meta = it.getItemMeta();
+        if (meta != null) {
+            boolean equipped = m.getId().equals(currentlyEquippedId);
+            meta.setDisplayName(MessageStyle.TIER_EPIC + MessageStyle.BOLD + m.getDisplayName());
+            List<String> lore = new ArrayList<>();
+            lore.add(MessageStyle.MUTED + "Id: " + MessageStyle.VALUE + m.getId());
+            lore.add("");
+            if (equipped) {
+                lore.add(MessageStyle.GOOD + MessageStyle.BOLD + "✓ EQUIPPED");
+                lore.add(MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "clear");
+            } else {
+                lore.add(MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip");
+            }
+            meta.setLore(lore);
+            it.setItemMeta(meta);
+        }
+        return it;
+    }
+
     @EventHandler
     public void onClick(InventoryClickEvent e) {
         String title = e.getView().getTitle();
@@ -169,8 +259,10 @@ public class GodMenuGUI implements Listener {
         ItemStack clicked = e.getCurrentItem();
         if (clicked == null || clicked.getType() == Material.AIR) return;
 
-        // Back button
+        // Back button (arrows + back name)
         if (clicked.getType() == Material.ARROW) { openHub(p); return; }
+        // Filler (ignore)
+        if (clicked.getType() == Material.STAINED_GLASS_PANE) return;
 
         if (title.equals(TITLE_HUB)) {
             switch (e.getRawSlot()) {
@@ -185,9 +277,46 @@ public class GodMenuGUI implements Listener {
                 case 20: p.closeInventory(); p.performCommand("mob list"); return;
                 case 21: p.closeInventory(); p.performCommand("shop"); return;
                 case 22: p.closeInventory(); p.performCommand("quests"); return;
-                case 31: p.closeInventory(); return;
+                case 23: openMythics(p); return;      // v1.1
+                case 24: openMasks(p); return;        // v1.1
+                case 40: p.closeInventory(); return;
                 default: return;
             }
+        }
+
+        // v1.1 — Mythic browser: give clicked weapon
+        if (title.equals(TITLE_MYTHICS)) {
+            String id = MythicRegistry.idOf(clicked);
+            if (id == null) return;
+            p.getInventory().addItem(MythicFactory.create(id));
+            Chat.good(p, "Received " + MessageStyle.TIER_SOUL + MessageStyle.BOLD + "❖ "
+                    + MythicRegistry.get(id).getDisplayName() + MessageStyle.GOOD + ".");
+            return;
+        }
+
+        // v1.1 — Mask browser: equip / toggle off
+        if (title.equals(TITLE_MASKS)) {
+            // Find which mask by its visual material + data (since masks don't carry an NBT id tag).
+            Mask target = null;
+            for (Mask m : MaskRegistry.all()) {
+                ItemStack v = m.buildVisual();
+                if (v.getType() == clicked.getType() && v.getDurability() == clicked.getDurability()) {
+                    target = m; break;
+                }
+            }
+            if (target == null) return;
+            String currentId = plugin.getMaskManager().getEquipped(p);
+            if (target.getId().equals(currentId)) {
+                plugin.getMaskManager().clear(p);
+                Chat.info(p, "Cleared " + MessageStyle.TIER_EPIC + target.getDisplayName() + MessageStyle.MUTED + ".");
+            } else {
+                plugin.getMaskManager().equip(p, target.getId());
+                Chat.good(p, "Equipped " + MessageStyle.TIER_EPIC + target.getDisplayName() + MessageStyle.GOOD + ".");
+            }
+            // Force nearby clients to re-render the helmet so the packet injector swaps it.
+            p.getInventory().setHelmet(p.getInventory().getHelmet());
+            openMasks(p); // refresh tile state
+            return;
         }
 
         // Boss eggs → trigger summon
@@ -201,7 +330,7 @@ public class GodMenuGUI implements Listener {
         if (title.equals(TITLE_GODSET) && e.getRawSlot() == 13) {
             p.closeInventory();
             com.soulenchants.items.GodSet.giveTo(p);
-            p.sendMessage(ChatColor.GOLD + "✦ Godset equipped.");
+            Chat.good(p, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "✦ Godset equipped.");
             return;
         }
 
@@ -212,7 +341,7 @@ public class GodMenuGUI implements Listener {
         ItemStack give = clicked.clone();
         p.getInventory().addItem(give).values()
                 .forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
-        p.sendMessage(ChatColor.GREEN + "✦ Added to inventory.");
+        Chat.good(p, "Added to inventory.");
     }
 
     private boolean isOurMenu(String title) {
@@ -223,7 +352,16 @@ public class GodMenuGUI implements Listener {
             || title.equals(TITLE_GODSET)
             || title.equals(TITLE_RECIPES)
             || title.equals(TITLE_CONSUMABLE)
-            || title.equals(TITLE_BOXES);
+            || title.equals(TITLE_BOXES)
+            || title.equals(TITLE_MYTHICS)
+            || title.equals(TITLE_MASKS);
+    }
+
+    private ItemStack filler() {
+        ItemStack pane = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 7);
+        ItemMeta m = pane.getItemMeta();
+        if (m != null) { m.setDisplayName(" "); pane.setItemMeta(m); }
+        return pane;
     }
 
     private ItemStack button(Material mat, String name, String... lore) {
@@ -231,8 +369,8 @@ public class GodMenuGUI implements Listener {
         ItemMeta m = it.getItemMeta();
         m.setDisplayName(name);
         if (lore.length > 0) {
-            java.util.List<String> l = new java.util.ArrayList<>();
-            for (String s : lore) l.add(ChatColor.GRAY + s);
+            List<String> l = new ArrayList<>();
+            for (String s : lore) l.add(s.startsWith("§") ? s : MessageStyle.MUTED + s);
             m.setLore(l);
         }
         it.setItemMeta(m);
@@ -240,15 +378,16 @@ public class GodMenuGUI implements Listener {
     }
 
     private ItemStack backButton() {
-        return button(Material.ARROW, ChatColor.YELLOW + "« Back", "Return to Soul Vault");
+        return button(Material.ARROW, MessageStyle.TIER_LEGENDARY + MessageStyle.BOLD + "« Back",
+                "Return to Soul Vault");
     }
 
     private ItemStack bossEgg(Material mat, short data, String name, String... lore) {
         ItemStack it = new ItemStack(mat, 1, data);
         ItemMeta m = it.getItemMeta();
         m.setDisplayName(name);
-        java.util.List<String> l = new java.util.ArrayList<>();
-        for (String s : lore) l.add(ChatColor.GRAY + s);
+        List<String> l = new ArrayList<>();
+        for (String s : lore) l.add(s.startsWith("§") ? s : MessageStyle.MUTED + s);
         m.setLore(l);
         it.setItemMeta(m);
         return it;
@@ -257,12 +396,12 @@ public class GodMenuGUI implements Listener {
     private ItemStack recipeBook(com.soulenchants.loot.LootRecipes.RecipeEntry r) {
         ItemStack it = new ItemStack(Material.BOOK);
         ItemMeta m = it.getItemMeta();
-        m.setDisplayName(ChatColor.GOLD + r.name);
-        java.util.List<String> lore = new java.util.ArrayList<>();
-        lore.add(ChatColor.GRAY + "» Crafting grid:");
-        for (String row : r.shape) lore.add(ChatColor.AQUA + "  " + row.replace(' ', '·'));
+        m.setDisplayName(MessageStyle.SOUL_GOLD + r.name);
+        List<String> lore = new ArrayList<>();
+        lore.add(MessageStyle.MUTED + "» Crafting grid:");
+        for (String row : r.shape) lore.add(MessageStyle.TIER_RARE + "  " + row.replace(' ', '·'));
         lore.add("");
-        lore.add(ChatColor.GRAY + "» Ingredients:");
+        lore.add(MessageStyle.MUTED + "» Ingredients:");
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (int i = 0; i < 9; i++) {
             String id = r.ingredientLootIds.get(i);
@@ -271,10 +410,10 @@ public class GodMenuGUI implements Listener {
             String key = (id == null ? "" : id) + "|" + mat;
             if (!seen.add(key)) continue;
             String label = id != null ? prettifyId(id) : mat.name().toLowerCase().replace('_', ' ');
-            lore.add(ChatColor.WHITE + "  • " + label);
+            lore.add(MessageStyle.VALUE + "  • " + label);
         }
         lore.add("");
-        lore.add(ChatColor.GREEN + "» Yields: " + r.result.getItemMeta().getDisplayName());
+        lore.add(MessageStyle.GOOD + "» Yields: " + r.result.getItemMeta().getDisplayName());
         m.setLore(lore);
         it.setItemMeta(m);
         return it;

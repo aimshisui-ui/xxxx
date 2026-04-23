@@ -4,6 +4,8 @@ import com.soulenchants.SoulEnchants;
 import com.soulenchants.enchants.CustomEnchant;
 import com.soulenchants.enchants.EnchantRegistry;
 import com.soulenchants.items.ItemFactories;
+import com.soulenchants.style.Chat;
+import com.soulenchants.style.MessageStyle;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -22,66 +24,78 @@ public class CECommand implements CommandExecutor {
         String sub = args[0].toLowerCase();
 
         if (sub.equals("list")) {
-            sender.sendMessage("§5✦ §dRegistered Enchants:");
+            Chat.banner(sender, "Enchant Registry " + MessageStyle.MUTED
+                    + "(" + EnchantRegistry.all().size() + ")");
             for (CustomEnchant e : EnchantRegistry.all()) {
-                sender.sendMessage(" §7- " + e.getTier().coloredName() + " §8| §f"
-                        + e.getDisplayName() + " §7(max " + com.soulenchants.enchants.CustomEnchant.roman(e.getMaxLevel()) + ") §8- " + e.getDescription());
+                sender.sendMessage(MessageStyle.FRAME + "  " + MessageStyle.tier(e.getTier())
+                        + MessageStyle.DIAMOND + " " + e.getDisplayName()
+                        + MessageStyle.SEP + MessageStyle.MUTED + "max "
+                        + MessageStyle.VALUE + CustomEnchant.roman(e.getMaxLevel())
+                        + MessageStyle.SEP + MessageStyle.MUTED + e.getDescription());
             }
+            Chat.rule(sender);
             return true;
         }
         if (!sender.hasPermission("soulenchants.admin")) {
-            sender.sendMessage("§cNo permission.");
+            Chat.err(sender, "You need soulenchants.admin.");
             return true;
         }
         if (sub.equals("book")) {
-            if (args.length < 4) { sender.sendMessage("§c/ce book <player> <enchant> <level>"); return true; }
+            if (args.length < 4) { Chat.info(sender, "Usage: /ce book <player> <enchant> <level>"); return true; }
             Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) { sender.sendMessage("§cPlayer not found."); return true; }
+            if (target == null) { Chat.err(sender, "Player not online: " + args[1]); return true; }
             CustomEnchant e = EnchantRegistry.get(args[2]);
-            if (e == null) { sender.sendMessage("§cUnknown enchant. Try /ce list"); return true; }
+            if (e == null) { Chat.err(sender, "Unknown enchant '" + args[2] + "' — try /ce list."); return true; }
             int lvl;
             try { lvl = Math.min(Integer.parseInt(args[3]), e.getMaxLevel()); }
-            catch (NumberFormatException ex) { sender.sendMessage("§cInvalid level."); return true; }
+            catch (NumberFormatException ex) { Chat.err(sender, "Invalid level: " + args[3]); return true; }
             target.getInventory().addItem(ItemFactories.book(e, lvl));
-            sender.sendMessage("§a✦ Gave " + target.getName() + " a " + e.getDisplayName() + " "
-                    + com.soulenchants.enchants.CustomEnchant.roman(lvl) + " book.");
+            Chat.good(sender, "Gave " + MessageStyle.VALUE + target.getName()
+                    + MessageStyle.GOOD + " a " + MessageStyle.tier(e.getTier()) + e.getDisplayName()
+                    + " " + CustomEnchant.roman(lvl) + MessageStyle.GOOD + " book.");
             return true;
         }
         if (sub.equals("dust")) {
-            if (args.length < 3) { sender.sendMessage("§c/ce dust <player> <rate 25|50|75|100>"); return true; }
+            if (args.length < 3) { Chat.info(sender, "Usage: /ce dust <player> <25|50|75|100>"); return true; }
             Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) { sender.sendMessage("§cPlayer not found."); return true; }
+            if (target == null) { Chat.err(sender, "Player not online: " + args[1]); return true; }
             int rate;
             try { rate = Integer.parseInt(args[2]); }
-            catch (NumberFormatException ex) { sender.sendMessage("§cInvalid rate."); return true; }
+            catch (NumberFormatException ex) { Chat.err(sender, "Invalid rate: " + args[2]); return true; }
             target.getInventory().addItem(ItemFactories.dust(rate));
-            sender.sendMessage("§a✦ Gave " + target.getName() + " Magic Dust " + rate + "%.");
+            Chat.good(sender, "Gave " + MessageStyle.VALUE + target.getName()
+                    + MessageStyle.GOOD + " Magic Dust " + MessageStyle.VALUE + rate + "%" + MessageStyle.GOOD + ".");
             return true;
         }
         if (sub.equals("scroll")) {
-            if (args.length < 3) { sender.sendMessage("§c/ce scroll <player> <black|white|transmog>"); return true; }
+            if (args.length < 3) { Chat.info(sender, "Usage: /ce scroll <player> <black|white|transmog>"); return true; }
             Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) { sender.sendMessage("§cPlayer not found."); return true; }
+            if (target == null) { Chat.err(sender, "Player not online: " + args[1]); return true; }
             ItemStack scroll;
             if (args[2].equalsIgnoreCase("transmog"))   scroll = com.soulenchants.items.TransmogScroll.item();
             else if (args[2].equalsIgnoreCase("white")) scroll = ItemFactories.whiteScroll();
             else                                        scroll = ItemFactories.blackScroll();
             target.getInventory().addItem(scroll);
-            sender.sendMessage("§a✦ Gave " + target.getName() + " a " + args[2] + " scroll.");
+            Chat.good(sender, "Gave " + MessageStyle.VALUE + target.getName()
+                    + MessageStyle.GOOD + " a " + MessageStyle.VALUE + args[2]
+                    + MessageStyle.GOOD + " scroll.");
             return true;
         }
         if (sub.equals("bossset")) {
-            if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
             Player p = (Player) sender;
             com.soulenchants.items.GodSet.giveBossSet(p);
-            sender.sendMessage("§6✦ §eBoss-killer set equipped (PvE). §7Try /ce summon veilweaver");
+            Chat.good(p, MessageStyle.TIER_LEGENDARY + MessageStyle.BOLD + "✦ Boss-killer set equipped "
+                    + MessageStyle.RESET + MessageStyle.MUTED + "(PvE). Try "
+                    + MessageStyle.VALUE + "/ce summon veilweaver");
             return true;
         }
         if (sub.equals("godset")) {
-            if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
             Player p = (Player) sender;
             com.soulenchants.items.GodSet.giveGodSet(p);
-            sender.sendMessage("§5✦ §dGod set equipped (PvP). §7Designed for player combat.");
+            Chat.good(p, MessageStyle.TIER_SOUL + MessageStyle.BOLD + "✦ God set equipped "
+                    + MessageStyle.RESET + MessageStyle.MUTED + "(PvP). Designed for player combat.");
             return true;
         }
         if (sub.equals("fixhp")) {
@@ -253,20 +267,43 @@ public class CECommand implements CommandExecutor {
     }
 
     private void help(CommandSender s) {
-        s.sendMessage("§5✦ §dSoulEnchants commands:");
-        s.sendMessage("§7  /ce list");
-        s.sendMessage("§7  /ce menu §8(admin GUI to grab any enchant at max)");
-        s.sendMessage("§7  /ce god §8(hub menu: enchants, loot, recipes, boss spawns)");
-        s.sendMessage("§7  /ce recipe §8(list every custom recipe)");
-        s.sendMessage("§7  /ce bossset §8(give full boss-killer loadout)");
-        s.sendMessage("§7  /ce book <player> <enchant> <level>");
-        s.sendMessage("§7  /ce dust <player> <25|50|75|100>");
-        s.sendMessage("§7  /ce scroll <player> <black|white>");
-        s.sendMessage("§7  /ce summon <veilweaver|irongolem>");
-        s.sendMessage("§7  /ce despawn <veilweaver|irongolem>");
-        s.sendMessage("§7  /ce giveloot <id> [player] §8(spawn any loot item)");
-        s.sendMessage("§7  /ce loot §8(GUI editor for mob/boss stats, abilities, drops)");
-        s.sendMessage("§7  /ce loot reload §8(re-read YAML overrides from disk)");
+        Chat.banner(s, "SoulEnchants " + MessageStyle.MUTED + "v1.1 " + MessageStyle.FRAME + "commands");
+        group(s, "General");
+        row(s, "/ce list",                            "browse every registered enchant");
+        row(s, "/ce menu",                            "paginated enchant catalog " + MessageStyle.FRAME + "(admin)");
+        row(s, "/ce god",                             "hub menu " + MessageStyle.FRAME + "— everything in one GUI");
+        row(s, "/ce recipe",                          "every custom crafting recipe");
+        row(s, "/ce reload",                          MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "reload enchants.yml + mythics.yml live");
+
+        group(s, "Give");
+        row(s, "/ce book <player> <enchant> <level>", "hand out an enchant book");
+        row(s, "/ce dust <player> <25|50|75|100>",    "hand out Magic Dust");
+        row(s, "/ce scroll <player> <black|white|transmog>", "hand out a scroll");
+        row(s, "/ce bossset",                         "equip the full boss-killer loadout");
+        row(s, "/ce godset",                          "equip the PvP god set");
+        row(s, "/ce giveloot <id> [player]",          "spawn any registered loot item");
+
+        group(s, "Bosses");
+        row(s, "/ce summon <boss|mob>",               "spawn any boss or custom mob");
+        row(s, "/ce despawn <veilweaver|irongolem>",  "force-kill a running boss");
+        row(s, "/ce loot",                            "GUI editor for mob stats / drops");
+        row(s, "/ce loot reload",                     "re-read loot overrides from YAML");
+
+        group(s, "Related");
+        row(s, "/mythic list | give <id> [player]",   MessageStyle.TIER_SOUL + "v1.1 " + MessageStyle.MUTED + "mythic weapons");
+        row(s, "/mask list | equip <id> | clear",     MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "cosmetic helmet overrides");
+        Chat.rule(s);
+    }
+
+    private static void group(CommandSender s, String label) {
+        s.sendMessage(MessageStyle.FRAME + "  " + MessageStyle.BAR + MessageStyle.BAR + " "
+                + MessageStyle.SOUL_GOLD + MessageStyle.BOLD + label + " "
+                + MessageStyle.FRAME + MessageStyle.BAR + MessageStyle.BAR);
+    }
+    private static void row(CommandSender s, String cmd, String desc) {
+        s.sendMessage(MessageStyle.FRAME + "   " + MessageStyle.ARROW + " "
+                + MessageStyle.VALUE + cmd + MessageStyle.FRAME + "  " + MessageStyle.BAR + "  "
+                + MessageStyle.MUTED + desc);
     }
 
     /** Resolve a loot id string to its factory-built ItemStack. Returns null if unknown. */
