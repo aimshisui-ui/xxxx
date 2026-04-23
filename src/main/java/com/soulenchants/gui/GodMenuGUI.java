@@ -358,18 +358,44 @@ public class GodMenuGUI implements Listener {
     }
 
     public void openMasks(Player p) {
-        List<Mask> list = new ArrayList<>(MaskRegistry.all());
-        int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
-        Inventory inv = Bukkit.createInventory(null, rows * 9, TITLE_MASKS);
-        int slot = 0;
-        for (Mask m : list) {
-            // v1.1 Nordic-style — click gives you the mask ITEM; you then
-            // drag it onto any helmet to attach. Lore communicates that
-            // flow up-front so players know they're not equipping here.
-            inv.setItem(slot++, m.buildInventoryItem());
+        // v1.4 — masks are grouped by tier. Six-row inventory with two rows
+        // reserved for each tier (header divider + up to 9 masks). Click a
+        // mask icon to receive the inventory-item; drag it onto a helmet
+        // to attach.
+        Inventory inv = Bukkit.createInventory(null, 54, TITLE_MASKS);
+        tierHeader(inv, 0,  org.bukkit.ChatColor.GRAY, "Low Tier Masks");
+        tierHeader(inv, 18, org.bukkit.ChatColor.AQUA, "Mid Tier Masks");
+        tierHeader(inv, 36, org.bukkit.ChatColor.GOLD, "High Tier Masks");
+        int lowIdx = 0, midIdx = 0, highIdx = 0;
+        for (Mask m : MaskRegistry.all()) {
+            int slot;
+            switch (m.getTier()) {
+                case LOW:  slot = 9  + (lowIdx++);  break;
+                case MID:  slot = 27 + (midIdx++);  break;
+                default:   slot = 45 + (highIdx++); break;
+            }
+            if (slot < 54) inv.setItem(slot, m.buildInventoryItem());
         }
-        inv.setItem(rows * 9 - 5, backButton());
+        inv.setItem(49, backButton());
         p.openInventory(inv);
+    }
+
+    /** Render a 9-slot tier banner — colored glass-pane row with a title. */
+    private static void tierHeader(Inventory inv, int start, org.bukkit.ChatColor color, String label) {
+        short data;
+        switch (color) {
+            case GRAY: data = 8; break;   // light gray glass
+            case AQUA: data = 3; break;   // light blue glass
+            case GOLD: data = 4; break;   // yellow glass
+            default:   data = 0; break;
+        }
+        for (int i = 0; i < 9; i++) {
+            ItemStack pane = new ItemStack(Material.STAINED_GLASS_PANE, 1, data);
+            ItemMeta m = pane.getItemMeta();
+            m.setDisplayName(color + "" + org.bukkit.ChatColor.BOLD + "— " + label + " —");
+            pane.setItemMeta(m);
+            inv.setItem(start + i, pane);
+        }
     }
 
     // ──────────────────────────── Click routing ─────────────────────────

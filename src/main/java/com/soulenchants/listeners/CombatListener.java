@@ -184,6 +184,36 @@ public class CombatListener implements Listener {
         if (!(e.getEntity() instanceof Player)) return;
         Player victim = (Player) e.getEntity();
 
+        // Rage — the attacker's own rage stack resets when they take damage.
+        // Rage only builds when you're the aggressor landing free hits; any
+        // time something bites back, the streak is broken.
+        UUID vid = victim.getUniqueId();
+        if (rageStacks.containsKey(vid)) {
+            rageVictim.remove(vid);
+            rageStacks.remove(vid);
+            rageLast.remove(vid);
+        }
+
+        // Mask — fire immunity cancels fire-source damage entirely.
+        if (com.soulenchants.masks.MaskEffects.isFireImmune(victim)) {
+            EntityDamageEvent.DamageCause c = e.getCause();
+            if (c == EntityDamageEvent.DamageCause.FIRE
+                    || c == EntityDamageEvent.DamageCause.FIRE_TICK
+                    || c == EntityDamageEvent.DamageCause.LAVA) {
+                e.setCancelled(true);
+                if (victim.getFireTicks() > 0) victim.setFireTicks(0);
+                return;
+            }
+        }
+
+        // Mask — scale incoming damage by the mask's damage-reduction power.
+        // Runs BEFORE phoenix/soul-shield so those decisions are made on
+        // post-mitigation damage, not raw.
+        boolean isExplosion = e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
+                           || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION;
+        double maskIncoming = com.soulenchants.masks.MaskEffects.incomingMultiplier(victim, isExplosion);
+        if (maskIncoming != 1.0) e.setDamage(e.getDamage() * maskIncoming);
+
         // Featherweight is now a SWORD enchant (Haste burst on hit, Nordic-style)
         // and no longer reduces fall damage.
 
@@ -725,9 +755,13 @@ public class CombatListener implements Listener {
         // ──────────────────────────────────────────────────────────────
         // FINAL DAMAGE APPLICATION
         // base * (1 + min(offBonus, CAP)) * specialMult + flatAdd
+        // final step: scale by any mask outgoing multiplier
         // ──────────────────────────────────────────────────────────────
         double cappedBonus = Math.min(offBonus, cfg.offensiveBonusCap);
         double finalDmg = baseDmg * (1.0 + cappedBonus) * specialMult + flatAdd;
+        double maskMult = com.soulenchants.masks.MaskEffects.outgoingMultiplier(
+                attacker, victim instanceof Player);
+        if (maskMult != 1.0) finalDmg *= maskMult;
         if (finalDmg != baseDmg) e.setDamage(finalDmg);
     }
 
@@ -1388,6 +1422,11 @@ public class CombatListener implements Listener {
     private static final long BLEED_DECAY_MS    = 30_000L;
 
     private void applyBleedProc(LivingEntity victim, Player attacker, ItemStack weapon) {
+        // Mask — Ironwill / Dragon Skull blocks bleed application outright.
+        if (victim instanceof Player
+                && com.soulenchants.masks.MaskEffects.isEnchantImmune((Player) victim, "bleed")) {
+            return;
+        }
         UUID id = victim.getUniqueId();
         long now = System.currentTimeMillis();
         long until = bleedUntil.getOrDefault(id, 0L);

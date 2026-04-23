@@ -107,11 +107,19 @@ public class EnchantRegistry {
         register(new CustomEnchant("reapingslash", "Reaping Slash", EnchantTier.LEGENDARY, EnchantSlot.AXE,   3,
                 "15%/lvl chance · apply 40% Anti-Heal for 6s (reduces target's healing)"));
 
-        // Rage (ported from Nordic) — consecutive hits on the same player stack
-        // bonus damage: +(level × stack × 2) per hit, cap 10 stacks, 30s decay,
-        // resets if victim changes or is hit by someone else.
+        // Rage (ported from Nordic) — consecutive hits on the same target stack
+        // +(level × stack × 2) bonus damage per hit. Cap 10 stacks, 30s decay,
+        // resets on target switch, if the target is hit by someone else, or
+        // if YOU take damage. Works in both PvP and PvE. Action-bar meter
+        // shows the live stack count.
         register(new CustomEnchant("rage", "Rage", EnchantTier.LEGENDARY, EnchantSlot.WEAPON, 6,
-                "Consecutive hits on the same target stack bonus damage (PvP only)"));
+                "Consecutive hits stack +(lvl × stack × 2) bonus damage · max 10 · 30s decay · resets on damage taken"));
+
+        // ObsidianShield — single-level EPIC armor enchant, grants permanent
+        // Fire Resistance while worn. BerserkTickTask applies the effect.
+        register(new CustomEnchant("obsidianshield", "Obsidian Shield",
+                EnchantTier.EPIC, EnchantSlot.ARMOR, 1,
+                "Permanent Fire Resistance while worn"));
 
         // ── ARMOR (7 new — PvP focused) ───────────────────────────────────
         register(new CustomEnchant("counter", "Counter", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,

@@ -252,6 +252,11 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MaskAttachListener(this), this);
         if (getCommand("mask") != null)
             getCommand("mask").setExecutor(new MaskCommand(this));
+        // v1.4 mask ability driver — Stalker / Phantom Dash / Soul Harvest.
+        com.soulenchants.masks.MaskAbilityTask maskTask =
+                new com.soulenchants.masks.MaskAbilityTask(this);
+        maskTask.start();
+        getServer().getPluginManager().registerEvents(maskTask, this);
 
         // ──────────────── Soul Gems (v1.1) ────────────────
         // Right-click-to-deposit + inventory merge. Soul-enchant procs now

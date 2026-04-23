@@ -73,7 +73,7 @@ public class BerserkTickTask extends BukkitRunnable {
         boolean drunkBlessed = snapshot != null && helmet != null && snapshot.isSimilar(helmet);
 
         int berserkLvl=0, implants=0, speed=0, adren=0, vital=0,
-            aquatic=0, overshield=0;
+            aquatic=0, overshield=0, obsidianShield=0;
         for (ItemStack a : allArmor) {
             if (a == null) continue;
             berserkLvl = Math.max(berserkLvl, ItemUtil.getLevel(a, "berserk"));
@@ -83,6 +83,7 @@ public class BerserkTickTask extends BukkitRunnable {
             vital      = Math.max(vital,      ItemUtil.getLevel(a, "vital"));
             aquatic    = Math.max(aquatic,    ItemUtil.getLevel(a, "aquatic"));
             overshield = Math.max(overshield, ItemUtil.getLevel(a, "overshield"));
+            obsidianShield = Math.max(obsidianShield, ItemUtil.getLevel(a, "obsidianshield"));
         }
         int drunk        = helmet == null ? 0 : ItemUtil.getLevel(helmet, "drunk");
         int nightvision  = helmet == null ? 0 : ItemUtil.getLevel(helmet, "nightvision");
@@ -120,7 +121,9 @@ public class BerserkTickTask extends BukkitRunnable {
             p.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 40, jumpboost - 1, true, false), true);
             applyThisTick.add(PotionEffectType.JUMP);
         }
-        if (firewalker > 0) {
+        if (firewalker > 0 || obsidianShield > 0) {
+            // ObsidianShield (any armor piece) grants permanent Fire Resistance
+            // alongside boots-firewalker; either source keeps the effect refreshed.
             p.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE, 40, 0, true, false), true);
             if (p.getFireTicks() > 0) p.setFireTicks(0);
             applyThisTick.add(PotionEffectType.FIRE_RESISTANCE);
@@ -137,19 +140,11 @@ public class BerserkTickTask extends BukkitRunnable {
             p.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 60, 0, true, false), true);
             applyThisTick.add(PotionEffectType.WATER_BREATHING);
         }
-        // Mask passive auras — every attached mask grants a small set of
-        // permanent potion effects (Speed, Strength, Resistance, etc.) while
-        // the helmet is worn. Applied BEFORE clarity strip so none of the
-        // mask auras get caught by the Poison/Blindness cleanup below.
-        if (helmet != null) {
-            String maskId = com.soulenchants.masks.MaskRegistry.attachedMaskId(helmet);
-            if (maskId != null) {
-                for (com.soulenchants.masks.Mask.Aura aura : com.soulenchants.masks.Mask.aurasFor(maskId)) {
-                    p.addPotionEffect(new PotionEffect(aura.type, 60, aura.amp, true, false), true);
-                    applyThisTick.add(aura.type);
-                }
-            }
-        }
+        // Mask tick — v1.4 redesigned. No longer applies free potion effects;
+        // instead boosts any effect the player already has by +1 amp, and
+        // strips effects the mask makes the wearer immune to. Runs BEFORE
+        // clarity strip so Witchwood's Wither immunity fires this tick.
+        com.soulenchants.masks.MaskEffects.tick(p);
 
         // Clarity — strip POISON / BLINDNESS proportional to level.
         // L1 ≈ 33% strip-per-tick, L2 ≈ 66%, L3 = full immunity.

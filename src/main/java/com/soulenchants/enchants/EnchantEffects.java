@@ -155,6 +155,9 @@ public final class EnchantEffects {
             case "voidwalker":      return (level * 4) + "% chance to dodge any hit · permanent Speed I";
             case "oathbound":       return "On hit · cleanse Slow/Weakness/Wither on self · 30s CD";
             case "entombed":        return "Below 30% HP on hit · Slow IV + Mining Fatigue III to attackers in 8 blocks for 4s · 60s CD";
+
+            case "rage":            return "+(" + level + " × stacks × 2) bonus damage per hit · max 10 stacks · 30s decay · resets on damage taken";
+            case "obsidianshield":  return "Permanent Fire Resistance while worn";
         }
         return null;
     }

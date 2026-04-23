@@ -61,7 +61,11 @@ public final class MobRegistry {
                 Arrays.asList(Abilities.deathExplode(8, 3))));
 
         add(build("web_lurker",     "Web Lurker",         EntityType.SPIDER,   CustomMob.Tier.EARLY, 22,  2, 6,
-                Arrays.asList(Abilities.slow(0, 3))));
+                Arrays.asList(Abilities.slow(0, 3),
+                        // Spider AI de-aggros in daylight — keep the lurker
+                        // locked onto the closest player so Broodmother's
+                        // summoned swarm can't drift off.
+                        Abilities.stickyTargeter(28.0))));
 
         add(build("cave_creeper",   "Cave Creeper",       EntityType.CAVE_SPIDER, CustomMob.Tier.EARLY, 18, 1, 7,
                 Arrays.asList(Abilities.hitEffect(org.bukkit.potion.PotionEffectType.POISON, 0, 80))));
