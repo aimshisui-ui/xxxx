@@ -147,17 +147,47 @@ public class CECommand implements CommandExecutor {
             return true;
         }
         if (sub.equals("reload")) {
-            plugin.reloadEnchantConfigs();
-            com.soulenchants.style.Chat.good(sender, "Reloaded enchants.yml + mythics.yml.");
+            // Unified reload — no args reloads enchants+mythics. Explicit 'loot' or
+            // 'all' lets admins target subsets without memorising multiple commands.
+            String scope = args.length >= 2 ? args[1].toLowerCase() : "enchants";
+            boolean didEnch = false, didLoot = false;
+            if (scope.equals("enchants") || scope.equals("mythics") || scope.equals("all")) {
+                plugin.reloadEnchantConfigs(); didEnch = true;
+            }
+            if (scope.equals("loot") || scope.equals("all")) {
+                plugin.getLootConfig().reload(); didLoot = true;
+            }
+            if (!didEnch && !didLoot) {
+                Chat.info(sender, "Usage: /ce reload [enchants|loot|all]");
+                return true;
+            }
+            Chat.good(sender, "Reloaded " +
+                    (didEnch ? MessageStyle.VALUE + "enchants.yml" + MessageStyle.GOOD + " + " +
+                               MessageStyle.VALUE + "mythics.yml" : "") +
+                    (didEnch && didLoot ? MessageStyle.GOOD + " + " : "") +
+                    (didLoot ? MessageStyle.VALUE + "loot overrides" : "") + MessageStyle.GOOD + ".");
+            return true;
+        }
+        // v1.1 — GUI shortcuts. /ce mythic and /ce mask open the corresponding
+        // panels in GodMenuGUI, so admins can tab-complete a single verb.
+        if (sub.equals("mythic") || sub.equals("mythics")) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            plugin.getGodMenu().openMythics((Player) sender);
+            return true;
+        }
+        if (sub.equals("mask") || sub.equals("masks")) {
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
+            plugin.getGodMenu().openMasks((Player) sender);
             return true;
         }
         if (sub.equals("loot")) {
+            // /ce loot reload — legacy alias, forwards to the unified reload.
             if (args.length >= 2 && args[1].equalsIgnoreCase("reload")) {
                 plugin.getLootConfig().reload();
-                sender.sendMessage("§a✦ Loot overrides reloaded from YAML.");
+                Chat.good(sender, "Reloaded " + MessageStyle.VALUE + "loot overrides" + MessageStyle.GOOD + ".");
                 return true;
             }
-            if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
+            if (!(sender instanceof Player)) { Chat.err(sender, "Players only."); return true; }
             plugin.getLootEditorGUI().openRoot((Player) sender);
             return true;
         }
@@ -268,30 +298,27 @@ public class CECommand implements CommandExecutor {
 
     private void help(CommandSender s) {
         Chat.banner(s, "SoulEnchants " + MessageStyle.MUTED + "v1.1 " + MessageStyle.FRAME + "commands");
-        group(s, "General");
-        row(s, "/ce list",                            "browse every registered enchant");
-        row(s, "/ce menu",                            "paginated enchant catalog " + MessageStyle.FRAME + "(admin)");
-        row(s, "/ce god",                             "hub menu " + MessageStyle.FRAME + "— everything in one GUI");
-        row(s, "/ce recipe",                          "every custom crafting recipe");
-        row(s, "/ce reload",                          MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "reload enchants.yml + mythics.yml live");
+        group(s, "Hub");
+        row(s, "/ce god",                             "hub GUI " + MessageStyle.FRAME + "— everything in one panel");
+        row(s, "/ce menu",                            "paginated enchant catalog");
+        row(s, "/ce mythic",                          MessageStyle.TIER_SOUL + "v1.1 " + MessageStyle.MUTED + "open the mythic browser");
+        row(s, "/ce mask",                            MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "open the mask browser");
+        row(s, "/ce list",                            "list enchants in chat");
+        row(s, "/ce reload [all|loot]",               "reload enchants.yml + mythics.yml " + MessageStyle.FRAME + "(+loot)");
 
         group(s, "Give");
-        row(s, "/ce book <player> <enchant> <level>", "hand out an enchant book");
+        row(s, "/ce book <player> <enchant> <lvl>",   "hand out an enchant book");
         row(s, "/ce dust <player> <25|50|75|100>",    "hand out Magic Dust");
-        row(s, "/ce scroll <player> <black|white|transmog>", "hand out a scroll");
-        row(s, "/ce bossset",                         "equip the full boss-killer loadout");
-        row(s, "/ce godset",                          "equip the PvP god set");
+        row(s, "/ce scroll <player> <b|w|transmog>",  "hand out a scroll");
+        row(s, "/ce bossset  " + MessageStyle.FRAME + "|" + MessageStyle.VALUE + "  /ce godset",   "equip a full loadout");
         row(s, "/ce giveloot <id> [player]",          "spawn any registered loot item");
 
         group(s, "Bosses");
         row(s, "/ce summon <boss|mob>",               "spawn any boss or custom mob");
         row(s, "/ce despawn <veilweaver|irongolem>",  "force-kill a running boss");
+        row(s, "/ce killall",                         "remove every custom mob + boss");
         row(s, "/ce loot",                            "GUI editor for mob stats / drops");
-        row(s, "/ce loot reload",                     "re-read loot overrides from YAML");
-
-        group(s, "Related");
-        row(s, "/mythic list | give <id> [player]",   MessageStyle.TIER_SOUL + "v1.1 " + MessageStyle.MUTED + "mythic weapons");
-        row(s, "/mask list | equip <id> | clear",     MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "cosmetic helmet overrides");
+        row(s, "/ce fixhp [player]",                  "reset max HP to 20 + clear Heart stacks");
         Chat.rule(s);
     }
 

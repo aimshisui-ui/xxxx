@@ -26,21 +26,31 @@ import java.util.List;
 
 /**
  * Hub GUI for /ce god — central catalog of every plugin asset.
- * Click a category to drill in, click an item to receive a copy.
- * v1.1: Mythics + Masks integrated as first-class categories.
+ *
+ * Layout (45-slot, 5 rows, glass-border framed):
+ *
+ *   Row 1 — GEAR      : Enchants · Mythics · Masks · Boss Loot · Reagents
+ *   Row 2 — SUPPORT   : Consumables · Loot Boxes · Recipes · Godset (action)
+ *   Row 3 — SPAWN     : Veilweaver · Colossus · Modock · Custom Mobs list
+ *   Row 4 — border + Close
+ *
+ * v1.1 deltas vs v1.0:
+ *   - Mythics + Masks promoted to row 1 (first-class categories)
+ *   - Dropped Shop / Quests tiles — they're one-shot commands with no
+ *     discovery value inside a GUI (players already hit /shop and /quests)
+ *   - Dropped the openGodset() interstitial — tile now runs the action
+ *     directly instead of burying it behind a single-button sub-screen
+ *   - Unified Boss Eggs into a single Spawn menu that also includes Modock
  */
 public class GodMenuGUI implements Listener {
 
-    // Titles are the "which menu am I on" sentinel. Keep them unique per screen.
     private static final String TITLE_HUB        = MessageStyle.FRAME + MessageStyle.BOLD + "✦ Soul Vault ✦";
     private static final String TITLE_LOOT       = MessageStyle.FRAME + "» Loot Items";
     private static final String TITLE_REAGENTS   = MessageStyle.TIER_UNCOMMON + "» Crafting Reagents";
-    private static final String TITLE_BOSS_EGGS  = MessageStyle.SOUL_GOLD + "» Boss Spawn Eggs";
-    private static final String TITLE_GODSET     = MessageStyle.SOUL_GOLD + "» Godset Items";
+    private static final String TITLE_SPAWN      = MessageStyle.SOUL_GOLD + "» Spawn";
     private static final String TITLE_RECIPES    = MessageStyle.TIER_RARE + "» Recipe Book";
     private static final String TITLE_CONSUMABLE = MessageStyle.TIER_EPIC + "» Consumables";
     private static final String TITLE_BOXES      = MessageStyle.SOUL_GOLD + "» Loot Boxes";
-    // v1.1 additions
     private static final String TITLE_MYTHICS    = MessageStyle.TIER_SOUL + "» Mythic Weapons";
     private static final String TITLE_MASKS      = MessageStyle.TIER_EPIC + "» Cosmetic Masks";
 
@@ -48,53 +58,64 @@ public class GodMenuGUI implements Listener {
 
     public GodMenuGUI(SoulEnchants plugin) { this.plugin = plugin; }
 
+    // ──────────────────────────────── Hub ────────────────────────────────
     public void openHub(Player p) {
         Inventory inv = Bukkit.createInventory(null, 45, TITLE_HUB);
         ItemStack glass = filler();
-        // Full outline makes the grid read like a panel, not a raw inventory.
         for (int i = 0; i < 45; i++) {
             if (i < 9 || i >= 36 || i % 9 == 0 || i % 9 == 8) inv.setItem(i, glass);
         }
-        // Row 1 — progression core
+
+        // ── Row 1 — GEAR ─────────────────────────────────────────────
         inv.setItem(10, button(Material.BOOK,               MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Enchants",
-                "Every custom enchant book",
+                "Browse every custom enchant",
                 MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "open catalog"));
-        inv.setItem(11, button(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Godset",
-                "Boss-killer loadout",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip full kit"));
-        inv.setItem(12, button(Material.DIAMOND_SWORD,      MessageStyle.FRAME + MessageStyle.BOLD + "Boss Loot",
-                "Every named boss drop"));
-        inv.setItem(13, button(Material.IRON_BLOCK,         MessageStyle.TIER_UNCOMMON + MessageStyle.BOLD + "Reagents",
+        inv.setItem(12, button(Material.NETHER_STAR,        MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Mythic Weapons",
+                MessageStyle.TIER_SOUL + "v1.1 " + MessageStyle.MUTED + "— "
+                        + MessageStyle.VALUE + MythicRegistry.all().size()
+                        + MessageStyle.MUTED + " weapons",
+                "Sharpness pre-loaded, custom effect",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse"));
+        inv.setItem(14, button(Material.PUMPKIN,            MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Cosmetic Masks",
+                MessageStyle.TIER_EPIC + "v1.1 " + MessageStyle.MUTED + "— "
+                        + MessageStyle.VALUE + MaskRegistry.all().size()
+                        + MessageStyle.MUTED + " masks",
+                "Client-side helmet skin (ProtocolLib)",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip / clear"));
+        inv.setItem(16, button(Material.DIAMOND_SWORD,      MessageStyle.FRAME + MessageStyle.BOLD + "Boss Loot",
+                "Every named boss drop",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse"));
+
+        // ── Row 2 — SUPPORT ──────────────────────────────────────────
+        inv.setItem(19, button(Material.IRON_BLOCK,         MessageStyle.TIER_UNCOMMON + MessageStyle.BOLD + "Reagents",
                 "Crafting materials"));
-        inv.setItem(14, button(Material.MONSTER_EGG,        MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Boss Spawn",
-                "Summon Veilweaver / Colossus"));
-        inv.setItem(15, button(Material.WORKBENCH,          MessageStyle.TIER_RARE + MessageStyle.BOLD + "Recipes",
-                "All custom recipes"));
-        inv.setItem(16, button(Material.GOLDEN_APPLE,       MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Consumables",
+        inv.setItem(20, button(Material.GOLDEN_APPLE,       MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Consumables",
                 "Dust, scrolls, permanent buffs"));
-        // Row 2 — ancillary
-        inv.setItem(19, button(Material.CHEST,              MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Loot Boxes",
+        inv.setItem(21, button(Material.CHEST,              MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Loot Boxes",
                 "Bronze, Silver, Gold, Boss"));
-        inv.setItem(20, button(Material.SKULL_ITEM,         MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Custom Mobs",
-                "60 unique mobs — /mob list"));
-        inv.setItem(21, button(Material.GOLD_INGOT,         MessageStyle.TIER_LEGENDARY + MessageStyle.BOLD + "Shop",
-                "Open the Quartermaster"));
-        inv.setItem(22, button(Material.WRITTEN_BOOK,       MessageStyle.TIER_RARE + MessageStyle.BOLD + "Quests",
-                "Tutorial + Daily quest log"));
-        // v1.1 — mythics + masks
-        inv.setItem(23, button(Material.NETHER_STAR,        MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Mythic Weapons",
-                "v1.1 " + MessageStyle.TIER_SOUL + "— " + MessageStyle.MUTED + MythicRegistry.all().size()
-                        + " weapons",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse / give"));
-        inv.setItem(24, button(Material.PUMPKIN,            MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Cosmetic Masks",
-                "v1.1 " + MessageStyle.TIER_EPIC + "— " + MessageStyle.MUTED + MaskRegistry.all().size()
-                        + " masks",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "browse / equip"));
-        // Close
+        inv.setItem(22, button(Material.WORKBENCH,          MessageStyle.TIER_RARE + MessageStyle.BOLD + "Recipes",
+                "Every custom crafting recipe"));
+        inv.setItem(24, button(Material.DIAMOND_CHESTPLATE, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Godset " + MessageStyle.FRAME + "(PvE)",
+                "Full boss-killer loadout",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip instantly"));
+        inv.setItem(25, button(Material.DIAMOND_HELMET,     MessageStyle.TIER_SOUL + MessageStyle.BOLD + "God Set " + MessageStyle.FRAME + "(PvP)",
+                "Full PvP-tuned kit",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "equip instantly"));
+
+        // ── Row 3 — SPAWN ────────────────────────────────────────────
+        inv.setItem(29, button(Material.MONSTER_EGG,        MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Spawn a Boss",
+                "Veilweaver · Colossus · Modock",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "open spawn menu"));
+        inv.setItem(31, button(Material.SKULL_ITEM,         MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Custom Mobs",
+                "60+ unique mobs",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "runs /mob list"));
+
+        // ── Close ────────────────────────────────────────────────────
         inv.setItem(40, button(Material.BARRIER,            MessageStyle.BAD + MessageStyle.BOLD + "Close", ""));
         p.openInventory(inv);
     }
 
+    // ──────────────────────────── Sub-menus ─────────────────────────────
     public void openLoot(Player p) {
         Inventory inv = Bukkit.createInventory(null, 36, TITLE_LOOT);
         ItemStack[] all = new ItemStack[]{
@@ -159,34 +180,23 @@ public class GodMenuGUI implements Listener {
         p.openInventory(inv);
     }
 
-    public void openBossEggs(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, TITLE_BOSS_EGGS);
-        ItemStack veilEgg = bossEgg(Material.MONSTER_EGG, (short) 5,
-                MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Veilweaver Spawn",
-                "Right-click to summon",
-                "the Veilweaver",
+    public void openSpawn(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 27, TITLE_SPAWN);
+        inv.setItem(11, bossTile(Material.MONSTER_EGG, (short) 5,
+                MessageStyle.TIER_EPIC + MessageStyle.BOLD + "Veilweaver",
+                "3 phases · 15,000 HP",
                 "",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/ce summon veilweaver");
-        ItemStack golemEgg = bossEgg(Material.MONSTER_EGG, (short) 99,
-                MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Ironheart Colossus Spawn",
-                "Right-click to summon",
-                "the Ironheart Colossus",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
+        inv.setItem(13, bossTile(Material.MONSTER_EGG, (short) 99,
+                MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Ironheart Colossus",
+                "2 phases · 8,000 HP",
                 "",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/ce summon irongolem");
-        inv.setItem(11, veilEgg);
-        inv.setItem(15, golemEgg);
-        inv.setItem(22, backButton());
-        p.openInventory(inv);
-    }
-
-    public void openGodset(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, TITLE_GODSET);
-        ItemStack info = button(Material.BOOK_AND_QUILL, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "Godset",
-                "Equips full boss-killer",
-                "loadout — sword + 4 armor.",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
+        inv.setItem(15, bossTile(Material.MONSTER_EGG, (short) 68,
+                MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Modock — King of Atlantis",
+                "3-phase rift fight",
                 "",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/ce bossset");
-        inv.setItem(13, info);
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/modock summon"));
         inv.setItem(22, backButton());
         p.openInventory(inv);
     }
@@ -201,7 +211,6 @@ public class GodMenuGUI implements Listener {
         p.openInventory(inv);
     }
 
-    // ──────────────── v1.1 — Mythic weapons browser ────────────────
     public void openMythics(Player p) {
         List<MythicWeapon> list = new ArrayList<>(MythicRegistry.all());
         int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
@@ -214,7 +223,6 @@ public class GodMenuGUI implements Listener {
         p.openInventory(inv);
     }
 
-    // ──────────────── v1.1 — Cosmetic masks browser ────────────────
     public void openMasks(Player p) {
         List<Mask> list = new ArrayList<>(MaskRegistry.all());
         int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
@@ -248,6 +256,7 @@ public class GodMenuGUI implements Listener {
         return it;
     }
 
+    // ──────────────────────────── Click routing ─────────────────────────
     @EventHandler
     public void onClick(InventoryClickEvent e) {
         String title = e.getView().getTitle();
@@ -258,33 +267,41 @@ public class GodMenuGUI implements Listener {
         Player p = (Player) e.getWhoClicked();
         ItemStack clicked = e.getCurrentItem();
         if (clicked == null || clicked.getType() == Material.AIR) return;
-
-        // Back button (arrows + back name)
-        if (clicked.getType() == Material.ARROW) { openHub(p); return; }
-        // Filler (ignore)
         if (clicked.getType() == Material.STAINED_GLASS_PANE) return;
+        if (clicked.getType() == Material.ARROW) { openHub(p); return; }
 
         if (title.equals(TITLE_HUB)) {
             switch (e.getRawSlot()) {
+                // Row 1 — gear
                 case 10: plugin.getEnchantMenu().open(p); return;
-                case 11: openGodset(p); return;
-                case 12: openLoot(p); return;
-                case 13: openReagents(p); return;
-                case 14: openBossEggs(p); return;
-                case 15: p.closeInventory(); plugin.getRecipeGUI().openList(p); return;
-                case 16: openConsumables(p); return;
-                case 19: openLootBoxes(p); return;
-                case 20: p.closeInventory(); p.performCommand("mob list"); return;
-                case 21: p.closeInventory(); p.performCommand("shop"); return;
-                case 22: p.closeInventory(); p.performCommand("quests"); return;
-                case 23: openMythics(p); return;      // v1.1
-                case 24: openMasks(p); return;        // v1.1
+                case 12: openMythics(p); return;
+                case 14: openMasks(p); return;
+                case 16: openLoot(p); return;
+                // Row 2 — support
+                case 19: openReagents(p); return;
+                case 20: openConsumables(p); return;
+                case 21: openLootBoxes(p); return;
+                case 22: openRecipeBook(p); return;
+                case 24:  // Godset PvE — direct action
+                    p.closeInventory();
+                    com.soulenchants.items.GodSet.giveBossSet(p);
+                    Chat.good(p, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "✦ Boss-killer set equipped.");
+                    return;
+                case 25:  // God Set PvP — direct action
+                    p.closeInventory();
+                    com.soulenchants.items.GodSet.giveGodSet(p);
+                    Chat.good(p, MessageStyle.TIER_SOUL + MessageStyle.BOLD + "✦ God set equipped.");
+                    return;
+                // Row 3 — spawn
+                case 29: openSpawn(p); return;
+                case 31: p.closeInventory(); p.performCommand("mob list"); return;
+                // Close
                 case 40: p.closeInventory(); return;
                 default: return;
             }
         }
 
-        // v1.1 — Mythic browser: give clicked weapon
+        // Mythic browser: give clicked weapon
         if (title.equals(TITLE_MYTHICS)) {
             String id = MythicRegistry.idOf(clicked);
             if (id == null) return;
@@ -294,9 +311,8 @@ public class GodMenuGUI implements Listener {
             return;
         }
 
-        // v1.1 — Mask browser: equip / toggle off
+        // Mask browser: equip / toggle off
         if (title.equals(TITLE_MASKS)) {
-            // Find which mask by its visual material + data (since masks don't carry an NBT id tag).
             Mask target = null;
             for (Mask m : MaskRegistry.all()) {
                 ItemStack v = m.buildVisual();
@@ -313,31 +329,34 @@ public class GodMenuGUI implements Listener {
                 plugin.getMaskManager().equip(p, target.getId());
                 Chat.good(p, "Equipped " + MessageStyle.TIER_EPIC + target.getDisplayName() + MessageStyle.GOOD + ".");
             }
-            // Force nearby clients to re-render the helmet so the packet injector swaps it.
             p.getInventory().setHelmet(p.getInventory().getHelmet());
-            openMasks(p); // refresh tile state
+            openMasks(p);
             return;
         }
 
-        // Boss eggs → trigger summon
-        if (title.equals(TITLE_BOSS_EGGS)) {
-            if (e.getRawSlot() == 11) { p.closeInventory(); plugin.getVeilweaverManager().summon(p.getLocation()); return; }
-            if (e.getRawSlot() == 15) { p.closeInventory(); plugin.getIronGolemManager().summon(p.getLocation()); return; }
-            return;
+        // Spawn menu — one-click boss summons
+        if (title.equals(TITLE_SPAWN)) {
+            switch (e.getRawSlot()) {
+                case 11:
+                    p.closeInventory();
+                    plugin.getVeilweaverManager().summon(p.getLocation());
+                    return;
+                case 13:
+                    p.closeInventory();
+                    plugin.getIronGolemManager().summon(p.getLocation());
+                    return;
+                case 15:
+                    p.closeInventory();
+                    p.performCommand("modock summon");
+                    return;
+                default: return;
+            }
         }
 
-        // Godset → run /ce bossset
-        if (title.equals(TITLE_GODSET) && e.getRawSlot() == 13) {
-            p.closeInventory();
-            com.soulenchants.items.GodSet.giveTo(p);
-            Chat.good(p, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "✦ Godset equipped.");
-            return;
-        }
-
-        // Recipe book — clicking does nothing (display only)
+        // Recipe book — display only
         if (title.equals(TITLE_RECIPES)) return;
 
-        // Otherwise: hand the player a copy of the clicked item
+        // Otherwise: any sub-menu item click gives the clicked item.
         ItemStack give = clicked.clone();
         p.getInventory().addItem(give).values()
                 .forEach(left -> p.getWorld().dropItemNaturally(p.getLocation(), left));
@@ -348,8 +367,7 @@ public class GodMenuGUI implements Listener {
         return title.equals(TITLE_HUB)
             || title.equals(TITLE_LOOT)
             || title.equals(TITLE_REAGENTS)
-            || title.equals(TITLE_BOSS_EGGS)
-            || title.equals(TITLE_GODSET)
+            || title.equals(TITLE_SPAWN)
             || title.equals(TITLE_RECIPES)
             || title.equals(TITLE_CONSUMABLE)
             || title.equals(TITLE_BOXES)
@@ -382,12 +400,12 @@ public class GodMenuGUI implements Listener {
                 "Return to Soul Vault");
     }
 
-    private ItemStack bossEgg(Material mat, short data, String name, String... lore) {
+    private ItemStack bossTile(Material mat, short data, String name, String... lore) {
         ItemStack it = new ItemStack(mat, 1, data);
         ItemMeta m = it.getItemMeta();
         m.setDisplayName(name);
         List<String> l = new ArrayList<>();
-        for (String s : lore) l.add(s.startsWith("§") ? s : MessageStyle.MUTED + s);
+        for (String s : lore) l.add(s.startsWith("§") || s.isEmpty() ? s : MessageStyle.MUTED + s);
         m.setLore(l);
         it.setItemMeta(m);
         return it;
