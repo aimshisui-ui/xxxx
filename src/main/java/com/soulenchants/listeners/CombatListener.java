@@ -447,32 +447,31 @@ public class CombatListener implements Listener {
             if (hasDebuff) offBonus += 0.15 * em;
         }
 
-        // Soul Strike — bypass-cap special multiplier (rare proc + soul cost = self-throttled)
+        // Soul Strike — bypass-cap special multiplier (rare proc + soul cost = self-throttled).
+        // v1.1: soul cost routed through SoulGemUtil — requires a Soul Gem in inventory.
         int ss = ItemUtil.getLevel(hand, "soulstrike");
         if (ss > 0 && rng.nextDouble() < 0.05) {
             int cost = 100;
-            if (plugin.getSoulManager().take(attacker, cost)) {
+            if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, cost)) {
                 specialMult *= (1.5 + 0.5 * ss);
                 attacker.getWorld().strikeLightningEffect(victim.getLocation());
                 attacker.sendMessage("§4✦ Soul Strike! §7(-" + cost + ")");
             }
         }
 
-        // Soul Drain — cost bump (15 → 50 souls per hit)
+        // Soul Drain — 50 souls per hit, gem-gated.
         int sd = ItemUtil.getLevel(hand, "souldrain");
         if (sd > 0) {
             int cost = 50;
-            if (plugin.getSoulManager().take(attacker, cost)) {
+            if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, cost)) {
                 double heal = e.getDamage() * (0.25 * sd);
                 attacker.setHealth(Math.min(attacker.getMaxHealth(), attacker.getHealth() + heal));
             }
         }
 
-        // Divine Immolation — every swing, splash divine fire to ALL valid proc
-        // targets within `level` blocks (excludes attacker). 5 souls per swing.
-        // Self-rate-limited by soul cost; no cooldown.
+        // Divine Immolation — 5 souls per swing, gem-gated. Self-rate-limited by soul cost.
         int di = ItemUtil.getLevel(hand, "divineimmolation");
-        if (di > 0 && plugin.getSoulManager().take(attacker, 5)) {
+        if (di > 0 && com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, attacker, 5)) {
             double splash = di * 1.1;
             double radius = di;
             for (Entity near : victim.getNearbyEntities(radius, radius, radius)) {
@@ -676,16 +675,17 @@ public class CombatListener implements Listener {
         if (naturesWrath > 0 && e.getDamager() instanceof LivingEntity && rng.nextDouble() < 0.02) {
             long now = System.currentTimeMillis();
             long lastCast = naturesWrathCd.getOrDefault(id, 0L);
-            if (now - lastCast >= 10_000L && plugin.getSoulManager().take(victim, 75)) {
+            if (now - lastCast >= 10_000L
+                    && com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, victim, 75)) {
                 naturesWrathCd.put(id, now);
                 triggerNaturesWrath(victim, naturesWrath);
             }
         }
 
-        // Soul Burst — soul cost bumped (50 → 150)
+        // Soul Burst — 150 souls, gem-gated.
         if (soulburst > 0) {
             int cost = 150;
-            if (plugin.getSoulManager().take(victim, cost)) {
+            if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, victim, cost)) {
                 for (Entity near : victim.getNearbyEntities(4, 3, 4)) {
                     if (!(near instanceof LivingEntity)) continue;
                     Vector push = near.getLocation().toVector().subtract(victim.getLocation().toVector())

@@ -49,7 +49,9 @@ public final class Stormbringer extends MythicWeapon {
     public void onAttack(Player owner, EntityDamageByEntityEvent event) {
         if (rng.nextDouble() >= cfg.stormbringerProc) return;
         if (!plugin.getCooldownManager().isReady("stormbringer", owner.getUniqueId())) return;
-        if (!plugin.getSoulManager().take(owner, cfg.stormbringerCost)) return;
+        // v1.1 — gem-gated. Mythic cost path goes through SoulGemUtil so a
+        // Stormbringer without a Soul Gem in inventory can't chain.
+        if (!com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, owner, cfg.stormbringerCost)) return;
         plugin.getCooldownManager().set("stormbringer", owner.getUniqueId(), cfg.stormbringerCdMs);
         LivingEntity target = (event.getEntity() instanceof LivingEntity) ? (LivingEntity) event.getEntity() : null;
         if (target == null) return;

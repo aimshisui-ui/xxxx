@@ -25,11 +25,12 @@ public class LethalSave {
         int phoenix = maxArmor(p, "phoenix");
         if (phoenix > 0 && plugin.getCooldownManager().isReady("phoenix", id)) {
             int cost = ThreadLocalRandom.current().nextInt(500, 8000);
-            if (plugin.getSoulManager().get(p) < cost) {
-                p.sendMessage("§c§l** OUT OF SOULS **");
+            // v1.1 — gem-gated: no Soul Gem, no save. chargeSoulCost handles
+            // both the license check and the gem→ledger fallback debit, plus
+            // a throttled "out of souls" message if they're short.
+            if (!com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, p, cost)) {
                 return false;
             }
-            plugin.getSoulManager().take(p, cost);
             plugin.getCooldownManager().set("phoenix", id, 160_000L);
             p.setHealth(p.getMaxHealth());
             p.getWorld().strikeLightningEffect(p.getLocation());
@@ -48,12 +49,11 @@ public class LethalSave {
             return true;
         }
 
-        // Soul Shield — 60s cd, costs 200 souls, heal 6 HP
+        // Soul Shield — 60s cd, costs 200 souls, heal 6 HP. v1.1: gem-gated.
         int shield = maxArmor(p, "soulshield");
         if (shield > 0 && plugin.getCooldownManager().isReady("soulshield", id)) {
             int cost = 200;
-            if (plugin.getSoulManager().get(p) >= cost) {
-                plugin.getSoulManager().take(p, cost);
+            if (com.soulenchants.items.SoulGemUtil.chargeSoulCost(plugin, p, cost)) {
                 plugin.getCooldownManager().set("soulshield", id, 60_000L);
                 p.setHealth(Math.min(p.getMaxHealth(), p.getHealth() + 6));
                 p.getWorld().strikeLightningEffect(p.getLocation());

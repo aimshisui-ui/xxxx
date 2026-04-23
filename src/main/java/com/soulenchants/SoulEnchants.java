@@ -247,13 +247,22 @@ public class SoulEnchants extends JavaPlugin {
         if (getCommand("mask") != null)
             getCommand("mask").setExecutor(new MaskCommand(this));
 
+        // ──────────────── Soul Gems (v1.1) ────────────────
+        // Right-click-to-deposit + inventory merge. Soul-enchant procs now
+        // route through SoulGemUtil, so this listener is load-bearing for
+        // the license-gate behaviour described in items/SoulGem.java.
+        getServer().getPluginManager().registerEvents(
+                new com.soulenchants.listeners.SoulGemListener(this), this);
+        if (getCommand("soulgem") != null)
+            getCommand("soulgem").setExecutor(new com.soulenchants.commands.SoulGemCommand(this));
+
         // ──────────────── Lunar Client bridge (v1.1) ────────────────
         LunarBridge.init(this);
         this.lunarPingListener = new LunarPingListener(this);
         lunarPingListener.start();
 
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
-        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {
+        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask","soulgem"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
         }
 

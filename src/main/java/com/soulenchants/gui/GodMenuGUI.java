@@ -53,6 +53,8 @@ public class GodMenuGUI implements Listener {
     private static final String TITLE_BOXES      = MessageStyle.SOUL_GOLD + "» Loot Boxes";
     private static final String TITLE_MYTHICS    = MessageStyle.TIER_SOUL + "» Mythic Weapons";
     private static final String TITLE_MASKS      = MessageStyle.TIER_EPIC + "» Cosmetic Masks";
+    private static final String TITLE_SOUL_GEM   = MessageStyle.TIER_SOUL + "» Soul Gem Mint";
+    private static final long[] MINT_PRESETS = { 100L, 500L, 1_000L, 5_000L, 10_000L, 50_000L, 100_000L };
 
     private final SoulEnchants plugin;
 
@@ -127,6 +129,10 @@ public class GodMenuGUI implements Listener {
                 "equip instantly"));
 
         // ── Row 3 — SPAWN ────────────────────────────────────────────
+        inv.setItem(27, tile(Material.EMERALD, MessageStyle.TIER_SOUL, "Soul Gem",
+                "Portable soul battery — required", "to use soul-tier enchants.",
+                MessageStyle.VALUE + "Required" + MessageStyle.MUTED + " for soul procs · drains before ledger",
+                "open mint menu"));
         inv.setItem(29, tile(Material.MONSTER_EGG, MessageStyle.SOUL_GOLD, "Summon a Boss",
                 "Spawn any registered world boss", "at your current location.",
                 MessageStyle.VALUE + "3" + MessageStyle.MUTED + " bosses · "
@@ -252,6 +258,41 @@ public class GodMenuGUI implements Listener {
         p.openInventory(inv);
     }
 
+    public void openSoulGemMint(Player p) {
+        Inventory inv = Bukkit.createInventory(null, 36, TITLE_SOUL_GEM);
+        long ledger  = plugin.getSoulManager().get(p);
+        long gemTotal = com.soulenchants.items.SoulGemUtil.totalGemBalance(p);
+        // Info tile
+        inv.setItem(4, tile(Material.BOOK, MessageStyle.TIER_SOUL, "Soul Balance",
+                "Ledger: " + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(ledger),
+                "Gems:   " + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(gemTotal),
+                com.soulenchants.items.SoulGemUtil.hasGem(p)
+                        ? MessageStyle.GOOD + "✓ license active"
+                        : MessageStyle.BAD + "✗ no gem — soul enchants blocked",
+                null));
+        // Mint preset tiles
+        int[] slots = { 10, 11, 12, 13, 14, 15, 16 };
+        for (int i = 0; i < slots.length && i < MINT_PRESETS.length; i++) {
+            long amt = MINT_PRESETS[i];
+            boolean afford = ledger >= amt;
+            inv.setItem(slots[i], tile(Material.EMERALD,
+                    afford ? MessageStyle.TIER_SOUL : MessageStyle.FRAME,
+                    com.soulenchants.items.SoulGem.formatNum(amt) + " Gem",
+                    "Mint a Soul Gem carrying",
+                    MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(amt) + MessageStyle.MUTED + " souls.",
+                    afford ? MessageStyle.GOOD + "Affordable" : MessageStyle.BAD + "Short by "
+                            + MessageStyle.VALUE + com.soulenchants.items.SoulGem.formatNum(amt - ledger),
+                    afford ? "mint" : null));
+        }
+        // Deposit held gem tile
+        inv.setItem(22, tile(Material.CHEST, MessageStyle.TIER_LEGENDARY, "Deposit Held Gem",
+                "Redeem the gem in your hand", "back into the ledger.",
+                MessageStyle.MUTED + "Same as right-click in-world",
+                "deposit"));
+        inv.setItem(31, backButton());
+        p.openInventory(inv);
+    }
+
     public void openMasks(Player p) {
         List<Mask> list = new ArrayList<>(MaskRegistry.all());
         int rows = Math.max(3, ((list.size() + 8) / 9) + 1);
@@ -311,23 +352,60 @@ public class GodMenuGUI implements Listener {
                 case 20: openConsumables(p); return;
                 case 21: openLootBoxes(p); return;
                 case 22: openRecipeBook(p); return;
-                case 24:  // Godset PvE — direct action
+                case 24:
                     p.closeInventory();
                     com.soulenchants.items.GodSet.giveBossSet(p);
                     Chat.good(p, MessageStyle.SOUL_GOLD + MessageStyle.BOLD + "✦ Boss-killer set equipped.");
                     return;
-                case 25:  // God Set PvP — direct action
+                case 25:
                     p.closeInventory();
                     com.soulenchants.items.GodSet.giveGodSet(p);
                     Chat.good(p, MessageStyle.TIER_SOUL + MessageStyle.BOLD + "✦ God set equipped.");
                     return;
-                // Row 3 — spawn
+                // Row 3 — spawn + soul gem
+                case 27: openSoulGemMint(p); return;
                 case 29: openSpawn(p); return;
                 case 31: p.closeInventory(); p.performCommand("mob list"); return;
                 // Close
                 case 40: p.closeInventory(); return;
                 default: return;
             }
+        }
+
+        // Soul Gem mint menu
+        if (title.equals(TITLE_SOUL_GEM)) {
+            int rawSlot = e.getRawSlot();
+            for (int i = 0; i < MINT_PRESETS.length; i++) {
+                if (rawSlot == 10 + i) {
+                    long amt = MINT_PRESETS[i];
+                    if (!com.soulenchants.items.SoulGemUtil.withdraw(plugin, p, amt)) {
+                        Chat.err(p, "Not enough ledger souls.");
+                        return;
+                    }
+                    Chat.good(p, "Minted a " + MessageStyle.TIER_SOUL
+                            + com.soulenchants.items.SoulGem.formatNum(amt) + "-soul gem"
+                            + MessageStyle.GOOD + ".");
+                    p.playSound(p.getLocation(), org.bukkit.Sound.ORB_PICKUP, 0.9f, 1.3f);
+                    openSoulGemMint(p);
+                    return;
+                }
+            }
+            if (rawSlot == 22) {
+                org.bukkit.inventory.ItemStack held = p.getItemInHand();
+                if (!com.soulenchants.items.SoulGem.isGem(held)) {
+                    Chat.err(p, "Hold a Soul Gem in your hand to deposit.");
+                    return;
+                }
+                long amt = com.soulenchants.items.SoulGemUtil.deposit(plugin, p, held);
+                p.setItemInHand(new org.bukkit.inventory.ItemStack(Material.AIR));
+                Chat.good(p, "Deposited " + MessageStyle.VALUE
+                        + com.soulenchants.items.SoulGem.formatNum(amt)
+                        + MessageStyle.GOOD + " souls to the ledger.");
+                p.playSound(p.getLocation(), org.bukkit.Sound.LEVEL_UP, 0.8f, 1.8f);
+                openSoulGemMint(p);
+                return;
+            }
+            return;
         }
 
         // Mythic browser: give clicked weapon
@@ -401,7 +479,8 @@ public class GodMenuGUI implements Listener {
             || title.equals(TITLE_CONSUMABLE)
             || title.equals(TITLE_BOXES)
             || title.equals(TITLE_MYTHICS)
-            || title.equals(TITLE_MASKS);
+            || title.equals(TITLE_MASKS)
+            || title.equals(TITLE_SOUL_GEM);
     }
 
     private ItemStack filler() {
