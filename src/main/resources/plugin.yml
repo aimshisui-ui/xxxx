@@ -1,9 +1,10 @@
 name: SoulEnchants
-version: 1.0.0-MVP
+version: 1.1.0
 main: com.soulenchants.SoulEnchants
 api-version: 1.8
 author: built-via-claude
-description: Custom enchantments with Souls currency, books, dust, and scrolls.
+description: Custom enchantments with Souls currency, books, dust, scrolls, mythic weapons and cosmetic masks.
+softdepend: [ProtocolLib, LunarClient-API, LunarAPI]
 
 commands:
   souls:
@@ -12,7 +13,7 @@ commands:
     aliases: [bal, soul]
   ce:
     description: Custom Enchants admin/utility
-    usage: /ce <give|book|dust|scroll|list>
+    usage: /ce <give|book|dust|scroll|list|reload>
     aliases: [customenchants]
   bless:
     description: Remove all negative potion effects from a player
@@ -50,6 +51,14 @@ commands:
     description: Modock — King of Atlantis (3-phase rift boss)
     usage: /modock <status|spawns|give|summon|abort|setspawn|tp>
     aliases: [atlantis]
+  mythic:
+    description: Mythic weapon admin/utility
+    usage: /mythic <list|give|aura>
+    aliases: [mw]
+  mask:
+    description: Cosmetic mask equipping (ProtocolLib-driven helmet override)
+    usage: /mask [list|equip|clear]
+    aliases: [masks]
 
 permissions:
   soulenchants.admin:
@@ -57,4 +66,10 @@ permissions:
     default: op
   soulenchants.use:
     description: Use enchants normally
+    default: true
+  soulenchants.mythic.use:
+    description: Wield mythic weapons
+    default: true
+  soulenchants.mask.use:
+    description: Equip cosmetic masks
     default: true

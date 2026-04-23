@@ -5,10 +5,23 @@ import com.soulenchants.bosses.VeilweaverManager;
 import com.soulenchants.commands.BlessCommand;
 import com.soulenchants.commands.CECommand;
 import com.soulenchants.commands.SoulsCommand;
+import com.soulenchants.config.ConfigBinder;
+import com.soulenchants.config.EnchantConfig;
+import com.soulenchants.config.MythicConfig;
 import com.soulenchants.currency.SoulManager;
 import com.soulenchants.enchants.EnchantRegistry;
 import com.soulenchants.gui.EnchantMenuGUI;
 import com.soulenchants.listeners.*;
+import com.soulenchants.lunar.LunarBridge;
+import com.soulenchants.lunar.LunarPingListener;
+import com.soulenchants.masks.MaskCommand;
+import com.soulenchants.masks.MaskManager;
+import com.soulenchants.masks.MaskPacketInjector;
+import com.soulenchants.masks.MaskRegistry;
+import com.soulenchants.mythic.MythicAuraTask;
+import com.soulenchants.mythic.MythicCommand;
+import com.soulenchants.mythic.MythicListener;
+import com.soulenchants.mythic.MythicRegistry;
 import com.soulenchants.scoreboard.ScoreboardManager;
 import com.soulenchants.util.CooldownManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -46,6 +59,12 @@ public class SoulEnchants extends JavaPlugin {
     private com.soulenchants.sets.SetManager setManager;
     private com.soulenchants.modock.ModockSpawnConfig modockSpawnConfig;
     private com.soulenchants.modock.ModockManager modockManager;
+    private EnchantConfig enchantConfig;
+    private MythicConfig mythicConfig;
+    private MythicAuraTask mythicAuraTask;
+    private MaskManager maskManager;
+    private MaskPacketInjector maskPacketInjector;
+    private LunarPingListener lunarPingListener;
 
     @Override
     public void onEnable() {
@@ -68,7 +87,15 @@ public class SoulEnchants extends JavaPlugin {
             System.err.println(">>> SE: ModockWorlds.ensureAll threw: " + t);
             t.printStackTrace();
         }
+        // v1.1 — reflection-bound configs. Defaults match prior hardcoded values.
+        this.enchantConfig = new EnchantConfig();
+        ConfigBinder.bind(this, "enchants.yml", enchantConfig);
+        this.mythicConfig = new MythicConfig();
+        ConfigBinder.bind(this, "mythics.yml", mythicConfig);
+
         EnchantRegistry.registerDefaults();
+        MythicRegistry.registerDefaults(this, mythicConfig);
+        MaskRegistry.registerDefaults();
         this.soulManager = new SoulManager(this, getDataFolder());
         this.veilweaverManager = new VeilweaverManager(this);
         this.ironGolemManager = new IronGolemManager(this);
@@ -206,12 +233,38 @@ public class SoulEnchants extends JavaPlugin {
         if (getCommand("modock") != null)
             getCommand("modock").setExecutor(new com.soulenchants.modock.ModockCommand(this));
 
+        // ──────────────── Mythic Weapons (v1.1) ────────────────
+        getServer().getPluginManager().registerEvents(new MythicListener(this), this);
+        this.mythicAuraTask = new MythicAuraTask(this, mythicConfig);
+        mythicAuraTask.start();
+        if (getCommand("mythic") != null)
+            getCommand("mythic").setExecutor(new MythicCommand(this));
+
+        // ──────────────── Cosmetic Masks (v1.1) ────────────────
+        this.maskManager = new MaskManager(this);
+        this.maskPacketInjector = new MaskPacketInjector(this, maskManager);
+        maskPacketInjector.attach();
+        if (getCommand("mask") != null)
+            getCommand("mask").setExecutor(new MaskCommand(this));
+
+        // ──────────────── Lunar Client bridge (v1.1) ────────────────
+        LunarBridge.init(this);
+        this.lunarPingListener = new LunarPingListener(this);
+        lunarPingListener.start();
+
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
-        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock"}) {
+        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
         }
 
-        getLogger().info("SoulEnchants enabled. " + EnchantRegistry.all().size() + " enchants registered.");
+        getLogger().info("SoulEnchants enabled. " + EnchantRegistry.all().size() + " enchants, "
+                + MythicRegistry.all().size() + " mythics, " + MaskRegistry.all().size() + " masks.");
+    }
+
+    /** /ce reload — re-read enchants.yml and mythics.yml live. */
+    public void reloadEnchantConfigs() {
+        ConfigBinder.reload(enchantConfig);
+        ConfigBinder.reload(mythicConfig);
     }
 
     @Override
@@ -263,4 +316,7 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.guilds.GuildManager getGuildManager() { return guildManager; }
     public com.soulenchants.sets.SetManager getSetManager() { return setManager; }
     public com.soulenchants.modock.ModockManager getModockManager() { return modockManager; }
+    public EnchantConfig getEnchantConfig() { return enchantConfig; }
+    public MythicConfig getMythicConfig() { return mythicConfig; }
+    public MaskManager getMaskManager() { return maskManager; }
 }

@@ -1,0 +1,224 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  SoulEnchants — Enchant Balance Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+#  Proc rates are per-level in [0..1] unless marked proc-flat (whole-chance).
+#  Cooldowns are milliseconds. Durations using ticks use _ticks suffix.
+#  Reload with /ce reload (admin) — fields merge live, no restart needed.
+# ═══════════════════════════════════════════════════════════════════════════
+
+global:
+  # Hard cap on summed offensive multiplier from additive enchants.
+  # Caps (witherbane + demonslayer + slayer + executioner + reaver + crit + ...)
+  # Soul Strike bypasses via soul-cost; Soul Burn's flat-add stays additive
+  # after the cap.
+  offensive-bonus-cap: 2.00
+
+# ─── Sword offensive ─────────────────────────────────────────────────────
+lifesteal:
+  heal-per-level-pct: 0.05
+  heal-cap-hp: 5.0
+
+bleed:
+  proc-chance-per-level: 0.015
+  deep-wounds-bonus-per-level: 0.008
+  # Lockout window after a bleed DOT ends, before a new one can roll.
+  lockout-grace-ms: 2000
+
+cripple:
+  proc-per-level: 0.03
+  cd-ms: 5000
+  slow-ticks: 60
+
+venom:
+  proc-per-level: 0.04
+
+cleave:
+  proc-flat: 0.05
+  splash-damage: 3.0
+
+frost-aspect:
+  proc-per-level: 0.05
+
+cursed-edge:
+  proc-per-level: 0.03
+
+soul-burn:
+  proc-per-level: 0.05
+  fire-ticks-per-level: 60
+  flat-add-per-level: 1.0
+
+phantom-strike:
+  proc-per-level: 0.02
+
+earthshaker:
+  flat-base: 1.0
+  flat-per-level: 1.0
+  radius: 2.0
+
+bonebreaker:
+  proc-per-level: 0.04
+
+critical-strike:
+  proc-per-level: 0.02
+  bonus: 0.50
+
+razor-wind:
+  flat-per-level: 1.5
+
+featherweight:
+  proc-per-level: 0.20
+
+blessed:
+  proc-per-level: 0.20
+  msg-cd-ms: 6000
+
+# ─── Type slayers (additive bonuses, join the cap) ───────────────────────
+witherbane:
+  bonus-per-level: 0.35
+demonslayer:
+  bonus-per-level: 0.30
+beastslayer:
+  bonus-per-level: 0.25
+slayer:
+  bonus-per-level: 0.25
+holysmite:
+  bonus-per-level: 0.30
+
+# ─── Situational additive ─────────────────────────────────────────────────
+executioner:
+  bonus-per-level: 0.25
+  hp-threshold-pct: 0.30
+reaver:
+  bonus-per-level: 0.08
+executioners-mark:
+  bonus-per-level: 0.15
+
+# ─── Axe enchants ─────────────────────────────────────────────────────────
+skullcrush:
+  proc-per-level: 0.04
+hamstring:
+  proc-per-level: 0.03
+blood-fury:
+  heal-per-level-pct: 0.25
+  heal-cap-hp: 5.0
+  hp-threshold-pct: 0.30
+shieldbreaker:
+  proc-per-level: 0.05
+  true-dmg-pct: 0.25
+frostshatter:
+  proc-per-level: 0.05
+rending-blow:
+  proc-per-level: 0.04
+wraithcleave:
+  bonus-per-level: 0.25
+  alone-check-radius: 8.0
+
+# ─── Soul-cost sword/armor enchants ───────────────────────────────────────
+soul-strike:
+  proc-chance: 0.05
+  soul-cost: 100
+  mult-base: 1.5
+  mult-per-level: 0.5
+
+soul-drain:
+  heal-per-level-pct: 0.25
+  soul-cost: 50
+
+divine-immolation:
+  soul-cost: 5
+  splash-per-level: 1.1
+
+soul-burst:
+  soul-cost: 150
+  knockback-radius: 4.0
+  damage-per-level: 4.0
+
+natures-wrath:
+  proc-flat: 0.02
+  cd-ms: 10000
+  soul-cost: 75
+  radius-per-level: 3.0
+  duration-seconds-base: 5
+
+# ─── Armor (stackable across pieces) ──────────────────────────────────────
+armored:
+  proc-per-stack-level: 0.02
+  proc-cap: 0.16
+  reduction-per-stack-level: 0.01
+  reduction-cap: 0.08
+
+enlightened:
+  proc-per-stack-level: 0.002
+  proc-cap: 0.02
+
+# ─── Armor (single highest level used) ───────────────────────────────────
+hardened:
+  proc-per-level: 0.20
+
+antiknockback:
+  reduction-per-level: 0.25
+
+molten:
+  proc-per-level: 0.05
+  fire-ticks-per-level: 60
+
+stormcaller:
+  proc-per-level: 0.05
+  min-damage-trigger: 6.0
+  cd-base-ms: 14000
+  cd-reduce-per-level-ms: 2000
+
+guardians:
+  proc-per-level: 0.01
+  cd-ms: 120000
+
+overshield:
+  proc-per-level: 0.005
+  cd-ms: 120000
+
+reflect:
+  pct-per-level: 0.06
+  cd-ms: 5000
+
+endurance:
+  reduction-per-level: 0.01
+  reduction-cap: 0.06
+  combat-window-ms: 10000
+
+vengeance:
+  base: 0.5
+  per-level: 0.3
+
+last-stand:
+  hp-threshold: 4.0
+
+# ─── PvP armor enchants ───────────────────────────────────────────────────
+callous:
+  proc-per-level: 0.02
+
+ironskin:
+  proc-per-level: 0.12
+
+aegis:
+  hp-threshold: 6.0
+  cd-ms: 30000
+
+rush:
+  proc-per-level: 0.06
+  cd-ms: 10000
+
+spite:
+  pct-per-level: 0.08
+
+vampiric-plate:
+  proc-per-level: 0.04
+  heal-hp: 2.0
+
+counter:
+  proc-per-level: 0.04
+  cd-ms: 30000
+
+# ─── Explosion armor ──────────────────────────────────────────────────────
+ironclad:
+  reduction-per-level: 0.05
+  reduction-cap: 0.15

@@ -132,6 +132,11 @@ public class CECommand implements CommandExecutor {
             sender.sendMessage("§a✦ Removed §f" + killed + "§a custom entities (mobs + bosses).");
             return true;
         }
+        if (sub.equals("reload")) {
+            plugin.reloadEnchantConfigs();
+            com.soulenchants.style.Chat.good(sender, "Reloaded enchants.yml + mythics.yml.");
+            return true;
+        }
         if (sub.equals("loot")) {
             if (args.length >= 2 && args[1].equalsIgnoreCase("reload")) {
                 plugin.getLootConfig().reload();

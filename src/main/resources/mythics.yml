@@ -1,0 +1,52 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  SoulEnchants — Mythic Weapon Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+#  Mythic weapons tag-stored on items via the `se_mythic` NBT key. Effects
+#  activate by proximity mode: held (main hand), hotbar (any slot 0-8 or
+#  offhand), or aura (radius broadcast to nearby players).
+# ═══════════════════════════════════════════════════════════════════════════
+
+crimson-tongue:
+  heal-per-bleed-tick: 1.0
+
+wraithcleaver:
+  heal-per-cleave-proc: 1.0
+
+stormbringer:
+  proc-chance: 0.08
+  cd-ms: 4000
+  chain-count: 3
+  chain-radius: 6.0
+  chain-falloff: 0.75
+  soul-cost: 20
+
+voidreaver:
+  souls-on-kill: 50
+  crit-bonus-pct: 0.30
+  aura-speed-amplifier: 0
+
+dawnbringer:
+  aura-radius: 6.0
+  purge-interval-ticks: 40
+  regen-amplifier: 0
+
+sunderer:
+  true-dmg-pct: 0.20
+  armor-strip-ticks: 60
+
+phoenix-feather:
+  heal-on-kill: 4.0
+  ignite-radius: 3.0
+
+soulbinder:
+  souls-per-hit: 5
+  true-dmg-pct: 0.15
+
+tidecaller:
+  aura-radius: 8.0
+  water-breathing: true
+  depth-strider-amplifier: 2
+
+aura:
+  tick-interval-ticks: 20
+  hotbar-counts-as-held: true

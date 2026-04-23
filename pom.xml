@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.soulenchants</groupId>
     <artifactId>SoulEnchants</artifactId>
-    <version>1.0.0-MVP</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -23,6 +23,13 @@
         </repository>
     </repositories>
 
+    <!--
+      Notes on optional runtime integrations (no compile-time deps):
+      - ProtocolLib: MaskPacketInjector uses pure reflection so the jar builds
+        without ProtocolLib on the classpath. Operators drop ProtocolLib.jar
+        into plugins/ and masks light up.
+      - Lunar Client API: LunarBridge uses pure reflection for the same reason.
+    -->
     <dependencies>
         <dependency>
             <groupId>org.spigotmc</groupId>
