@@ -53,7 +53,7 @@ public final class MythicRegistry {
 
     /** Return the primary mythic id from an item's NBT, or null. */
     public static String idOf(ItemStack item) {
-        if (item == null || item.getType().name().equals("AIR")) return null;
+        if (item == null || item.getType().name().equals("AIR") || item.getAmount() <= 0) return null;
         NBTItem nbt = new NBTItem(item);
         if (!nbt.hasKey(NBT_KEY)) return null;
         String s = nbt.getString(NBT_KEY);
@@ -62,7 +62,7 @@ public final class MythicRegistry {
 
     /** Return the secondary ability id from an item's NBT, or null if none bound. */
     public static String abilityIdOf(ItemStack item) {
-        if (item == null || item.getType().name().equals("AIR")) return null;
+        if (item == null || item.getType().name().equals("AIR") || item.getAmount() <= 0) return null;
         NBTItem nbt = new NBTItem(item);
         if (!nbt.hasKey(NBT_ABILITY_KEY)) return null;
         String s = nbt.getString(NBT_ABILITY_KEY);

@@ -36,28 +36,34 @@ public final class MaskRegistry {
     public static Mask get(String id)   { return id == null ? null : MASKS.get(id); }
     public static Collection<Mask> all(){ return MASKS.values(); }
 
+    /** NBT-API throws on AIR / amount==0 stacks, so every construction site
+     *  guards first. Air/empty stacks simply can't carry our NBT. */
+    private static boolean isValid(ItemStack it) {
+        return it != null && it.getType() != org.bukkit.Material.AIR && it.getAmount() > 0;
+    }
+
     /** Is this ItemStack a standalone mask-item (not yet attached)? */
     public static boolean isMaskItem(ItemStack it) {
-        if (it == null) return false;
+        if (!isValid(it)) return false;
         NBTItem nbt = new NBTItem(it);
         return nbt.hasKey(NBT_MASK_ITEM);
     }
 
     public static String maskItemId(ItemStack it) {
-        if (it == null) return null;
+        if (!isValid(it)) return null;
         NBTItem nbt = new NBTItem(it);
         return nbt.hasKey(NBT_MASK_ITEM) ? nbt.getString(NBT_MASK_ITEM) : null;
     }
 
     /** Does this helmet have an attached mask? */
     public static boolean hasAttachedMask(ItemStack helmet) {
-        if (helmet == null) return false;
+        if (!isValid(helmet)) return false;
         NBTItem nbt = new NBTItem(helmet);
         return nbt.hasKey(NBT_MASK_ATTACHED);
     }
 
     public static String attachedMaskId(ItemStack helmet) {
-        if (helmet == null) return null;
+        if (!isValid(helmet)) return null;
         NBTItem nbt = new NBTItem(helmet);
         return nbt.hasKey(NBT_MASK_ATTACHED) ? nbt.getString(NBT_MASK_ATTACHED) : null;
     }
@@ -65,6 +71,7 @@ public final class MaskRegistry {
     /** Strip the attached mask from a helmet, returning both the cleaned
      *  helmet and the detached mask item. */
     public static DetachResult detach(ItemStack helmet) {
+        if (!isValid(helmet)) return null;
         if (!hasAttachedMask(helmet)) return null;
         String id = attachedMaskId(helmet);
         Mask m = get(id);

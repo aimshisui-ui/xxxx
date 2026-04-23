@@ -92,8 +92,14 @@ public final class PetItem {
 
     // ──────────────── NBT accessors ────────────────
 
+    /** NBT-API refuses AIR / amount==0, so every NBTItem construction site
+     *  pre-checks. Every accessor below routes through this. */
+    private static boolean isValid(ItemStack it) {
+        return it != null && it.getType() != org.bukkit.Material.AIR && it.getAmount() > 0;
+    }
+
     public static boolean isPetEgg(ItemStack it) {
-        if (it == null) return false;
+        if (!isValid(it)) return false;
         NBTItem n = new NBTItem(it);
         return n.hasKey(PetRegistry.NBT_ID);
     }
