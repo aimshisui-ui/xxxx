@@ -223,7 +223,7 @@ Both Apollo and ProtocolLib are optional at runtime — the plugin no-ops the re
 
 ## Version history
 
-- **v1.2** (current) — Pet system (7 archetypes), 16 new enchants, 3 new PvE mythics (Graverend / Emberlash / Ruinhammer), 6 new masks, 3 godset-tier elite bosses, god-tier armor enchants (Thornback / Warden's Eye / Bulwark / Voidwalker / Oathbound / Entombed), `/ce bossset` ships every mythic perfectly enchanted, removed the `✦ Enchants ✦` header for cleaner lore, dropped utility filler (aquatic / night vision / depth strider) from god-tier loadouts.
+- **v1.2** (current) — Pet system (7 archetypes), 16 new enchants, 3 new PvE mythics (Graverend / Emberlash / Ruinhammer), 6 new masks, 3 godset-tier elite bosses, god-tier armor enchants (Thornback / Warden's Eye / Bulwark / Voidwalker / Oathbound / Entombed), `/ce bossset` ships every mythic perfectly enchanted.
 - **v1.1** — Soul Gems, mythic weapons, Nordic masks, Apollo bridge, `/g ping`, reloadable YAML, aesthetic overhaul
 - **v1.0-MVP** — Original scope: enchants + two bosses + souls ledger + sidebar
 
