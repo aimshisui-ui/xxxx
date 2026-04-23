@@ -29,13 +29,18 @@ public final class PetListener implements Listener {
 
     public PetListener(SoulEnchants plugin) { this.plugin = plugin; }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    // LOWEST priority so we short-circuit BEFORE Bukkit's vanilla item-use
+    // logic (which would otherwise throw egg/expbottle/snowball pet eggs as
+    // projectiles). Pair with setUseItemInHand(DENY) because setCancelled
+    // alone doesn't stop throwables in 1.8.8 on every code path.
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInteract(PlayerInteractEvent e) {
         if (!e.getAction().name().startsWith("RIGHT_CLICK")) return;
         Player p = e.getPlayer();
         ItemStack item = p.getItemInHand();
         if (!PetItem.isPetEgg(item)) return;
         e.setCancelled(true);
+        try { e.setUseItemInHand(org.bukkit.event.Event.Result.DENY); } catch (Throwable ignored) {}
 
         String id = PetItem.idOf(item);
         Pet pet = PetRegistry.get(id);
@@ -128,6 +133,24 @@ public final class PetListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         plugin.getPetManager().despawn(e.getPlayer(), false);
+    }
+
+    /**
+     * Safety net: if a projectile launches with a Player shooter whose main
+     * hand is a pet egg, cancel the launch. Covers every throwable pet-egg
+     * icon (expbottle, snowball, egg, ender pearl) without per-material
+     * whitelisting — if it's a pet egg, it never flies.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPetEggThrown(org.bukkit.event.entity.ProjectileLaunchEvent e) {
+        if (e.getEntity() == null) return;
+        org.bukkit.projectiles.ProjectileSource src = e.getEntity().getShooter();
+        if (!(src instanceof Player)) return;
+        Player p = (Player) src;
+        ItemStack held = p.getItemInHand();
+        if (PetItem.isPetEgg(held)) {
+            e.setCancelled(true);
+        }
     }
 
     @EventHandler
