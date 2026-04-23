@@ -2,6 +2,7 @@ package com.soulenchants.util;
 
 import com.soulenchants.lunar.LunarBridge;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 import java.util.Collections;
@@ -26,6 +27,10 @@ public class CooldownManager {
         // v1.1 mythic abilities
         PRETTY_NAMES.put("stormbringer", "Stormbringer");
         PRETTY_NAMES.put("dawnbringer",  "Dawnbringer");
+        PRETTY_NAMES.put("natureswrath", "Nature's Wrath");
+        PRETTY_NAMES.put("aegis",        "Aegis");
+        PRETTY_NAMES.put("rush",         "Rush");
+        PRETTY_NAMES.put("overshield",   "Overshield");
     }
 
     /**
@@ -39,6 +44,22 @@ public class CooldownManager {
             "stormbringer", "dawnbringer", "natureswrath", "aegis", "rush", "overshield"
     ));
 
+    /** Per-ability icon for the Lunar cooldown ring — best-effort visual match. */
+    private static final Map<String, Material> LUNAR_ICONS = new HashMap<>();
+    static {
+        LUNAR_ICONS.put("stormcaller",  Material.BEACON);
+        LUNAR_ICONS.put("guardians",    Material.DIAMOND_CHESTPLATE);
+        LUNAR_ICONS.put("soulshield",   Material.EMERALD);
+        LUNAR_ICONS.put("phoenix",      Material.BLAZE_POWDER);
+        LUNAR_ICONS.put("reflect",      Material.IRON_CHESTPLATE);
+        LUNAR_ICONS.put("stormbringer", Material.DIAMOND_SWORD);
+        LUNAR_ICONS.put("dawnbringer",  Material.GOLD_SWORD);
+        LUNAR_ICONS.put("natureswrath", Material.SAPLING);
+        LUNAR_ICONS.put("aegis",        Material.IRON_HELMET);   // 1.8 lacks Material.SHIELD
+        LUNAR_ICONS.put("rush",         Material.SUGAR);
+        LUNAR_ICONS.put("overshield",   Material.GOLDEN_APPLE);
+    }
+
     public void set(String type, UUID player, long durationMs) {
         cds.computeIfAbsent(type.toLowerCase(), k -> new HashMap<>())
                 .put(player, System.currentTimeMillis() + durationMs);
@@ -47,9 +68,16 @@ public class CooldownManager {
         if (LUNAR_PUSHED.contains(key)) {
             Player p = Bukkit.getPlayer(player);
             if (p != null && p.isOnline()) {
-                LunarBridge.sendCooldown(p, key, durationMs);
+                Material icon = LUNAR_ICONS.getOrDefault(key, Material.DIAMOND_SWORD);
+                LunarBridge.sendCooldown(p, pretty(key), durationMs, icon);
             }
         }
+    }
+
+    /** Map internal cooldown id to its pretty display label for Lunar's ring. */
+    private static String pretty(String key) {
+        String p = PRETTY_NAMES.get(key);
+        return p != null ? p : key;
     }
 
     public long remaining(String type, UUID player) {

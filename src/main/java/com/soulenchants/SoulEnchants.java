@@ -259,6 +259,8 @@ public class SoulEnchants extends JavaPlugin {
         LunarBridge.init(this);
         this.lunarPingListener = new LunarPingListener(this);
         lunarPingListener.start();
+        if (getCommand("lunar") != null)
+            getCommand("lunar").setExecutor(new com.soulenchants.lunar.LunarCommand());
 
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
         for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {

@@ -59,6 +59,10 @@ commands:
     description: Cosmetic masks — client-side helmet overrides (ProtocolLib)
     usage: §8/§emask §7<list|equip §8<§7id§8>|clear>
     aliases: [masks]
+  lunar:
+    description: Lunar Client API bridge — diagnostic + cooldown test
+    usage: §8/§elunar §7<status|test>
+    aliases: []
 
 permissions:
   soulenchants.admin:
