@@ -106,9 +106,73 @@ public final class LunarBridge {
 
     // ──────────────────────── Title ────────────────────────
 
-    public static void sendTitle(Player p, String title, String subtitle, long durationMs) {
-        // Not implemented for either backend yet; kept in the public surface for
-        // callers that might need it later.
+    /** Enhanced-title broadcast to every Lunar-equipped player. Returns true if
+     *  at least Apollo's TitleModule fired. Callers should still call the
+     *  vanilla sendTitle() for non-Lunar users. */
+    public static boolean broadcastTitle(String title, String subtitle,
+                                         long fadeInMs, long stayMs, long fadeOutMs, float scale) {
+        if ("apollo".equals(backend)) {
+            return ApolloHook.sendTitleBroadcast(title, subtitle, fadeInMs, stayMs, fadeOutMs, scale);
+        }
+        return false;
+    }
+
+    public static boolean sendTitle(Player p, String title, String subtitle,
+                                    long fadeInMs, long stayMs, long fadeOutMs, float scale) {
+        if ("apollo".equals(backend)) {
+            return ApolloHook.sendTitlePlayer(p, title, subtitle, fadeInMs, stayMs, fadeOutMs, scale);
+        }
+        return false;
+    }
+
+    // ──────────────────────── Notification (toast) ────────────────────────
+
+    public static boolean sendNotification(Player p, String title, String description, long durationMs) {
+        return sendNotification(p, title, description, durationMs, null);
+    }
+
+    public static boolean sendNotification(Player p, String title, String description,
+                                           long durationMs, String resourceLocation) {
+        if ("apollo".equals(backend)) {
+            return ApolloHook.sendNotification(p, title, description, durationMs, resourceLocation);
+        }
+        return false;
+    }
+
+    // ──────────────────────── Hologram ────────────────────────
+
+    public static boolean displayHologram(String id, Location loc, java.util.List<String> lines) {
+        return displayHologram(id, loc, lines, true);
+    }
+
+    public static boolean displayHologram(String id, Location loc, java.util.List<String> lines,
+                                          boolean showThroughWalls) {
+        if ("apollo".equals(backend)) {
+            return ApolloHook.displayHologram(id, loc, lines, showThroughWalls);
+        }
+        return false;
+    }
+
+    public static boolean removeHologram(String id) {
+        if ("apollo".equals(backend)) return ApolloHook.removeHologram(id);
+        return false;
+    }
+
+    // ──────────────────────── Rich Presence (Discord RPC) ────────────────────────
+
+    public static boolean setRichPresence(Player p, String gameName, String gameVariant,
+                                          String gameState, String playerState,
+                                          String mapName, String subServerName) {
+        if ("apollo".equals(backend)) {
+            return ApolloHook.sendRichPresence(p, gameName, gameVariant, gameState, playerState,
+                    mapName, subServerName);
+        }
+        return false;
+    }
+
+    public static boolean resetRichPresence(Player p) {
+        if ("apollo".equals(backend)) return ApolloHook.resetRichPresence(p);
+        return false;
     }
 
     // ──────────────────────── Probe ────────────────────────

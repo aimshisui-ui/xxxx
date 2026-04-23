@@ -277,6 +277,14 @@ public class SoulEnchants extends JavaPlugin {
         lunarPingListener.start();
         if (getCommand("lunar") != null)
             getCommand("lunar").setExecutor(new com.soulenchants.lunar.LunarCommand());
+        // Discord Rich Presence driver — polls boss/rift state every 2s and
+        // pushes diffed presence updates to Apollo-backed Lunar clients.
+        com.soulenchants.lunar.LunarRichPresenceTask rpc =
+                new com.soulenchants.lunar.LunarRichPresenceTask(this);
+        rpc.start();
+        getServer().getPluginManager().registerEvents(rpc, this);
+        // Live boss-HP Apollo holograms — multi-line bar above every active boss.
+        new com.soulenchants.lunar.BossHologramTask(this).start();
 
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
         for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {

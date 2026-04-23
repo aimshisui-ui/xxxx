@@ -275,7 +275,8 @@ public class Veilweaver {
             };
         }
         for (Player p : arena.playersInArena()) {
-            p.sendTitle(titleMain, titleSub);
+            com.soulenchants.lunar.LunarFx.sendTitle(p, titleMain, titleSub,
+                    250L, 2000L, 500L, 1.35f);
             for (String line : broadcast) p.sendMessage(line);
             p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 1.5f, 1.0f);
         }

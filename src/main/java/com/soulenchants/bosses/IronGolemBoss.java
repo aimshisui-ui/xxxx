@@ -240,7 +240,8 @@ public class IronGolemBoss {
         };
         for (Player p : nearbyPlayers(30)) {
             try {
-                p.sendTitle(titleMain, titleSub);
+                com.soulenchants.lunar.LunarFx.sendTitle(p, titleMain, titleSub,
+                        250L, 2000L, 500L, 1.35f);
                 for (String line : broadcast) p.sendMessage(line);
                 p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 1.5f, 0.8f);
             } catch (Throwable ignored) {}

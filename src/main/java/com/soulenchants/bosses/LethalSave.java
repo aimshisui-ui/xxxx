@@ -34,8 +34,13 @@ public class LethalSave {
             plugin.getCooldownManager().set("phoenix", id, 160_000L);
             p.setHealth(p.getMaxHealth());
             p.getWorld().strikeLightningEffect(p.getLocation());
-            try { p.sendTitle("§c§l** PHOENIX **",
-                    "§7You have §n" + plugin.getSoulManager().get(p) + "§7 souls left."); } catch (Throwable ignored) {}
+            com.soulenchants.lunar.LunarFx.sendTitle(p,
+                    "§c§l✦ PHOENIX ✦",
+                    "§7" + plugin.getSoulManager().get(p) + "§7 souls remaining",
+                    200L, 2000L, 400L, 1.3f);
+            com.soulenchants.lunar.LunarFx.notify(p,
+                    "§c§l✦ PHOENIX",
+                    "§7Saved from lethal · §c−" + cost + " souls", 3500L);
             try { p.playSound(p.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 1.0f, 1.25f); } catch (Throwable ignored) {}
             // Broadcast to nearby players (Nordic flair)
             for (Entity nearby : p.getNearbyEntities(48, 48, 48)) {
@@ -57,6 +62,9 @@ public class LethalSave {
                 plugin.getCooldownManager().set("soulshield", id, 60_000L);
                 p.setHealth(Math.min(p.getMaxHealth(), p.getHealth() + 6));
                 p.getWorld().strikeLightningEffect(p.getLocation());
+                com.soulenchants.lunar.LunarFx.notify(p,
+                        "§4§l✦ SOUL SHIELD",
+                        "§7Absorbed lethal damage · §c−" + cost + " souls", 3500L);
                 p.sendMessage("§c✦ §4Soul Shield triggered! §7(-" + cost + " souls)");
                 return true;
             }

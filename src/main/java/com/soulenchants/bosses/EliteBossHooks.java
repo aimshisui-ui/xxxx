@@ -195,6 +195,14 @@ public final class EliteBossHooks implements Listener {
         Bukkit.broadcastMessage("");
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 0.8f, 0.5f);
+            // Enhanced title for players close to the spawn (same 80-block
+            // radius Veilweaver + Ironheart use).
+            if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distanceSquared(loc) <= 80 * 80) {
+                com.soulenchants.lunar.LunarFx.sendTitle(p,
+                        s.color + "" + ChatColor.BOLD + "✦ " + s.display + " ✦",
+                        ChatColor.GRAY + "" + ChatColor.ITALIC + s.flavorQuote,
+                        250L, 2200L, 500L, 1.3f);
+            }
         }
     }
 
@@ -218,8 +226,18 @@ public final class EliteBossHooks implements Listener {
         }
         Bukkit.broadcastMessage(div);
         Bukkit.broadcastMessage("");
+        // Main phase banner line is index 0 of the phase block; use it as the
+        // enhanced-title headline so players get an immediate visual cue.
+        String phaseTitle  = s.phases[targetPhase - 2][0];
+        String phaseSub    = "§7Phase " + (targetPhase == 2 ? "II" : "III");
+        Location bossLoc   = boss.getLocation();
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.ENDERDRAGON_GROWL, 0.7f, 1.2f);
+            if (p.getWorld().equals(bossLoc.getWorld())
+                    && p.getLocation().distanceSquared(bossLoc) <= 80 * 80) {
+                com.soulenchants.lunar.LunarFx.sendTitle(p,
+                        phaseTitle, phaseSub, 250L, 2000L, 500L, 1.3f);
+            }
         }
     }
 

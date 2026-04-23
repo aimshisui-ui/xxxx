@@ -90,8 +90,8 @@ public class EntityDeathListener implements Listener {
         }
 
         plugin.getSoulManager().add(killer, total);
-        com.soulenchants.util.FloatingText.show(plugin, entity.getLocation(),
-                org.bukkit.ChatColor.LIGHT_PURPLE + "+" + total + " §dSoul" + (total == 1 ? "" : "s"));
+        com.soulenchants.lunar.LunarFx.floatingText(plugin, entity.getLocation(),
+                org.bukkit.ChatColor.LIGHT_PURPLE + "+" + total + " §dSoul" + (total == 1 ? "" : "s"), 40);
     }
 
     @EventHandler

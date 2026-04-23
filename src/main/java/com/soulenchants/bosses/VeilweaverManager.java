@@ -47,9 +47,13 @@ public class VeilweaverManager {
         for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), org.bukkit.Sound.WITHER_SPAWN, 0.7f, 0.3f);
             p.playSound(p.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 0.5f, 0.6f);
-            // Title only for players in the same world, within 80 blocks
+            // Title only for players in the same world, within 80 blocks.
+            // LunarFx upgrades to Apollo's enhanced Title for Lunar users +
+            // keeps the vanilla sendTitle so non-Lunar still sees a banner.
             if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distanceSquared(loc) <= 80 * 80) {
-                try { p.sendTitle("§5§l✦ The Veilweaver ✦", "§d§oShe has woken."); } catch (Throwable ignored) {}
+                com.soulenchants.lunar.LunarFx.sendTitle(p,
+                        "§5§l✦ The Veilweaver ✦", "§d§oShe has woken.",
+                        250L, 2200L, 500L, 1.3f);
             }
         }
     }

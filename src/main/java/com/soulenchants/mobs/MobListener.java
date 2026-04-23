@@ -102,8 +102,10 @@ public class MobListener implements Listener {
                 total = (int) Math.ceil(total * 1.2);
             }
             plugin.getSoulManager().add(killer, total);
-            com.soulenchants.util.FloatingText.show(plugin, v.getLocation(),
-                    org.bukkit.ChatColor.LIGHT_PURPLE + "+" + total + " §dSouls");
+            // Upgrades to Apollo Hologram on Lunar clients, falls back to the
+            // ArmorStand FloatingText for vanilla players.
+            com.soulenchants.lunar.LunarFx.floatingText(plugin, v.getLocation(),
+                    org.bukkit.ChatColor.LIGHT_PURPLE + "+" + total + " §dSouls", 40);
         }
         // Roll editable drop table
         for (com.soulenchants.mobs.DropSpec ds : def.dropSpecs) {

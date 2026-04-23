@@ -53,7 +53,9 @@ public class IronGolemManager {
             p.playSound(p.getLocation(), org.bukkit.Sound.IRONGOLEM_DEATH, 0.8f, 0.5f);
             p.playSound(p.getLocation(), org.bukkit.Sound.ANVIL_LAND, 0.6f, 0.4f);
             if (p.getWorld().equals(loc.getWorld()) && p.getLocation().distanceSquared(loc) <= 80 * 80) {
-                try { p.sendTitle("§6§l✦ Ironheart Colossus ✦", "§e§oThe forge wakes."); } catch (Throwable ignored) {}
+                com.soulenchants.lunar.LunarFx.sendTitle(p,
+                        "§6§l✦ Ironheart Colossus ✦", "§e§oThe forge wakes.",
+                        250L, 2200L, 500L, 1.3f);
             }
         }
     }

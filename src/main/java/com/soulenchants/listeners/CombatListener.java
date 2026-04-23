@@ -639,7 +639,8 @@ public class CombatListener implements Listener {
                 aoeDamage(le, splash, attacker);
                 Location l = le.getLocation().add(0, 1, 0);
                 l.getWorld().playEffect(l, Effect.MOBSPAWNER_FLAMES, 0);
-                if (le instanceof Player) ((Player) le).sendMessage("§c§l** DIVINE IMMOLATION **");
+                if (le instanceof Player) com.soulenchants.lunar.LunarFx.notify((Player) le,
+                        "§c§l✦ DIVINE IMMOLATION", "§7Splash damage from divine fire", 2500L);
             }
             attacker.getWorld().playSound(attacker.getLocation(), org.bukkit.Sound.FIREWORK_BLAST, 1.0f, 0.4f);
         }
@@ -1139,6 +1140,11 @@ public class CombatListener implements Listener {
             victim.playSound(victim.getLocation(), org.bukkit.Sound.ENDERDRAGON_GROWL, 2.0f, 2.0f);
             victim.getWorld().playEffect(victim.getLocation().add(0, 1, 0), Effect.LARGE_SMOKE, 0);
         }
+        // Lunar toast for the caster + a single chat line for non-Lunar players.
+        com.soulenchants.lunar.LunarFx.notify(caster,
+                "§a§l✦ NATURE'S WRATH",
+                "§7" + rooted.size() + " rooted · §c−75 Souls§7 · §f" + plugin.getSoulManager().get(caster) + "§7 left",
+                4500L);
         caster.sendMessage("§a§l** NATURE'S WRATH **");
         caster.sendMessage("§a§l- 75 Soul Gems §7§n" + plugin.getSoulManager().get(caster) + "§7 souls left.");
         if (rooted.isEmpty()) return;
@@ -1327,8 +1333,16 @@ public class CombatListener implements Listener {
         bySource.put(source, new AHEntry(finalPct, finalUntil));
         if (victim instanceof Player) {
             double combined = effectiveAntiHealPct(id);
-            ((Player) victim).sendMessage("§c§l⚑ ANTI-HEAL §7— healing reduced §f"
-                    + (int)(combined * 100) + "%§7 for " + (durationMs / 1000) + "s");
+            Player pv = (Player) victim;
+            // Lunar toast if available; otherwise chat fallback.
+            boolean sent = com.soulenchants.lunar.LunarBridge.sendNotification(pv,
+                    "§c⚑ Anti-Heal",
+                    "§7Healing reduced §f" + (int)(combined * 100) + "%§7 · " + (durationMs / 1000) + "s",
+                    3500L);
+            if (!sent) {
+                pv.sendMessage("§c§l⚑ ANTI-HEAL §7— healing reduced §f"
+                        + (int)(combined * 100) + "%§7 for " + (durationMs / 1000) + "s");
+            }
         }
     }
 

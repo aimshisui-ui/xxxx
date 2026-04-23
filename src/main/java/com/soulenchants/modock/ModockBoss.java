@@ -149,7 +149,9 @@ public class ModockBoss {
             p.playSound(p.getLocation(), Sound.AMBIENCE_THUNDER, 0.5f, 0.8f);
         }
         for (Player p : entity.getWorld().getPlayers()) {
-            try { p.sendTitle("§b§l✦ MODOCK ✦", "§3§oKing of Atlantis"); } catch (Throwable ignored) {}
+            com.soulenchants.lunar.LunarFx.sendTitle(p,
+                    "§b§l✦ MODOCK ✦", "§3§oKing of Atlantis",
+                    250L, 2200L, 500L, 1.3f);
         }
     }
 
@@ -382,9 +384,11 @@ public class ModockBoss {
             if (p != null && p.isOnline()) {
                 try {
                     p.teleport(pair.player);
-                    p.sendTitle("§b§l✦ PHASE " + (next == Phase.TWO ? "II" : "III") + " ✦",
+                    com.soulenchants.lunar.LunarFx.sendTitle(p,
+                            "§b§l✦ PHASE " + (next == Phase.TWO ? "II" : "III") + " ✦",
                             next == Phase.TWO ? "§3§oThe Royal Guard rises."
-                                              : "§3§oOne warrior. One king. No witnesses.");
+                                              : "§3§oOne warrior. One king. No witnesses.",
+                            250L, 2000L, 500L, 1.35f);
                     p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 0.6f, 0.5f);
                 } catch (Throwable ignored) {}
             }
