@@ -1497,9 +1497,21 @@ public class CombatListener implements Listener {
                     double dmg = 0.5 + 0.15 * Math.max(0, stacks - 1);   // L1 stack = 0.5 HP, 20 stacks = 3.35 HP
                     UUID atkId = bleedAttacker.get(id);
                     Player attacker = atkId == null ? null : Bukkit.getPlayer(atkId);
+                    // Bleed ticks must not knock the victim around — DoT is
+                    // just HP drip, not a fresh hit. Capture pre-damage velocity
+                    // and restore next tick so Bukkit's damage() knockback
+                    // impulse gets cancelled out.
+                    final LivingEntity pinned = victim;
+                    final Vector preVel = victim.getVelocity().clone();
                     // aoeDamage routes through AOE_GUARD so the bleed tick doesn't
                     // re-enter handleSwordEnchants and roll another Bleed proc.
                     aoeDamage(victim, dmg, attacker);
+                    new BukkitRunnable() {
+                        @Override public void run() {
+                            if (pinned.isDead()) return;
+                            pinned.setVelocity(preVel);
+                        }
+                    }.runTask(plugin);
                     victim.getWorld().playSound(victim.getLocation(), Sound.HURT_FLESH, 0.5f, 1.2f);
                     // Blood burst — cluster of redstone-block step-sound particles at the
                     // victim's hitbox. Count scales with stacks so a heavy-stack target
