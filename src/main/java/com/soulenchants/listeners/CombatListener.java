@@ -124,7 +124,7 @@ public class CombatListener implements Listener {
      *  combine as 1 - (1 - .30)(1 - .20) = 44%, not 50%. Applied by Bleed L4+
      *  (10/20/30% at L4/5/6) and by the two dedicated AH enchants Severance
      *  (sword) / Reaping Slash (axe). Static so boss self-heal sites
-     *  (Veilweaver / Ironheart / Modock / CustomMob lifesteal abilities) can
+     *  (Veilweaver / Ironheart / Oakenheart / CustomMob lifesteal abilities) can
      *  query via scaleHealForAntiHeal() — those sites call setHealth() directly
      *  and never fire EntityRegainHealthEvent. */
     private static final class AHEntry {

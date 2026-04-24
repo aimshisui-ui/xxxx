@@ -35,6 +35,33 @@ public class EntityDeathListener implements Listener {
             plugin.getIronGolemManager().onIronGolemDeath(killer);
             return;
         }
+        // Oakenheart kill — reagents + unique crown + chance boss-gear + souls
+        if (plugin.getOakenheartManager() != null
+                && plugin.getOakenheartManager().isOakenheart(entity)) {
+            e.getDrops().clear();
+            e.setDroppedExp(0);
+            com.soulenchants.bosses.oakenheart.OakenheartBoss b =
+                    plugin.getOakenheartManager().getActive();
+            java.util.Random rng = new java.util.Random();
+            org.bukkit.Location dropLoc = entity.getLocation();
+            // Guaranteed
+            entity.getWorld().dropItemNaturally(dropLoc, com.soulenchants.loot.BossLootItems.heartwood(8));
+            entity.getWorld().dropItemNaturally(dropLoc, com.soulenchants.loot.BossLootItems.oakenCrown());
+            // Chance-based
+            if (rng.nextDouble() < 0.60)  entity.getWorld().dropItemNaturally(dropLoc, com.soulenchants.loot.BossLootItems.verdantTear(2));
+            if (rng.nextDouble() < 0.30)  entity.getWorld().dropItemNaturally(dropLoc, com.soulenchants.loot.BossLootItems.oakensapEssence(1));
+            if (rng.nextDouble() < 0.08)  entity.getWorld().dropItemNaturally(dropLoc, com.soulenchants.loot.BossLootItems.briarMantle());
+            if (rng.nextDouble() < 0.05)  entity.getWorld().dropItemNaturally(dropLoc, com.soulenchants.loot.BossLootItems.thornboundGauntlet());
+            // Guild points + souls reward
+            if (killer != null) {
+                int reward = 2500 + rng.nextInt(1500);
+                plugin.getSoulManager().add(killer, reward);
+                killer.sendMessage("§2§l✦ +" + reward + " Souls §7(Oakenheart killing blow)");
+            }
+            plugin.getOakenheartManager().clearActive();
+            if (b != null) b.stop(true);
+            return;
+        }
         // Veilweaver minions / echo clones — no vanilla drops
         de.tr7zw.changeme.nbtapi.NBTEntity nbt = new de.tr7zw.changeme.nbtapi.NBTEntity(entity);
         if (nbt.hasKey("se_vw_minion") || nbt.hasKey("se_vw_clone")) {

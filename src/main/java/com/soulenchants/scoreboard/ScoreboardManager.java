@@ -134,6 +134,8 @@ public class ScoreboardManager {
         // ── BOSS SECTION ────────────────
         Veilweaver vw = plugin.getVeilweaverManager().getActive();
         IronGolemBoss ig = plugin.getIronGolemManager().getActive();
+        com.soulenchants.bosses.oakenheart.OakenheartBoss oh =
+                plugin.getOakenheartManager() == null ? null : plugin.getOakenheartManager().getActive();
 
         // CustomMob bosses — one world scan that collects the Hollow King AND
         // every elite boss (Broodmother / Wurm-Lord / Choirmaster) in a single pass.
@@ -153,6 +155,7 @@ public class ScoreboardManager {
 
         boolean anyBoss = (vw != null && !vw.getEntity().isDead())
                        || (ig != null && !ig.getEntity().isDead())
+                       || (oh != null && !oh.getEntity().isDead())
                        || (hk != null && !hk.isDead())
                        || !elites.isEmpty();
         if (anyBoss) {
@@ -173,6 +176,14 @@ public class ScoreboardManager {
             lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
                     + (int) ig.getEntity().getHealth() + ChatColor.DARK_GRAY + "/"
                     + ChatColor.GRAY + (int) ig.getEntity().getMaxHealth());
+        }
+        if (oh != null && !oh.getEntity().isDead()) {
+            String phaseTag = oh.getPhase() == com.soulenchants.bosses.oakenheart.OakenheartBoss.Phase.ONE ? "I"
+                    : oh.getPhase() == com.soulenchants.bosses.oakenheart.OakenheartBoss.Phase.TWO ? "II" : "III";
+            lines.add(ChatColor.DARK_GREEN + " Oakenheart " + ChatColor.GREEN + "[" + phaseTag + "]");
+            lines.add(ChatColor.RED + " ❤ " + ChatColor.WHITE
+                    + (int) oh.getEntity().getHealth() + ChatColor.DARK_GRAY + "/"
+                    + ChatColor.GRAY + (int) oh.getEntity().getMaxHealth());
         }
         if (hk != null && !hk.isDead()) {
             lines.add(ChatColor.RED + " Hollow King " + ChatColor.DARK_RED + "[Elite]");

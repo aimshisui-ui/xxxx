@@ -67,6 +67,16 @@ public final class MobRegistry {
                         // summoned swarm can't drift off.
                         Abilities.stickyTargeter(28.0))));
 
+        // Sapling Sprout — Oakenheart's summoned minion. LATE tier but weak
+        // individually (60 HP, 15 dmg) — pressure comes from the pack.
+        add(build("sapling_sprout", "Sapling Sprout",     EntityType.ZOMBIE,   CustomMob.Tier.LATE,  60, 15, 30,
+                Arrays.asList(
+                        Abilities.speed(1),
+                        Abilities.stickyTargeter(24.0),
+                        Abilities.leapAtPlayer(1.2, 0.55, 80),
+                        Abilities.hitEffect(org.bukkit.potion.PotionEffectType.POISON, 0, 60)
+                )));
+
         add(build("cave_creeper",   "Cave Creeper",       EntityType.CAVE_SPIDER, CustomMob.Tier.EARLY, 18, 1, 7,
                 Arrays.asList(Abilities.hitEffect(org.bukkit.potion.PotionEffectType.POISON, 0, 80))));
 

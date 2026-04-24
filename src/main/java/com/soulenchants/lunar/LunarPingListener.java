@@ -24,9 +24,9 @@ import java.util.Set;
  */
 public final class LunarPingListener extends BukkitRunnable implements Listener {
 
-    private static final int VEILWEAVER_RGB = 0x8B4789;
-    private static final int IRONGOLEM_RGB  = 0x8A8A8A;
-    private static final int MODOCK_RGB     = 0x1F6FEB;
+    private static final int VEILWEAVER_RGB  = 0x8B4789;
+    private static final int IRONGOLEM_RGB   = 0x8A8A8A;
+    private static final int OAKENHEART_RGB  = 0x4E7F3E;
 
     private final SoulEnchants plugin;
     /** Waypoint ids seen alive on the last tick — used to detect deaths. */
@@ -56,17 +56,15 @@ public final class LunarPingListener extends BukkitRunnable implements Listener 
             nowAlive.add("Colossus");
         }
 
-        // Modock (3-phase Atlantis boss)
-        if (plugin.getModockManager() != null && plugin.getModockManager().getActive() != null) {
-            com.soulenchants.modock.ModockBoss mb = plugin.getModockManager().getActive();
+        // Oakenheart — Forest Sovereign (3-phase summon-only boss)
+        if (plugin.getOakenheartManager() != null && plugin.getOakenheartManager().getActive() != null) {
+            com.soulenchants.bosses.oakenheart.OakenheartBoss oh = plugin.getOakenheartManager().getActive();
             try {
-                if (mb.getEntity() != null && !mb.getEntity().isDead()) {
-                    pushToEveryone("Modock", mb.getEntity().getLocation(), MODOCK_RGB);
-                    nowAlive.add("Modock");
+                if (oh.getEntity() != null && !oh.getEntity().isDead()) {
+                    pushToEveryone("Oakenheart", oh.getEntity().getLocation(), OAKENHEART_RGB);
+                    nowAlive.add("Oakenheart");
                 }
-            } catch (Throwable ignored) {
-                // getEntity() may not exist on older Modock impls — fail silent.
-            }
+            } catch (Throwable ignored) {}
         }
 
         // Elite CustomMob bosses (Broodmother / Wurm-Lord / Choirmaster).

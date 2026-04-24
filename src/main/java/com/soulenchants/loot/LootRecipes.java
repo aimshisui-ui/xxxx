@@ -48,6 +48,23 @@ public final class LootRecipes {
     public static void register(SoulEnchants plugin) {
         ENTRIES.clear();
 
+        // Ritual Sapling: 4 Heartwood + 4 Verdant Tear + 1 Oakensap Essence around a vanilla SAPLING.
+        // Summons Oakenheart when right-clicked on grass / dirt.
+        ShapedRecipe rSap = new ShapedRecipe(BossLootItems.ritualSapling());
+        rSap.shape("HVH", "VEV", "HVH");
+        rSap.setIngredient('H', Material.LOG);      // Heartwood
+        rSap.setIngredient('V', Material.EMERALD);  // Verdant Tear
+        rSap.setIngredient('E', Material.POTION);   // Oakensap Essence
+        Bukkit.addRecipe(rSap);
+        ENTRIES.add(new RecipeEntry("Ritual Sapling", BossLootItems.ritualSapling(),
+                new String[]{"HVH", "VEV", "HVH"},
+                new Material[]{Material.LOG, Material.EMERALD, Material.LOG,
+                        Material.EMERALD, Material.POTION, Material.EMERALD,
+                        Material.LOG, Material.EMERALD, Material.LOG},
+                Arrays.asList("heartwood", "verdant_tear", "heartwood",
+                        "verdant_tear", "oakensap_essence", "verdant_tear",
+                        "heartwood", "verdant_tear", "heartwood")));
+
         // Forged Bulwark Plate: 4 Reinforced Plating + 1 Bulwark Core + Iron Chestplate
         ShapedRecipe r1 = new ShapedRecipe(BossLootItems.forgedBulwarkPlate());
         r1.shape("RPR", "PCP", "RPR");

@@ -802,4 +802,117 @@ public final class BossLootItems {
         it.setItemMeta(m);
         return tag(it, "stormwarden_bow");
     }
+
+    // ───────────────────────── Oakenheart reagents + drops ─────────────────────
+
+    /** Common reagent — drops from Oakenheart + sapling_sprouts. Used in
+     *  the Ritual Sapling recipe. */
+    public static ItemStack heartwood(int n) {
+        return tag(make(Material.LOG, Math.max(1, n), LootRarity.COMMON,
+                "Heartwood",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "Grain still humming",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "with the Sovereign's memory.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Crafting reagent · Ritual Sapling."
+        ), "heartwood");
+    }
+
+    /** Rare reagent — Oakenheart drop (60%). Ritual Sapling component. */
+    public static ItemStack verdantTear(int n) {
+        return tag(make(Material.EMERALD, Math.max(1, n), LootRarity.RARE,
+                "Verdant Tear",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Resin of a wounded canopy.",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Still warm.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Crafting reagent · Ritual Sapling."
+        ), "verdant_tear");
+    }
+
+    /** Very rare Oakenheart drop. One of these is the scarcest Ritual Sapling
+     *  ingredient; use sparingly. */
+    public static ItemStack oakensapEssence(int n) {
+        return tag(make(Material.POTION, Math.max(1, n), LootRarity.EPIC,
+                "Oakensap Essence",
+                ChatColor.LIGHT_PURPLE + "" + ChatColor.ITALIC + "Distilled from a thousand",
+                ChatColor.LIGHT_PURPLE + "" + ChatColor.ITALIC + "growth rings compressed to one.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Ritual Sapling keystone."
+        ), "oakensap_essence");
+    }
+
+    /** Guaranteed Oakenheart drop — cosmetic-ish, displays lifetime reward. */
+    public static ItemStack oakenCrown() {
+        ItemStack it = make(Material.SKULL_ITEM, 1, LootRarity.BOSS,
+                "Oaken Crown",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "A circlet of fused thornwood.",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "It still wants to grow.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Proof of Oakenheart's fall."
+        );
+        it.setDurability((short) 3);  // player-head variant
+        return tag(it, "oaken_crown");
+    }
+
+    /** Boss-tier chestplate drop (~8% from Oakenheart). */
+    public static ItemStack briarMantle() {
+        ItemStack it = make(Material.DIAMOND_CHESTPLATE, 1, LootRarity.BOSS,
+                "Briar Mantle",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Woven from Oakenheart's roots.",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Thorns turn outward.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Thornback · Bulwark · Radiant Shell."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 4, true);
+            m.addEnchant(Enchantment.THORNS,                   2, true);
+            m.addEnchant(Enchantment.DURABILITY,               3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "thornback",    3);
+        it = ItemUtil.addEnchant(it, "bulwark",      3);
+        it = ItemUtil.addEnchant(it, "radiantshell", 3);
+        it = ItemUtil.addEnchant(it, "mobslayersward", 2);
+        return tag(it, "briar_mantle");
+    }
+
+    /** Boss-tier axe drop (~5% from Oakenheart). */
+    public static ItemStack thornboundGauntlet() {
+        ItemStack it = make(Material.DIAMOND_AXE, 1, LootRarity.BOSS,
+                "Thornbound Gauntlet",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Half-weapon, half-growth.",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Rivets dig in, never let go.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Bleed · Slayer · Executioner's Mark."
+        );
+        ItemMeta m = it.getItemMeta();
+        try {
+            m.addEnchant(Enchantment.DAMAGE_ALL,      6, true);
+            m.addEnchant(Enchantment.LOOT_BONUS_MOBS, 3, true);
+            m.addEnchant(Enchantment.DURABILITY,      3, true);
+        } catch (Throwable ignored) {}
+        m.spigot().setUnbreakable(true);
+        it.setItemMeta(m);
+        it = ItemUtil.addEnchant(it, "bleed",             4);
+        it = ItemUtil.addEnchant(it, "slayer",            3);
+        it = ItemUtil.addEnchant(it, "executionersmark",  3);
+        it = ItemUtil.addEnchant(it, "hamstring",         2);
+        return tag(it, "thornbound_gauntlet");
+    }
+
+    /** Ritual Sapling — summon item for Oakenheart. Right-click on a grass /
+     *  dirt block to call the Forest Sovereign. Stackable. Tagged so the
+     *  RitualSaplingListener can identify it on PlayerInteract. */
+    public static ItemStack ritualSapling() {
+        ItemStack it = make(Material.SAPLING, 1, LootRarity.EPIC,
+                "Ritual Sapling",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "Its roots tremble — something",
+                ChatColor.DARK_GREEN + "" + ChatColor.ITALIC + "very old remembers you.",
+                "",
+                ChatColor.GOLD + "» " + ChatColor.YELLOW + "Right-click on grass to summon Oakenheart.",
+                ChatColor.DARK_GRAY + "  Main world only · will fail if one is already active."
+        );
+        return tag(it, "ritual_sapling");
+    }
 }

@@ -57,8 +57,8 @@ public class SoulEnchants extends JavaPlugin {
     private com.soulenchants.guilds.GuildManager guildManager;
     private com.soulenchants.listeners.ClarityTask clarityTask;
     private com.soulenchants.sets.SetManager setManager;
-    private com.soulenchants.modock.ModockSpawnConfig modockSpawnConfig;
-    private com.soulenchants.modock.ModockManager modockManager;
+    // Oakenheart — the Forest Sovereign. Replaces the removed Modock subsystem.
+    private com.soulenchants.bosses.oakenheart.OakenheartManager oakenheartManager;
     private EnchantConfig enchantConfig;
     private MythicConfig mythicConfig;
     private MythicAuraTask mythicAuraTask;
@@ -90,7 +90,7 @@ public class SoulEnchants extends JavaPlugin {
         safePhase("pvp-stats",       this::initPvpStats);
         safePhase("guilds",          this::initGuilds);
         safePhase("armor-sets",      this::initArmorSets);
-        safePhase("modock",          this::initModock);
+        safePhase("oakenheart",      this::initOakenheart);
         safePhase("mythics",         this::initMythicSubsystem);
         safePhase("masks",           this::initMaskSubsystem);
         safePhase("soul-gems",       this::initSoulGems);
@@ -125,11 +125,11 @@ public class SoulEnchants extends JavaPlugin {
         com.soulenchants.util.BossHealthHack.raise();
     }
 
-    /** Void Rift + Modock arena worlds — load up-front so first-time access
-     *  doesn't pause the server thread mid-fight. */
+    /** Void Rift world — load up-front so first-time access
+     *  doesn't pause the server thread mid-fight. Oakenheart spawns in the
+     *  main world near forest biomes, no dedicated arena world needed. */
     private void initWorlds() {
         com.soulenchants.rifts.RiftWorld.ensure(this);
-        com.soulenchants.modock.ModockWorlds.ensureAll(this);
     }
 
     /** Reflection-bound YAML config loading. Defaults match prior hardcoded values. */
@@ -299,13 +299,16 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new com.soulenchants.sets.SetBonusListener(this), this);
     }
 
-    /** Modock — three-phase Atlantis boss across modock_phase1/2/3. */
-    private void initModock() {
-        this.modockSpawnConfig = new com.soulenchants.modock.ModockSpawnConfig(this);
-        this.modockManager = new com.soulenchants.modock.ModockManager(this, modockSpawnConfig);
-        getServer().getPluginManager().registerEvents(new com.soulenchants.modock.ModockSpawner(this), this);
-        if (getCommand("modock") != null)
-            getCommand("modock").setExecutor(new com.soulenchants.modock.ModockCommand(this));
+    /** Oakenheart — Forest Sovereign. Three-phase summon-only boss; replaces
+     *  the removed Modock subsystem. Spawns on right-click of a crafted
+     *  Ritual Sapling item in the main world. */
+    private void initOakenheart() {
+        this.oakenheartManager = new com.soulenchants.bosses.oakenheart.OakenheartManager(this);
+        getServer().getPluginManager().registerEvents(
+                new com.soulenchants.bosses.oakenheart.RitualSaplingListener(this), this);
+        if (getCommand("oakenheart") != null)
+            getCommand("oakenheart").setExecutor(
+                    new com.soulenchants.bosses.oakenheart.OakenheartCommand(this));
     }
 
     private void initMythicSubsystem() {
@@ -359,7 +362,7 @@ public class SoulEnchants extends JavaPlugin {
 
     private void initTabCompletion() {
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
-        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {
+        for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","oakenheart","mythic","mask"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
         }
     }
@@ -388,7 +391,7 @@ public class SoulEnchants extends JavaPlugin {
         safe(new Runnable() { public void run() { if (setManager != null) setManager.stop(); }});
         safe(new Runnable() { public void run() { if (veilweaverManager != null && veilweaverManager.getActive() != null) veilweaverManager.getActive().stop(false); }});
         safe(new Runnable() { public void run() { if (ironGolemManager != null && ironGolemManager.getActive() != null) ironGolemManager.getActive().stop(false); }});
-        safe(new Runnable() { public void run() { if (modockManager != null && modockManager.getActive() != null) modockManager.getActive().stop(false); }});
+        safe(new Runnable() { public void run() { if (oakenheartManager != null && oakenheartManager.getActive() != null) oakenheartManager.getActive().stop(false); }});
         // Phase 1 — drain registered UUID caches and restore every tracked
         // temporary block before we unload. Belt-and-suspenders so a crash
         // mid-shutdown doesn't leave world damage behind.
@@ -438,7 +441,7 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.scoreboard.PvPStats getPvPStats() { return pvpStats; }
     public com.soulenchants.guilds.GuildManager getGuildManager() { return guildManager; }
     public com.soulenchants.sets.SetManager getSetManager() { return setManager; }
-    public com.soulenchants.modock.ModockManager getModockManager() { return modockManager; }
+    public com.soulenchants.bosses.oakenheart.OakenheartManager getOakenheartManager() { return oakenheartManager; }
     public EnchantConfig getEnchantConfig() { return enchantConfig; }
     public MythicConfig getMythicConfig() { return mythicConfig; }
     public com.soulenchants.masks.MaskPacketInjector getMaskPacketInjector() { return maskPacketInjector; }

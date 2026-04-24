@@ -144,7 +144,7 @@ public class GodMenuGUI implements Listener {
         inv.setItem(29, tile(Material.MONSTER_EGG, MessageStyle.SOUL_GOLD, "Summon a Boss",
                 "Spawn any registered world boss", "at your current location.",
                 MessageStyle.VALUE + "7" + MessageStyle.MUTED + " bosses · "
-                        + MessageStyle.VALUE + "Veilweaver · Colossus · Modock · Hollow · +3 elites",
+                        + MessageStyle.VALUE + "Veilweaver · Colossus · Oakenheart · Hollow · +3 elites",
                 "open spawn menu"));
         inv.setItem(31, tile(Material.SKULL_ITEM, MessageStyle.TIER_EPIC, "Custom Mobs",
                 "Every registered custom mob —", "Hollow King, elites, cave + rift roster.",
@@ -255,11 +255,11 @@ public class GodMenuGUI implements Listener {
                 "2 phases · 8,000 HP",
                 "",
                 MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "summon at your location"));
-        inv.setItem(14, bossTile(Material.MONSTER_EGG, (short) 68,
-                MessageStyle.TIER_SOUL + MessageStyle.BOLD + "Modock — King of Atlantis",
-                "3-phase rift fight",
-                "",
-                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/modock summon"));
+        inv.setItem(14, bossTile(Material.SAPLING, (short) 0,
+                com.soulenchants.style.MessageStyle.TIER_UNCOMMON + MessageStyle.BOLD + "Oakenheart — Forest Sovereign",
+                "22,000 HP · 3 phases",
+                "Summon via crafted Ritual Sapling",
+                MessageStyle.VALUE + "Click ▸ " + MessageStyle.MUTED + "/oakenheart summon"));
         inv.setItem(16, bossTile(Material.SKULL_ITEM, (short) 1,
                 MessageStyle.TIER_SOUL + MessageStyle.BOLD + "The Hollow King",
                 "25,000 HP · meteor + chain lightning",
@@ -529,7 +529,7 @@ public class GodMenuGUI implements Listener {
                     return;
                 case 14:
                     p.closeInventory();
-                    p.performCommand("modock summon");
+                    p.performCommand("oakenheart summon");
                     return;
                 case 16:
                     p.closeInventory();

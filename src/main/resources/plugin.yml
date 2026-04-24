@@ -47,10 +47,10 @@ commands:
     description: Guild — 10 players max, friendly-fire blocked, shared vault
     usage: §8/§eguild §7<create|invite|join|leave|disband|vault|info|top|ping>
     aliases: [guilds, g]
-  modock:
-    description: Modock — King of Atlantis (three-phase rift boss)
-    usage: §8/§emodock §7<status|spawns|give|summon|abort|setspawn|tp>
-    aliases: [atlantis]
+  oakenheart:
+    description: Oakenheart — Forest Sovereign (three-phase summon-only boss)
+    usage: §8/§eoakenheart §7<status|give|summon|abort>
+    aliases: [oaken, forestking]
   mythic:
     description: Mythic weapons — 9 named gear items with unique effects
     usage: §8/§emythic §7<list|give §8<§7id§8> §7[player]>

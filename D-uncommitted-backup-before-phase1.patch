@@ -1,0 +1,1126 @@
+warning: in the working copy of 'src/main/java/com/soulenchants/SoulEnchants.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/bosses/BoulderTracker.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/bosses/IronGolemBoss.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/bosses/IronGolemManager.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/bosses/IronGolemMinions.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/bosses/VeilweaverManager.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/bosses/attacks/VeilweaverAttacks.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/commands/SoulsCommand.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/currency/SoulManager.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/enchants/EnchantRegistry.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/enchants/impl/LifestealEnchant.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/items/GodSet.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/listeners/BerserkTickTask.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/listeners/CombatListener.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/listeners/CrystalListener.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/listeners/EntityDeathListener.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/listeners/IronSentinelListener.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/java/com/soulenchants/listeners/PvEDamageListener.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main/resources/plugin.yml', LF will be replaced by CRLF the next time Git touches it
+diff --git a/src/main/java/com/soulenchants/SoulEnchants.java b/src/main/java/com/soulenchants/SoulEnchants.java
+index 4754530..73dc6b5 100644
+--- a/src/main/java/com/soulenchants/SoulEnchants.java
++++ b/src/main/java/com/soulenchants/SoulEnchants.java
+@@ -30,7 +30,7 @@ public class SoulEnchants extends JavaPlugin {
+         saveDefaultConfig();
+         com.soulenchants.util.BossHealthHack.raise();
+         EnchantRegistry.registerDefaults();
+-        this.soulManager = new SoulManager(getDataFolder());
++        this.soulManager = new SoulManager(this, getDataFolder());
+         this.veilweaverManager = new VeilweaverManager(this);
+         this.ironGolemManager = new IronGolemManager(this);
+         this.cooldownManager = new CooldownManager();
+@@ -46,6 +46,8 @@ public class SoulEnchants extends JavaPlugin {
+         getServer().getPluginManager().registerEvents(new BoulderBlockBlocker(), this);
+         getServer().getPluginManager().registerEvents(new CrystalListener(this), this);
+         getServer().getPluginManager().registerEvents(new IronSentinelListener(this), this);
++        getServer().getPluginManager().registerEvents(new SpawnerTagListener(), this);
++        getServer().getPluginManager().registerEvents(new TierChatPrefix(this), this);
+ 
+         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
+         getServer().getPluginManager().registerEvents(new EntityDeathListener(this), this);
+@@ -70,6 +72,7 @@ public class SoulEnchants extends JavaPlugin {
+         getCommand("souls").setExecutor(new SoulsCommand(this));
+         getCommand("ce").setExecutor(new CECommand(this));
+         getCommand("bless").setExecutor(new BlessCommand(this));
++        getCommand("boss").setExecutor(new com.soulenchants.commands.BossCommand(this));
+ 
+         getLogger().info("SoulEnchants enabled. " + EnchantRegistry.all().size() + " enchants registered.");
+     }
+diff --git a/src/main/java/com/soulenchants/bosses/BoulderTracker.java b/src/main/java/com/soulenchants/bosses/BoulderTracker.java
+index 50d9f44..c87887d 100644
+--- a/src/main/java/com/soulenchants/bosses/BoulderTracker.java
++++ b/src/main/java/com/soulenchants/bosses/BoulderTracker.java
+@@ -38,7 +38,7 @@ public class BoulderTracker extends BukkitRunnable {
+         if (boulder.isDead() || ticks > 100) {
+             Location impact = boulder.getLocation();
+             for (Entity e : impact.getWorld().getNearbyEntities(impact, 4, 4, 4)) {
+-                if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 85, source);
++                if (e instanceof Player) com.soulenchants.bosses.BossDamage.apply((Player) e, 260, source);
+             }
+             impact.getWorld().createExplosion(impact.getX(), impact.getY(), impact.getZ(), 0f, false);
+             if (!boulder.isDead()) boulder.remove();
+diff --git a/src/main/java/com/soulenchants/bosses/IronGolemBoss.java b/src/main/java/com/soulenchants/bosses/IronGolemBoss.java
+index c0f858f..3efd9e8 100644
+--- a/src/main/java/com/soulenchants/bosses/IronGolemBoss.java
++++ b/src/main/java/com/soulenchants/bosses/IronGolemBoss.java
+@@ -290,7 +290,7 @@ public class IronGolemBoss {
+                     }
+                 }
+                 for (Player p : nearbyPlayers(6)) {
+-                    BossDamage.apply(p, 90, entity);
++                    BossDamage.apply(p, 280, entity);
+                     p.setVelocity(new org.bukkit.util.Vector(p.getVelocity().getX(), 1.0, p.getVelocity().getZ()));
+                     p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 80, 1));
+                 }
+@@ -334,7 +334,7 @@ public class IronGolemBoss {
+             @Override public void run() {
+                 if (t++ > 30 || entity.isDead()) { cancel(); return; }
+                 if (entity.getLocation().distanceSquared(target.getLocation()) < 4) {
+-                    BossDamage.apply(target, 110, entity);
++                    BossDamage.apply(target, 340, entity);
+                     target.setVelocity(new Vector(0, 0.6, 0));
+                     cancel();
+                 }
+@@ -428,7 +428,7 @@ public class IronGolemBoss {
+                     }
+                     for (Player p : nearbyPlayers(7)) {
+                         double dist = p.getLocation().distance(loc);
+-                        double dmg = Math.max(28, 95 - dist * 5);
++                        double dmg = Math.max(80, 290 - dist * 12);
+                         BossDamage.apply(p, dmg, entity);
+                         p.setVelocity(new Vector(0, 0.8, 0));
+                     }
+diff --git a/src/main/java/com/soulenchants/bosses/IronGolemManager.java b/src/main/java/com/soulenchants/bosses/IronGolemManager.java
+index d362d82..03e5938 100644
+--- a/src/main/java/com/soulenchants/bosses/IronGolemManager.java
++++ b/src/main/java/com/soulenchants/bosses/IronGolemManager.java
+@@ -73,7 +73,8 @@ public class IronGolemManager {
+         if (pool.isEmpty()) pool.addAll(EnchantRegistry.all());
+         CustomEnchant chosen = pool.get(rng.nextInt(pool.size()));
+         b.getEntity().getWorld().dropItemNaturally(b.getEntity().getLocation(),
+-                ItemFactories.book(chosen, Math.max(1, chosen.getMaxLevel() / 2)));
++                // Random level between 1 and maxLevel inclusive (uniform)
++                ItemFactories.book(chosen, 1 + rng.nextInt(chosen.getMaxLevel())));
+         // Drop the unique "Iron Heart" item
+         b.getEntity().getWorld().dropItemNaturally(b.getEntity().getLocation(), ironHeart());
+         // Full boss loot table
+diff --git a/src/main/java/com/soulenchants/bosses/IronGolemMinions.java b/src/main/java/com/soulenchants/bosses/IronGolemMinions.java
+index 97e6e70..8f4bbc2 100644
+--- a/src/main/java/com/soulenchants/bosses/IronGolemMinions.java
++++ b/src/main/java/com/soulenchants/bosses/IronGolemMinions.java
+@@ -111,9 +111,9 @@ public final class IronGolemMinions {
+             z.setCustomNameVisible(true);
+             z.setRemoveWhenFarAway(false);
+             z.setBaby(false);
+-            // Permanent passive boosts — Strength III + Speed I
++            // Permanent passive boosts — Strength V + Speed I (doubled output)
+             z.addPotionEffect(new org.bukkit.potion.PotionEffect(
+-                    org.bukkit.potion.PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 2, false, false));
++                    org.bukkit.potion.PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 4, false, false));
+             z.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                     org.bukkit.potion.PotionEffectType.SPEED, Integer.MAX_VALUE, 0, false, false));
+             equipSentinel(z);
+diff --git a/src/main/java/com/soulenchants/bosses/VeilweaverManager.java b/src/main/java/com/soulenchants/bosses/VeilweaverManager.java
+index 5350f4e..c6284ad 100644
+--- a/src/main/java/com/soulenchants/bosses/VeilweaverManager.java
++++ b/src/main/java/com/soulenchants/bosses/VeilweaverManager.java
+@@ -77,7 +77,8 @@ public class VeilweaverManager {
+         if (pool.isEmpty()) pool.addAll(EnchantRegistry.all());
+         CustomEnchant chosen = pool.get(rng.nextInt(pool.size()));
+         vw.getEntity().getWorld().dropItemNaturally(vw.getEntity().getLocation(),
+-                ItemFactories.book(chosen, Math.max(1, chosen.getMaxLevel() / 2)));
++                // Random level between 1 and maxLevel inclusive (uniform)
++                ItemFactories.book(chosen, 1 + rng.nextInt(chosen.getMaxLevel())));
+         // Full boss loot table
+         com.soulenchants.loot.BossLootTable.dropVeilweaver(vw.getEntity().getLocation());
+ 
+diff --git a/src/main/java/com/soulenchants/bosses/attacks/VeilweaverAttacks.java b/src/main/java/com/soulenchants/bosses/attacks/VeilweaverAttacks.java
+index 8aadd6a..f303a2f 100644
+--- a/src/main/java/com/soulenchants/bosses/attacks/VeilweaverAttacks.java
++++ b/src/main/java/com/soulenchants/bosses/attacks/VeilweaverAttacks.java
+@@ -34,7 +34,7 @@ public class VeilweaverAttacks {
+                         if (toPlayer.lengthSquared() > 16) continue;
+                         double dot = toPlayer.normalize().dot(forward);
+                         if (dot < 0.5) continue;
+-                        com.soulenchants.bosses.BossDamage.apply(p, 45, boss);
++                        com.soulenchants.bosses.BossDamage.apply(p, 70, boss);
+                         p.setVelocity(toPlayer.normalize().multiply(1.2).setY(0.4));
+                     }
+                     for (int i = 0; i < 40; i++) {
+@@ -176,7 +176,7 @@ public class VeilweaverAttacks {
+             Location p = from.clone().add(dir.clone().multiply(d));
+             for (Entity e : p.getWorld().getNearbyEntities(p, 1.0, 1.0, 1.0)) {
+                 if (e instanceof Player) {
+-                    com.soulenchants.bosses.BossDamage.apply((Player) e, 60, boss);
++                    com.soulenchants.bosses.BossDamage.apply((Player) e, 95, boss);
+                     ((Player) e).addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 120, 1));
+                 }
+             }
+diff --git a/src/main/java/com/soulenchants/commands/SoulsCommand.java b/src/main/java/com/soulenchants/commands/SoulsCommand.java
+index 70df794..ef4a234 100644
+--- a/src/main/java/com/soulenchants/commands/SoulsCommand.java
++++ b/src/main/java/com/soulenchants/commands/SoulsCommand.java
+@@ -1,7 +1,9 @@
+ package com.soulenchants.commands;
+ 
+ import com.soulenchants.SoulEnchants;
++import com.soulenchants.currency.SoulTier;
+ import org.bukkit.Bukkit;
++import org.bukkit.ChatColor;
+ import org.bukkit.OfflinePlayer;
+ import org.bukkit.command.Command;
+ import org.bukkit.command.CommandExecutor;
+@@ -20,20 +22,22 @@ public class SoulsCommand implements CommandExecutor {
+                 sender.sendMessage("§cConsole must specify a player.");
+                 return true;
+             }
+-            Player p = (Player) sender;
+-            sender.sendMessage("§5✦ §dSouls: §f" + plugin.getSoulManager().get(p));
++            showProfile(sender, (OfflinePlayer) sender);
+             return true;
+         }
+         String sub = args[0].toLowerCase();
++
++        if (sub.equals("show") || sub.equals("info") || sub.equals("profile")) {
++            OfflinePlayer target = args.length >= 2 ? Bukkit.getOfflinePlayer(args[1])
++                    : (sender instanceof Player ? (Player) sender : null);
++            if (target == null) { sender.sendMessage("§cSpecify a player."); return true; }
++            showProfile(sender, target);
++            return true;
++        }
++
+         if (sub.equals("give") || sub.equals("take") || sub.equals("set")) {
+-            if (!sender.hasPermission("soulenchants.admin")) {
+-                sender.sendMessage("§cNo permission.");
+-                return true;
+-            }
+-            if (args.length < 3) {
+-                sender.sendMessage("§c/souls " + sub + " <player> <amount>");
+-                return true;
+-            }
++            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage("§cNo permission."); return true; }
++            if (args.length < 3) { sender.sendMessage("§c/souls " + sub + " <player> <amount>"); return true; }
+             OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+             long amt;
+             try { amt = Long.parseLong(args[2]); }
+@@ -47,7 +51,157 @@ public class SoulsCommand implements CommandExecutor {
+                     + plugin.getSoulManager().get(target));
+             return true;
+         }
+-        sender.sendMessage("§7Usage: /souls [give|take|set] [player] [amount]");
++
++        // ── ADMIN DEBUG TOOLS ─────────────────────────────────────────────
++        if (sub.equals("setlifetime") || sub.equals("setlt")) {
++            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage("§cNo permission."); return true; }
++            if (args.length < 3) { sender.sendMessage("§c/souls setlifetime <player> <amount>"); return true; }
++            OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
++            long amt;
++            try { amt = Long.parseLong(args[2]); }
++            catch (NumberFormatException e) { sender.sendMessage("§cInvalid amount."); return true; }
++            // Force lifetime by calling add with the delta
++            long current = plugin.getSoulManager().getLifetime(target);
++            if (amt > current) plugin.getSoulManager().add(target, amt - current);
++            else sender.sendMessage("§eNote: lifetime can't go down. Current: " + current);
++            sender.sendMessage("§a✦ Lifetime now: §f" + plugin.getSoulManager().getLifetime(target)
++                    + " §7(" + plugin.getSoulManager().getTier(target).getLabel() + ")");
++            return true;
++        }
++
++        if (sub.equals("debug")) {
++            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage("§cNo permission."); return true; }
++            sender.sendMessage("§5✦ §dSoulManager debug:");
++            sender.sendMessage("§7  Tier thresholds:");
++            for (SoulTier t : SoulTier.values()) {
++                sender.sendMessage("§7    " + t.prefix() + " §8≥ §f" + t.getThreshold()
++                        + " §7| +" + t.getBonusMaxHp() + " HP"
++                        + (t.grantsBonusPerKill() ? " §7| +1 souls/kill" : ""));
++            }
++            sender.sendMessage("§7  Online players:");
++            for (Player p : Bukkit.getOnlinePlayers()) {
++                long c = plugin.getSoulManager().get(p);
++                long lt = plugin.getSoulManager().getLifetime(p);
++                SoulTier t = plugin.getSoulManager().getTier(p);
++                sender.sendMessage("§7    §f" + p.getName() + " §8| §dnow: " + c
++                        + " §8| §5lt: " + lt + " §8| " + t.prefix());
++            }
++            return true;
++        }
++
++        if (sub.equals("simkill") || sub.equals("testkill")) {
++            // Simulates a mob kill — useful for verifying soul drops, tier promotion
++            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage("§cNo permission."); return true; }
++            if (!(sender instanceof Player)) { sender.sendMessage("§cMust be a player."); return true; }
++            int n = args.length >= 2 ? safeInt(args[1], 1) : 1;
++            int per = args.length >= 3 ? safeInt(args[2], 5) : 5;
++            Player p = (Player) sender;
++            for (int i = 0; i < n; i++) plugin.getSoulManager().add(p, per);
++            sender.sendMessage("§a✦ Awarded §f" + (n*per) + " §asouls (sim).");
++            return true;
++        }
++
++        if (sub.equals("tier")) {
++            // List or query a tier
++            OfflinePlayer target = args.length >= 2 ? Bukkit.getOfflinePlayer(args[1])
++                    : (sender instanceof Player ? (Player) sender : null);
++            if (target == null) { sender.sendMessage("§cSpecify a player."); return true; }
++            SoulTier t = plugin.getSoulManager().getTier(target);
++            SoulTier next = t.next();
++            sender.sendMessage("§5✦ §d" + target.getName() + " §7→ " + t.prefix());
++            sender.sendMessage("§7  Lifetime souls: §f" + plugin.getSoulManager().getLifetime(target));
++            if (next != null) {
++                long need = next.getThreshold() - plugin.getSoulManager().getLifetime(target);
++                sender.sendMessage("§7  Next tier: " + next.prefix() + " §7(need §f" + need + " §7more)");
++            } else {
++                sender.sendMessage("§7  §6Maximum tier reached.");
++            }
++            return true;
++        }
++
++        if (sub.equals("settier")) {
++            if (!sender.hasPermission("soulenchants.admin")) { sender.sendMessage("§cNo permission."); return true; }
++            if (args.length < 3) {
++                sender.sendMessage("§c/souls settier <player> <tier>");
++                StringBuilder tiers = new StringBuilder("§7Valid tiers: ");
++                for (SoulTier t : SoulTier.values()) tiers.append(t.getColor()).append(t.getLabel()).append(" §7");
++                sender.sendMessage(tiers.toString());
++                return true;
++            }
++            OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
++            SoulTier wanted;
++            try { wanted = SoulTier.valueOf(args[2].toUpperCase()); }
++            catch (IllegalArgumentException ex) { sender.sendMessage("§cUnknown tier. Try: initiate/bronze/silver/gold/veiled/soulbound"); return true; }
++            long current = plugin.getSoulManager().getLifetime(target);
++            long target2 = wanted.getThreshold();
++            if (target2 > current) {
++                plugin.getSoulManager().add(target, target2 - current);
++                sender.sendMessage("§a✦ Bumped " + target.getName() + " up to " + wanted.prefix());
++            } else if (target2 < current) {
++                // Lifetime is permanent; we have to surgically lower it without going through add()
++                // Use the manager's set semantics via reflection-free helper
++                plugin.getSoulManager().forceSetLifetime(target, target2);
++                sender.sendMessage("§e✦ Forced " + target.getName() + " down to " + wanted.prefix() + " §7(non-canonical, debug only)");
++            } else {
++                sender.sendMessage("§7Already at " + wanted.prefix());
++            }
++            return true;
++        }
++
++        if (sub.equals("rules") || sub.equals("table")) {
++            // Show the mob soul drop table
++            sender.sendMessage("§5✦ §dMob soul drops:");
++            sender.sendMessage("§7  Zombie §8| §f3         Skeleton §8| §f4");
++            sender.sendMessage("§7  Spider §8| §f3         Cave Spider §8| §f5");
++            sender.sendMessage("§7  Creeper §8| §f8        Witch §8| §f12");
++            sender.sendMessage("§7  Enderman §8| §f15      Pig Zombie §8| §f6");
++            sender.sendMessage("§7  Blaze §8| §f10         Wither Skel §8| §f12");
++            sender.sendMessage("§7  Magma Cube §8| §f2-4   Slime §8| §f1-2");
++            sender.sendMessage("§7  Ghast §8| §f9          Silverfish §8| §f2");
++            sender.sendMessage("§7  Iron Sentinel §8| §f30  Echo Clone §8| §f50");
++            sender.sendMessage("§7  Bonus rules:");
++            sender.sendMessage("§7    • baby mobs: §f1");
++            sender.sendMessage("§7    • spawner mobs: §c-50%");
++            sender.sendMessage("§7    • one-shot full HP: §c-50%");
++            sender.sendMessage("§7    • combat (recently hit): §a+20%");
++            sender.sendMessage("§7    • Soul Reaper L1/2/3: §a+25/50/75%");
++            sender.sendMessage("§7    • Silver+ tier: §a+1");
++            sender.sendMessage("§7    • no players within 100 blocks: §c0 (anti-AFK)");
++            return true;
++        }
++
++        sender.sendMessage("§5✦ §dSouls commands:");
++        sender.sendMessage("§7  /souls §8(your profile)");
++        sender.sendMessage("§7  /souls show <player>");
++        sender.sendMessage("§7  /souls tier [player]");
++        sender.sendMessage("§7  /souls give|take|set <player> <amount> §8(admin)");
++        sender.sendMessage("§7  /souls setlifetime <player> <amount> §8(admin, only goes up)");
++        sender.sendMessage("§7  /souls settier <player> <tier> §8(admin, jump to a tier)");
++        sender.sendMessage("§7  /souls debug §8(admin)");
++        sender.sendMessage("§7  /souls simkill [count] [per] §8(admin)");
++        sender.sendMessage("§7  /souls rules §8(mob drop table)");
+         return true;
+     }
++
++    private void showProfile(CommandSender to, OfflinePlayer p) {
++        long now = plugin.getSoulManager().get(p);
++        long lt  = plugin.getSoulManager().getLifetime(p);
++        SoulTier t = plugin.getSoulManager().getTier(p);
++        SoulTier next = t.next();
++        to.sendMessage("§5✦ §d" + p.getName() + "§7's Soul Profile");
++        to.sendMessage("§7  Tier: " + t.prefix() + " §8| +" + t.getBonusMaxHp() + " HP"
++                + (t.grantsBonusPerKill() ? " §8| +1 souls/kill" : ""));
++        to.sendMessage("§7  Souls: §f" + now);
++        to.sendMessage("§7  Lifetime: §f" + lt);
++        if (next != null) {
++            long need = next.getThreshold() - lt;
++            to.sendMessage("§7  Next: " + next.prefix() + " §8(in §f" + need + "§8)");
++        } else {
++            to.sendMessage("§7  §6Maximum tier reached.");
++        }
++    }
++
++    private int safeInt(String s, int dflt) {
++        try { return Integer.parseInt(s); } catch (Exception e) { return dflt; }
++    }
+ }
+diff --git a/src/main/java/com/soulenchants/currency/SoulManager.java b/src/main/java/com/soulenchants/currency/SoulManager.java
+index 4066441..ee4097c 100644
+--- a/src/main/java/com/soulenchants/currency/SoulManager.java
++++ b/src/main/java/com/soulenchants/currency/SoulManager.java
+@@ -1,8 +1,13 @@
+ package com.soulenchants.currency;
+ 
++import com.soulenchants.SoulEnchants;
++import org.bukkit.Bukkit;
++import org.bukkit.ChatColor;
+ import org.bukkit.OfflinePlayer;
++import org.bukkit.Sound;
+ import org.bukkit.configuration.file.FileConfiguration;
+ import org.bukkit.configuration.file.YamlConfiguration;
++import org.bukkit.entity.Player;
+ 
+ import java.io.File;
+ import java.io.IOException;
+@@ -10,13 +15,27 @@ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.UUID;
+ 
++/**
++ * Tracks current spendable souls + immutable lifetime-earned counter.
++ * The lifetime counter only goes up; spending and dying never reduce it.
++ *
++ * Storage layout (souls.yml):
++ *   {uuid}:
++ *     current: 1234
++ *     lifetime: 47000
++ *
++ * Legacy single-long entries are migrated on load.
++ */
+ public class SoulManager {
+ 
++    private final SoulEnchants plugin;
+     private final File file;
+     private final FileConfiguration config;
+-    private final Map<UUID, Long> cache = new HashMap<>();
++    private final Map<UUID, Long> currentCache  = new HashMap<>();
++    private final Map<UUID, Long> lifetimeCache = new HashMap<>();
+ 
+-    public SoulManager(File dataFolder) {
++    public SoulManager(SoulEnchants plugin, File dataFolder) {
++        this.plugin = plugin;
+         if (!dataFolder.exists()) dataFolder.mkdirs();
+         this.file = new File(dataFolder, "souls.yml");
+         if (!file.exists()) {
+@@ -24,32 +43,92 @@ public class SoulManager {
+         }
+         this.config = YamlConfiguration.loadConfiguration(file);
+         for (String key : config.getKeys(false)) {
+-            try { cache.put(UUID.fromString(key), config.getLong(key)); } catch (Exception ignored) {}
++            try {
++                UUID id = UUID.fromString(key);
++                if (config.isLong(key) || config.isInt(key)) {
++                    // Legacy: single value, migrate as both current + lifetime baseline
++                    long val = config.getLong(key);
++                    currentCache.put(id, val);
++                    lifetimeCache.put(id, val);
++                } else {
++                    currentCache.put(id, config.getLong(key + ".current", 0L));
++                    lifetimeCache.put(id, config.getLong(key + ".lifetime", 0L));
++                }
++            } catch (Exception ignored) {}
+         }
+     }
+ 
++    /** Backwards-compat constructor for code paths still using the old signature. */
++    public SoulManager(File dataFolder) {
++        this(null, dataFolder);
++    }
++
+     public long get(OfflinePlayer p) {
+-        return cache.getOrDefault(p.getUniqueId(), 0L);
++        return currentCache.getOrDefault(p.getUniqueId(), 0L);
++    }
++
++    public long getLifetime(OfflinePlayer p) {
++        return lifetimeCache.getOrDefault(p.getUniqueId(), 0L);
++    }
++
++    public SoulTier getTier(OfflinePlayer p) {
++        return SoulTier.forLifetime(getLifetime(p));
+     }
+ 
+     public void set(OfflinePlayer p, long amount) {
+-        cache.put(p.getUniqueId(), Math.max(0, amount));
++        currentCache.put(p.getUniqueId(), Math.max(0, amount));
+     }
+ 
++    /** Add souls. Bumps lifetime and triggers tier promotion if a threshold is crossed. */
+     public void add(OfflinePlayer p, long amount) {
+-        set(p, get(p) + amount);
++        if (amount <= 0) return;
++        UUID id = p.getUniqueId();
++        long oldLifetime = lifetimeCache.getOrDefault(id, 0L);
++        long newLifetime = oldLifetime + amount;
++        currentCache.put(id, currentCache.getOrDefault(id, 0L) + amount);
++        lifetimeCache.put(id, newLifetime);
++        SoulTier oldT = SoulTier.forLifetime(oldLifetime);
++        SoulTier newT = SoulTier.forLifetime(newLifetime);
++        if (newT != oldT && p instanceof Player) {
++            promote((Player) p, oldT, newT);
++        }
++    }
++
++    /** Admin-only: forcibly overwrite a player's lifetime counter. Bypasses the
++     *  promotion broadcast — used for /souls settier when going down. */
++    public void forceSetLifetime(OfflinePlayer p, long amount) {
++        lifetimeCache.put(p.getUniqueId(), Math.max(0, amount));
+     }
+ 
+     public boolean take(OfflinePlayer p, long amount) {
+         long bal = get(p);
+         if (bal < amount) return false;
+-        set(p, bal - amount);
++        currentCache.put(p.getUniqueId(), bal - amount);
+         return true;
+     }
+ 
++    private void promote(Player p, SoulTier oldT, SoulTier newT) {
++        Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "✦✦✦ "
++                + ChatColor.LIGHT_PURPLE + p.getName() + ChatColor.DARK_PURPLE
++                + " has reached " + newT.getColor() + ChatColor.BOLD + newT.getLabel()
++                + ChatColor.DARK_PURPLE + " tier ✦✦✦");
++        try {
++            p.sendTitle(newT.getColor() + ChatColor.BOLD.toString() + newT.getLabel().toUpperCase(),
++                    ChatColor.GRAY + "tier reached");
++            p.playSound(p.getLocation(), Sound.LEVEL_UP, 1.5f, 1.2f);
++            p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 0.6f, 1.5f);
++            // Fireworks-style explosion sound
++            for (int i = 0; i < 3; i++)
++                p.playSound(p.getLocation(), Sound.FIREWORK_BLAST, 1.0f, 1.0f);
++        } catch (Throwable ignored) {}
++    }
++
+     public void save() {
+-        for (Map.Entry<UUID, Long> e : cache.entrySet()) {
+-            config.set(e.getKey().toString(), e.getValue());
++        // Wipe + rewrite everything in the new layout
++        for (String key : config.getKeys(false)) config.set(key, null);
++        for (UUID id : currentCache.keySet()) {
++            config.set(id.toString() + ".current",  currentCache.get(id));
++            config.set(id.toString() + ".lifetime", lifetimeCache.getOrDefault(id, currentCache.get(id)));
+         }
+         try { config.save(file); } catch (IOException ignored) {}
+     }
+diff --git a/src/main/java/com/soulenchants/enchants/EnchantRegistry.java b/src/main/java/com/soulenchants/enchants/EnchantRegistry.java
+index fc4ee81..0b48d79 100644
+--- a/src/main/java/com/soulenchants/enchants/EnchantRegistry.java
++++ b/src/main/java/com/soulenchants/enchants/EnchantRegistry.java
+@@ -13,16 +13,16 @@ public class EnchantRegistry {
+ 
+     public static void registerDefaults() {
+         // ── SWORD ─────────────────────────────────────────────────────────
+-        register(new LifestealEnchant());
+-        register(new CustomEnchant("bleed", "Bleed", EnchantTier.UNCOMMON, EnchantSlot.SWORD, 3,
++        register(new LifestealEnchant());                                                                     // L5 — set in impl
++        register(new CustomEnchant("bleed", "Bleed", EnchantTier.UNCOMMON, EnchantSlot.SWORD, 5,
+                 "Damage over time on hit"));
+         register(new CustomEnchant("deepwounds", "Deepwounds", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
+                 "Apply Wither (anti-regen) on hit"));
+         register(new CustomEnchant("cripple", "Cripple", EnchantTier.RARE, EnchantSlot.SWORD, 3,
+                 "Slowness + Weakness on hit (5s cooldown)"));
+-        register(new CustomEnchant("venom", "Venom", EnchantTier.UNCOMMON, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("venom", "Venom", EnchantTier.UNCOMMON, EnchantSlot.SWORD, 5,
+                 "Poison on hit"));
+-        register(new CustomEnchant("vampire", "Vampire", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("vampire", "Vampire", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 2,
+                 "Killed mobs drop bonus XP"));
+         register(new CustomEnchant("slayer", "Slayer", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+                 "Bonus damage to bosses and their minions"));
+@@ -30,39 +30,39 @@ public class EnchantRegistry {
+                 "Bonus damage to undead mobs"));
+         register(new CustomEnchant("witherbane", "Wither Bane", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+                 "Extra damage to wither variants"));
+-        register(new CustomEnchant("cleave", "Cleave", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+-                "Hits splash nearby mobs for a % of the damage"));
++        register(new CustomEnchant("cleave", "Cleave", EnchantTier.EPIC, EnchantSlot.SWORD, 7,
++                "Hits splash nearby mobs for a % of the damage (capped 100%)"));
+         register(new CustomEnchant("executioner", "Executioner", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
+                 "Bonus damage to enemies below 30% HP"));
+-        register(new CustomEnchant("reaper", "Reaper", EnchantTier.RARE, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("reaper", "Reaper", EnchantTier.RARE, EnchantSlot.SWORD, 2,
+                 "Heal a chunk of HP on kill"));
+-        register(new CustomEnchant("soulreaper", "Soul Reaper", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
+-                "Bonus Souls from boss kills"));
++        register(new CustomEnchant("soulreaper", "Soul Reaper", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 5,
++                "Bonus Souls from boss + mob kills"));
+         register(new CustomEnchant("demonslayer", "Demon Slayer", EnchantTier.RARE, EnchantSlot.SWORD, 3,
+                 "Bonus damage to nether mobs"));
+         register(new CustomEnchant("beastslayer", "Beast Slayer", EnchantTier.RARE, EnchantSlot.SWORD, 3,
+                 "Bonus damage to arthropods"));
+         register(new CustomEnchant("frostaspect", "Frost Aspect", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+                 "Slowness + Mining Fatigue on hit"));
+-        register(new CustomEnchant("bloodlust", "Bloodlust", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
+-                "Stacking damage bonus per kill (5 stacks max, 10s decay)"));
+-        register(new CustomEnchant("cursededge", "Cursed Edge", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("bloodlust", "Bloodlust", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 6,
++                "Stacking damage bonus per kill (decays after 10s)"));
++        register(new CustomEnchant("cursededge", "Cursed Edge", EnchantTier.EPIC, EnchantSlot.SWORD, 2,
+                 "Chance to apply Wither II on hit"));
+-        register(new CustomEnchant("soulburn", "Soul Burn", EnchantTier.RARE, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("soulburn", "Soul Burn", EnchantTier.RARE, EnchantSlot.SWORD, 5,
+                 "Set targets on fire on hit"));
+-        register(new CustomEnchant("phantomstrike", "Phantom Strike", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("phantomstrike", "Phantom Strike", EnchantTier.LEGENDARY, EnchantSlot.SWORD, 2,
+                 "Chance to teleport behind your target on hit"));
+         register(new CustomEnchant("earthshaker", "Earthshaker", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+                 "Small AoE damage shockwave on hit"));
+-        register(new CustomEnchant("bonebreaker", "Bonebreaker", EnchantTier.UNCOMMON, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("bonebreaker", "Bonebreaker", EnchantTier.UNCOMMON, EnchantSlot.SWORD, 5,
+                 "Apply Weakness on hit"));
+-        register(new CustomEnchant("criticalstrike", "Critical Strike", EnchantTier.RARE, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("criticalstrike", "Critical Strike", EnchantTier.RARE, EnchantSlot.SWORD, 5,
+                 "Chance for a guaranteed critical hit (+50%)"));
+-        register(new CustomEnchant("headhunter", "Headhunter", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("headhunter", "Headhunter", EnchantTier.EPIC, EnchantSlot.SWORD, 2,
+                 "Chance for mob heads to drop on kill"));
+         register(new CustomEnchant("razorwind", "Razor Wind", EnchantTier.EPIC, EnchantSlot.SWORD, 3,
+                 "Cone slash damages enemies in front on hit"));
+-        register(new CustomEnchant("greedy", "Greedy", EnchantTier.RARE, EnchantSlot.SWORD, 3,
++        register(new CustomEnchant("greedy", "Greedy", EnchantTier.RARE, EnchantSlot.SWORD, 2,
+                 "Bonus mob loot drops"));
+ 
+         // ── HELMET ────────────────────────────────────────────────────────
+@@ -79,14 +79,14 @@ public class EnchantRegistry {
+         register(new BerserkEnchant()); // chestplate now (updated below via slot override not possible — rely on default ARMOR for now)
+         register(new CustomEnchant("phoenix", "Phoenix", EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 1,
+                 "Once every 2 minutes, survive a lethal hit with full HP"));
+-        register(new CustomEnchant("overshield", "Overshield", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
+-                "Constant Absorption (+2/4/6 shield HP)"));
++        register(new CustomEnchant("overshield", "Overshield", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 4,
++                "Rare chance (per level) to gain 1 absorption heart on hit — 120s CD"));
+         register(new CustomEnchant("implants", "Implants", EnchantTier.RARE, EnchantSlot.CHESTPLATE, 3,
+-                "Constant Regeneration"));
+-        register(new CustomEnchant("vital", "Vital", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
+-                "+2/4/6 max HP"));
++                "Regeneration when below 50% HP"));
++        register(new CustomEnchant("vital", "Vital", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 5,
++                "+2 max HP per level (up to +10 at L5)"));
+         register(new CustomEnchant("laststand", "Last Stand", EnchantTier.LEGENDARY, EnchantSlot.CHESTPLATE, 3,
+-                "Resistance buff when below 6 HP"));
++                "Resistance buff when below 4 HP"));
+         register(new CustomEnchant("blessed", "Blessed", EnchantTier.EPIC, EnchantSlot.CHESTPLATE, 3,
+                 "Reduce damage taken from bosses + Wither"));
+ 
+@@ -95,11 +95,11 @@ public class EnchantRegistry {
+                 "Reduce damage from sword attackers. Stacks: more pieces = stronger."));
+ 
+         // ── LEGGINGS ──────────────────────────────────────────────────────
+-        register(new CustomEnchant("hardened", "Hardened", EnchantTier.UNCOMMON, EnchantSlot.LEGGINGS, 3,
++        register(new CustomEnchant("hardened", "Hardened", EnchantTier.UNCOMMON, EnchantSlot.LEGGINGS, 5,
+                 "Reduce melee damage taken"));
+-        register(new CustomEnchant("antiknockback", "Antiknockback", EnchantTier.EPIC, EnchantSlot.LEGGINGS, 3,
++        register(new CustomEnchant("antiknockback", "Antiknockback", EnchantTier.EPIC, EnchantSlot.LEGGINGS, 2,
+                 "Reduce knockback received from attacks"));
+-        register(new CustomEnchant("endurance", "Endurance", EnchantTier.RARE, EnchantSlot.LEGGINGS, 3,
++        register(new CustomEnchant("endurance", "Endurance", EnchantTier.RARE, EnchantSlot.LEGGINGS, 2,
+                 "Damage reduction stacks the longer you fight"));
+         register(new CustomEnchant("ironclad", "Ironclad", EnchantTier.RARE, EnchantSlot.LEGGINGS, 3,
+                 "Reduce explosion damage"));
+@@ -111,7 +111,7 @@ public class EnchantRegistry {
+                 "Speed when below 7 HP"));
+         register(new CustomEnchant("depthstrider", "Depth Strider", EnchantTier.COMMON, EnchantSlot.BOOTS, 3,
+                 "Swim faster in water"));
+-        register(new CustomEnchant("haste", "Haste", EnchantTier.RARE, EnchantSlot.BOOTS, 3,
++        register(new CustomEnchant("haste", "Haste", EnchantTier.RARE, EnchantSlot.BOOTS, 5,
+                 "Mine and attack faster"));
+         register(new CustomEnchant("jumpboost", "Jump Boost", EnchantTier.COMMON, EnchantSlot.BOOTS, 3,
+                 "Jump higher"));
+@@ -121,27 +121,27 @@ public class EnchantRegistry {
+                 "Reduce fall damage by 33/66/100%"));
+ 
+         // ── ANY ARMOR ─────────────────────────────────────────────────────
+-        register(new CustomEnchant("molten", "Molten", EnchantTier.EPIC, EnchantSlot.ARMOR, 3,
++        register(new CustomEnchant("molten", "Molten", EnchantTier.EPIC, EnchantSlot.ARMOR, 2,
+                 "Set attackers on fire when hit"));
+-        register(new CustomEnchant("stormcaller", "Stormcaller", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
++        register(new CustomEnchant("stormcaller", "Stormcaller", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 2,
+                 "Lightning strikes attacker on big hits"));
+         register(new CustomEnchant("guardians", "Guardians", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
+-                "Gain Absorption hearts when hit (cooldown)"));
+-        register(new CustomEnchant("reflect", "Reflect", EnchantTier.EPIC, EnchantSlot.ARMOR, 3,
++                "Small chance to gain Absorption when hit (120s CD)"));
++        register(new CustomEnchant("reflect", "Reflect", EnchantTier.EPIC, EnchantSlot.ARMOR, 2,
+                 "Reflect a percentage of incoming damage"));
+-        register(new CustomEnchant("vengeance", "Vengeance", EnchantTier.RARE, EnchantSlot.ARMOR, 3,
++        register(new CustomEnchant("vengeance", "Vengeance", EnchantTier.RARE, EnchantSlot.ARMOR, 2,
+                 "Deal small damage back to attackers"));
+         register(new CustomEnchant("lifebloom", "Lifebloom", EnchantTier.RARE, EnchantSlot.ARMOR, 3,
+                 "Regen when standing still"));
+         register(new CustomEnchant("magnetism", "Magnetism", EnchantTier.COMMON, EnchantSlot.ARMOR, 1,
+                 "Pull nearby dropped items toward you"));
+         register(new CustomEnchant("enlightened", "Enlightened", EnchantTier.LEGENDARY, EnchantSlot.ARMOR, 3,
+-                "Chance to convert incoming damage into healing. Stacks across pieces."));
++                "Tiny chance to convert incoming damage into a small heal. Stacks."));
+ 
+         // ── TOOLS / GRINDING ──────────────────────────────────────────────
+         register(new AutoSmeltEnchant());
+         register(new TelepathyEnchant());
+-        register(new CustomEnchant("xpboost", "XP Boost", EnchantTier.COMMON, EnchantSlot.TOOL, 3,
++        register(new CustomEnchant("xpboost", "XP Boost", EnchantTier.COMMON, EnchantSlot.TOOL, 5,
+                 "Multiply XP from mining and mob kills"));
+         register(new CustomEnchant("treefeller", "Treefeller", EnchantTier.COMMON, EnchantSlot.AXE, 1,
+                 "Chop the entire tree at once"));
+diff --git a/src/main/java/com/soulenchants/enchants/impl/LifestealEnchant.java b/src/main/java/com/soulenchants/enchants/impl/LifestealEnchant.java
+index b3997d5..60b860c 100644
+--- a/src/main/java/com/soulenchants/enchants/impl/LifestealEnchant.java
++++ b/src/main/java/com/soulenchants/enchants/impl/LifestealEnchant.java
+@@ -12,15 +12,15 @@ public class LifestealEnchant extends CustomEnchant {
+     private static final Random RNG = new Random();
+ 
+     public LifestealEnchant() {
+-        super("lifesteal", "Lifesteal", EnchantTier.RARE, EnchantSlot.SWORD, 3,
++        super("lifesteal", "Lifesteal", EnchantTier.RARE, EnchantSlot.SWORD, 5,
+               "Chance to heal on hit");
+     }
+ 
+     public void onHit(Player attacker, int level) {
+-        double chance = 0.05 * level; // 5/10/15%
++        // Heavy nerf: 2% chance per level (max 10% at L5), heals 1 HP flat per proc.
++        double chance = Math.min(0.10, 0.02 * level);
+         if (RNG.nextDouble() > chance) return;
+-        double heal = 1.0 * level; // 1/2/3 HP (half a heart per level pair, hearts =2 HP)
+-        double newHp = Math.min(attacker.getHealth() + heal, attacker.getMaxHealth());
++        double newHp = Math.min(attacker.getHealth() + 1.0, attacker.getMaxHealth());
+         attacker.setHealth(newHp);
+     }
+ }
+diff --git a/src/main/java/com/soulenchants/items/GodSet.java b/src/main/java/com/soulenchants/items/GodSet.java
+index 5cc31a4..1ec0d92 100644
+--- a/src/main/java/com/soulenchants/items/GodSet.java
++++ b/src/main/java/com/soulenchants/items/GodSet.java
+@@ -13,6 +13,7 @@ import java.util.List;
+ /**
+  * Builds a fully-enchanted boss-killer loadout for admin testing.
+  * Respects slot rules + 9-enchant cap. Stacks Armored + Enlightened across pieces.
++ * Levels match each enchant's current max (post-rebalance).
+  */
+ public class GodSet {
+ 
+@@ -32,9 +33,9 @@ public class GodSet {
+         it = ItemUtil.addEnchant(it, "saturation",   3);
+         it = ItemUtil.addEnchant(it, "aquatic",      1);
+         it = ItemUtil.addEnchant(it, "enlightened",  3);
+-        it = ItemUtil.addEnchant(it, "stormcaller",  3);
+-        it = ItemUtil.addEnchant(it, "reflect",      3);
+-        it = ItemUtil.addEnchant(it, "vengeance",    3);
++        it = ItemUtil.addEnchant(it, "stormcaller",  2);
++        it = ItemUtil.addEnchant(it, "reflect",      2);
++        it = ItemUtil.addEnchant(it, "vengeance",    2);
+         it = ItemUtil.addEnchant(it, "magnetism",    1);
+         return it;
+     }
+@@ -44,9 +45,9 @@ public class GodSet {
+         ItemStack it = baseArmor(Material.DIAMOND_CHESTPLATE, "Ironheart Bulwark");
+         it = ItemUtil.addEnchant(it, "berserk",      3);
+         it = ItemUtil.addEnchant(it, "phoenix",      1);
+-        it = ItemUtil.addEnchant(it, "overshield",   3);
++        it = ItemUtil.addEnchant(it, "overshield",   4);
+         it = ItemUtil.addEnchant(it, "implants",     3);
+-        it = ItemUtil.addEnchant(it, "vital",        3);
++        it = ItemUtil.addEnchant(it, "vital",        5);
+         it = ItemUtil.addEnchant(it, "laststand",    3);
+         it = ItemUtil.addEnchant(it, "blessed",      3);
+         it = ItemUtil.addEnchant(it, "armored",      4);
+@@ -57,14 +58,14 @@ public class GodSet {
+     // ── LEGGINGS ─ 4 leggings-only + 2 stacking + 3 any-armor = 9 ─
+     private static ItemStack buildLeggings() {
+         ItemStack it = baseArmor(Material.DIAMOND_LEGGINGS, "Colossus Greaves");
+-        it = ItemUtil.addEnchant(it, "hardened",     3);
+-        it = ItemUtil.addEnchant(it, "antiknockback",3);
+-        it = ItemUtil.addEnchant(it, "endurance",    3);
++        it = ItemUtil.addEnchant(it, "hardened",     5);
++        it = ItemUtil.addEnchant(it, "antiknockback",2);
++        it = ItemUtil.addEnchant(it, "endurance",    2);
+         it = ItemUtil.addEnchant(it, "ironclad",     3);
+         it = ItemUtil.addEnchant(it, "armored",      4);
+         it = ItemUtil.addEnchant(it, "enlightened",  3);
+         it = ItemUtil.addEnchant(it, "guardians",    3);
+-        it = ItemUtil.addEnchant(it, "molten",       3);
++        it = ItemUtil.addEnchant(it, "molten",       2);
+         it = ItemUtil.addEnchant(it, "lifebloom",    3);
+         return it;
+     }
+@@ -75,7 +76,7 @@ public class GodSet {
+         it = ItemUtil.addEnchant(it, "speed",         3);
+         it = ItemUtil.addEnchant(it, "adrenaline",    3);
+         it = ItemUtil.addEnchant(it, "depthstrider",  3);
+-        it = ItemUtil.addEnchant(it, "haste",         3);
++        it = ItemUtil.addEnchant(it, "haste",         5);
+         it = ItemUtil.addEnchant(it, "jumpboost",     3);
+         it = ItemUtil.addEnchant(it, "firewalker",    1);
+         it = ItemUtil.addEnchant(it, "featherweight", 3);
+@@ -92,15 +93,15 @@ public class GodSet {
+             it.addUnsafeEnchantment(Enchantment.LOOT_BONUS_MOBS, 3);
+             it.addUnsafeEnchantment(Enchantment.DURABILITY, 3);
+         } catch (Throwable ignored) {}
+-        it = ItemUtil.addEnchant(it, "lifesteal",       3);
++        it = ItemUtil.addEnchant(it, "lifesteal",       5);
+         it = ItemUtil.addEnchant(it, "slayer",          3);
+         it = ItemUtil.addEnchant(it, "holysmite",       3);
+         it = ItemUtil.addEnchant(it, "witherbane",      3);
+-        it = ItemUtil.addEnchant(it, "cleave",          3);
++        it = ItemUtil.addEnchant(it, "cleave",          7);
+         it = ItemUtil.addEnchant(it, "executioner",     3);
+-        it = ItemUtil.addEnchant(it, "reaper",          3);
+-        it = ItemUtil.addEnchant(it, "soulreaper",      3);
+-        it = ItemUtil.addEnchant(it, "criticalstrike",  3);
++        it = ItemUtil.addEnchant(it, "bloodlust",       6);
++        it = ItemUtil.addEnchant(it, "soulreaper",      5);
++        it = ItemUtil.addEnchant(it, "criticalstrike",  5);
+         return it;
+     }
+ 
+diff --git a/src/main/java/com/soulenchants/listeners/BerserkTickTask.java b/src/main/java/com/soulenchants/listeners/BerserkTickTask.java
+index ecbf8c4..8d13dc4 100644
+--- a/src/main/java/com/soulenchants/listeners/BerserkTickTask.java
++++ b/src/main/java/com/soulenchants/listeners/BerserkTickTask.java
+@@ -134,10 +134,8 @@ public class BerserkTickTask extends BukkitRunnable {
+             p.addPotionEffect(new PotionEffect(PotionEffectType.WATER_BREATHING, 60, 0, true, false), true);
+             applyThisTick.add(PotionEffectType.WATER_BREATHING);
+         }
+-        if (overshield > 0) {
+-            p.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 60, overshield - 1, true, false), true);
+-            applyThisTick.add(PotionEffectType.ABSORPTION);
+-        }
++        // Overshield is no longer a passive Absorption tick — it's been moved to a
++        // chance-on-hit proc in CombatListener with a long cooldown.
+ 
+         // Drunk: Strength is always applied; Slow + Mining Fatigue are suppressed if blessed.
+         if (drunk > 0) {
+@@ -160,8 +158,10 @@ public class BerserkTickTask extends BukkitRunnable {
+         }
+         applied.put(id, applyThisTick);
+ 
+-        // Vital — self-correcting
+-        double expectedMax = 20.0 + (vital * 2.0);
++        // Vital + tier bonus + Heart-of-the-Forge stacks — all combined, self-correcting
++        int tierHp  = plugin.getSoulManager().getTier(p).getBonusMaxHp();
++        int heartHp = plugin.getLootProfile().bonusHpFor(p);
++        double expectedMax = 20.0 + (vital * 2.0) + tierHp + heartHp;
+         if (Math.abs(p.getMaxHealth() - expectedMax) > 0.01) {
+             p.setMaxHealth(expectedMax);
+             if (p.getHealth() > expectedMax) p.setHealth(expectedMax);
+diff --git a/src/main/java/com/soulenchants/listeners/CombatListener.java b/src/main/java/com/soulenchants/listeners/CombatListener.java
+index 987a81c..af4f0d5 100644
+--- a/src/main/java/com/soulenchants/listeners/CombatListener.java
++++ b/src/main/java/com/soulenchants/listeners/CombatListener.java
+@@ -60,7 +60,7 @@ public class CombatListener implements Listener {
+         if (e.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
+                 || e.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) {
+             int ic = maxArmor(victim, "ironclad");
+-            if (ic > 0) e.setDamage(e.getDamage() * (1.0 - 0.12 * ic));
++            if (ic > 0) e.setDamage(e.getDamage() * (1.0 - Math.min(0.15, 0.05 * ic)));
+         }
+ 
+         // Lethal-hit save enchants (Phoenix, Soul Shield) via unified helper
+@@ -145,10 +145,10 @@ public class CombatListener implements Listener {
+         if (exec > 0 && victim.getHealth() / victim.getMaxHealth() < 0.30)
+             e.setDamage(e.getDamage() * (1.0 + 0.25 * exec));
+ 
+-        // Cleave
++        // Cleave — splash capped at 100% of hit damage
+         int cleave = ItemUtil.getLevel(hand, "cleave");
+         if (cleave > 0) {
+-            double splashDmg = e.getDamage() * (0.2 * cleave);
++            double splashDmg = e.getDamage() * Math.min(1.0, 0.2 * cleave);
+             for (Entity near : victim.getNearbyEntities(2.5, 2.5, 2.5)) {
+                 if (!(near instanceof LivingEntity) || near.equals(attacker) || near.equals(victim)) continue;
+                 if (near instanceof Player) continue;
+@@ -265,7 +265,7 @@ public class CombatListener implements Listener {
+     private void handleArmorOnHit(Player victim, EntityDamageByEntityEvent e) {
+         ItemStack[] armor = victim.getInventory().getArmorContents();
+         int hardened=0, antikb=0, molten=0, lastStand=0, stormcall=0, guardians=0,
+-            reflect=0, endurance=0, vengeance=0, soulburst=0;
++            reflect=0, endurance=0, vengeance=0, soulburst=0, overshield=0;
+         // Stackable enchants: SUM levels across all pieces (more pieces = stronger).
+         int armoredSum = 0, enlightenedSum = 0;
+         for (ItemStack a : armor) {
+@@ -280,19 +280,20 @@ public class CombatListener implements Listener {
+             endurance  = Math.max(endurance,  ItemUtil.getLevel(a, "endurance"));
+             vengeance  = Math.max(vengeance,  ItemUtil.getLevel(a, "vengeance"));
+             soulburst  = Math.max(soulburst,  ItemUtil.getLevel(a, "soulburst"));
++            overshield = Math.max(overshield, ItemUtil.getLevel(a, "overshield"));
+             armoredSum     += ItemUtil.getLevel(a, "armored");
+             enlightenedSum += ItemUtil.getLevel(a, "enlightened");
+         }
+         final UUID id = victim.getUniqueId();
+ 
+         // Armored: stacks across chestplate + leggings.
+-        // proc = 4% × sum_level (max 32% at 4+4)   reduction = 2% × sum_level (max 16%)
++        // proc = 2% × sum_level (max 16% at 4+4)   reduction = 1% × sum_level (max 8%)
+         if (armoredSum > 0 && e.getDamager() instanceof Player) {
+             ItemStack hand = ((Player) e.getDamager()).getItemInHand();
+             if (hand != null && hand.getType().name().endsWith("_SWORD")) {
+-                double proc = Math.min(0.32, 0.04 * armoredSum);
++                double proc = Math.min(0.16, 0.02 * armoredSum);
+                 if (rng.nextDouble() < proc) {
+-                    double reduction = Math.min(0.16, 0.02 * armoredSum);
++                    double reduction = Math.min(0.08, 0.01 * armoredSum);
+                     e.setDamage(e.getDamage() * (1.0 - reduction));
+                 }
+             }
+@@ -316,8 +317,9 @@ public class CombatListener implements Listener {
+             }
+         }
+ 
++        // Hardened: 2% per lvl (max 10% at L5)
+         if (hardened > 0 && e.getDamager() instanceof LivingEntity)
+-            e.setDamage(e.getDamage() * (1.0 - 0.04 * hardened));
++            e.setDamage(e.getDamage() * (1.0 - Math.min(0.10, 0.02 * hardened)));
+ 
+         if (antikb > 0) {
+             long now = System.currentTimeMillis();
+@@ -345,23 +347,32 @@ public class CombatListener implements Listener {
+             e.getDamager().getWorld().strikeLightning(e.getDamager().getLocation());
+         }
+         // Guardians: very rare absorption proc, 120s CD.
+-        // 4% × lvl chance per hit (max 12% at L3), then locked out for 120s regardless.
++        // 3% × lvl chance per hit (max 9% at L3), then locked out for 120s.
+         if (guardians > 0 && plugin.getCooldownManager().isReady("guardians", id)
+-                && rng.nextDouble() < 0.04 * guardians) {
++                && rng.nextDouble() < 0.03 * guardians) {
+             plugin.getCooldownManager().set("guardians", id, 120_000L);
+-            victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 100, guardians - 1));
+-            victim.sendMessage("§6✦ §eGuardians §7— §a+absorption §7(120s CD)");
++            victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 100, 0)); // Absorption I only
++            victim.sendMessage("§6✦ §eGuardians §7— §a+1 absorption heart §7(120s CD)");
++        }
++        // Overshield: separate, even rarer absorption proc with its own 120s CD.
++        // 2% × lvl chance per hit (max 10% at L5), Absorption I (1 heart), 5s.
++        if (overshield > 0 && plugin.getCooldownManager().isReady("overshield", id)
++                && rng.nextDouble() < 0.02 * overshield) {
++            plugin.getCooldownManager().set("overshield", id, 120_000L);
++            victim.addPotionEffect(new PotionEffect(PotionEffectType.ABSORPTION, 100, 0));
++            victim.sendMessage("§6✦ §eOvershield §7— §a+1 absorption heart §7(120s CD)");
+         }
+         if (reflect > 0 && e.getDamager() instanceof LivingEntity
+                 && plugin.getCooldownManager().isReady("reflect", id)) {
+             plugin.getCooldownManager().set("reflect", id, 5_000L);
+             ((LivingEntity) e.getDamager()).damage(e.getDamage() * (0.06 * reflect), victim);
+         }
++        // Endurance: capped at 6% (was 12%)
+         if (endurance > 0) {
+             long now = System.currentTimeMillis();
+             long last = lastCombatTick.getOrDefault(id, 0L);
+             if (now - last < 10_000L)
+-                e.setDamage(e.getDamage() * (1.0 - Math.min(0.12, 0.01 * (endurance * 2))));
++                e.setDamage(e.getDamage() * (1.0 - Math.min(0.06, 0.01 * endurance)));
+             lastCombatTick.put(id, now);
+         }
+         if (vengeance > 0 && e.getDamager() instanceof LivingEntity)
+diff --git a/src/main/java/com/soulenchants/listeners/CrystalListener.java b/src/main/java/com/soulenchants/listeners/CrystalListener.java
+index dd1cdfd..fce954e 100644
+--- a/src/main/java/com/soulenchants/listeners/CrystalListener.java
++++ b/src/main/java/com/soulenchants/listeners/CrystalListener.java
+@@ -3,45 +3,91 @@ package com.soulenchants.listeners;
+ import com.soulenchants.SoulEnchants;
+ import com.soulenchants.bosses.Veilweaver;
+ import com.soulenchants.bosses.VeilweaverCrystals;
++import org.bukkit.Effect;
++import org.bukkit.Location;
++import org.bukkit.Sound;
+ import org.bukkit.entity.EnderCrystal;
+ import org.bukkit.entity.EntityType;
++import org.bukkit.entity.Player;
++import org.bukkit.entity.Projectile;
+ import org.bukkit.event.EventHandler;
+ import org.bukkit.event.EventPriority;
+ import org.bukkit.event.Listener;
++import org.bukkit.event.entity.EntityDamageByEntityEvent;
+ import org.bukkit.event.entity.EntityDamageEvent;
+ import org.bukkit.event.entity.EntityExplodeEvent;
+ 
++import java.util.HashMap;
++import java.util.Map;
+ import java.util.UUID;
+ 
+ /**
+- * Handles Veilweaver-owned end crystals:
+- *  - Their explosions don't damage blocks (clear blockList).
+- *  - When one dies, signal back to its owning Veilweaver to update the
+- *    crystal-shield counter.
++ * Veilweaver crystal handler.
++ *
++ *   - Crystals require 3 player hits to break (HP tracker).
++ *   - Crystals are immune to each other's explosions (no chain wipe).
++ *   - On break: trigger a visual-only explosion + signal owning boss.
++ *   - All explosions clear blockList so the world isn't damaged.
+  */
+ public class CrystalListener implements Listener {
+ 
+-    private final SoulEnchants plugin;
++    private static final int HITS_TO_BREAK = 3;
++    private final Map<UUID, Integer> hits = new HashMap<>();
+ 
++    private final SoulEnchants plugin;
+     public CrystalListener(SoulEnchants plugin) { this.plugin = plugin; }
+ 
++    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
++    public void onCrystalDamage(EntityDamageEvent e) {
++        if (e.getEntityType() != EntityType.ENDER_CRYSTAL) return;
++        UUID id = e.getEntity().getUniqueId();
++        Veilweaver vw = VeilweaverCrystals.REGISTRY.get(id);
++        if (vw == null) return; // not one of ours
++
++        // Cancel ALL non-player damage so other crystals' blasts can't chain-kill.
++        // Only player melee/projectile counts toward the hit counter.
++        Player attacker = null;
++        if (e instanceof EntityDamageByEntityEvent) {
++            org.bukkit.entity.Entity dmgr = ((EntityDamageByEntityEvent) e).getDamager();
++            if (dmgr instanceof Player) attacker = (Player) dmgr;
++            else if (dmgr instanceof Projectile && ((Projectile) dmgr).getShooter() instanceof Player) {
++                attacker = (Player) ((Projectile) dmgr).getShooter();
++            }
++        }
++
++        if (attacker == null) {
++            // Block-explosion / fire / suffocation / chain-explosion — fully cancel.
++            e.setCancelled(true);
++            return;
++        }
++
++        // Player hit — count it, don't let vanilla blow it up yet
++        e.setCancelled(true);
++        int n = hits.getOrDefault(id, 0) + 1;
++        hits.put(id, n);
++        Location loc = e.getEntity().getLocation();
++        loc.getWorld().playSound(loc, Sound.GLASS, 1.5f, 0.7f);
++        for (int i = 0; i < 8; i++)
++            loc.getWorld().playEffect(loc.clone().add(0, 1, 0), Effect.WITCH_MAGIC, 0);
++        attacker.sendMessage(org.bukkit.ChatColor.LIGHT_PURPLE
++                + "✦ Crystal: " + n + "/" + HITS_TO_BREAK);
++
++        if (n >= HITS_TO_BREAK) {
++            hits.remove(id);
++            org.bukkit.entity.Entity entity = e.getEntity();
++            // Visual-only explosion (no block damage handled by EntityExplodeEvent)
++            loc.getWorld().createExplosion(loc.getX(), loc.getY(), loc.getZ(), 0f, false);
++            entity.remove();
++            vw.getCrystals().onCrystalDestroyed(id);
++        }
++    }
++
+     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+     public void onCrystalExplode(EntityExplodeEvent e) {
+         if (e.getEntityType() != EntityType.ENDER_CRYSTAL) return;
+         UUID id = e.getEntity().getUniqueId();
+         if (!VeilweaverCrystals.REGISTRY.containsKey(id)) return;
+-        // Don't tear up the world
+         e.blockList().clear();
+         e.setYield(0f);
+     }
+-
+-    @EventHandler(priority = EventPriority.MONITOR)
+-    public void onCrystalDamage(EntityDamageEvent e) {
+-        if (e.getEntityType() != EntityType.ENDER_CRYSTAL) return;
+-        UUID id = e.getEntity().getUniqueId();
+-        Veilweaver vw = VeilweaverCrystals.REGISTRY.get(id);
+-        if (vw == null) return;
+-        // Crystals die in 1 hit, so signal here regardless of cancellation state
+-        vw.getCrystals().onCrystalDestroyed(id);
+-    }
+ }
+diff --git a/src/main/java/com/soulenchants/listeners/EntityDeathListener.java b/src/main/java/com/soulenchants/listeners/EntityDeathListener.java
+index 5109b20..50b6ce3 100644
+--- a/src/main/java/com/soulenchants/listeners/EntityDeathListener.java
++++ b/src/main/java/com/soulenchants/listeners/EntityDeathListener.java
+@@ -54,14 +54,38 @@ public class EntityDeathListener implements Listener {
+             return;
+         }
+ 
+-        if (killer == null) return;
++        if (killer == null) {
++            // Mob killed by mob, environment, etc — clean up spawner tag and bail
++            com.soulenchants.currency.MobSoulRules.unmarkSpawner(entity.getUniqueId());
++            return;
++        }
++
++        // Compute base souls + apply anti-abuse rules
++        com.soulenchants.currency.MobSoulRules.Result result =
++                com.soulenchants.currency.MobSoulRules.compute(entity, killer, entity.getMaxHealth());
++        if (result.amount <= 0) return;
+ 
+-        // Quest mob hook (placeholder - actual quest tracking added in quest phase)
+-        // plugin.getQuestManager().onMobKill(killer, entity);
++        int total = result.amount;
++
++        // Tier bonus: Silver+ adds +1 per kill
++        com.soulenchants.currency.SoulTier tier = plugin.getSoulManager().getTier(killer);
++        if (tier.grantsBonusPerKill()) total += 1;
++
++        // Soul Reaper bonus on held weapon
++        org.bukkit.inventory.ItemStack hand = killer.getItemInHand();
++        int reaper = hand == null ? 0 : com.soulenchants.items.ItemUtil.getLevel(hand, "soulreaper");
++        if (reaper > 0) total += (int) Math.ceil(result.amount * 0.25 * reaper);
++
++        // Combat bonus: killer took damage in last 10s = +20%
++        long lastHurt = killer.getLastDamage() > 0 ? (long)(System.currentTimeMillis() - killer.getNoDamageTicks() * 50L) : 0L;
++        // Cheap proxy: if killer's noDamageTicks > 0, they took a hit recently
++        if (killer.getNoDamageTicks() > 0 && killer.getNoDamageTicks() < 200) {
++            total = (int) Math.ceil(total * 1.2);
++        }
+ 
+-        // Regular mobs give nothing by default; bumpable in config
+-        long flat = plugin.getConfig().getLong("souls.per-mob-kill", 0);
+-        if (flat > 0) plugin.getSoulManager().add(killer, flat);
++        plugin.getSoulManager().add(killer, total);
++        com.soulenchants.util.FloatingText.show(plugin, entity.getLocation(),
++                org.bukkit.ChatColor.LIGHT_PURPLE + "+" + total + " §dSoul" + (total == 1 ? "" : "s"));
+     }
+ 
+     @EventHandler
+diff --git a/src/main/java/com/soulenchants/listeners/IronSentinelListener.java b/src/main/java/com/soulenchants/listeners/IronSentinelListener.java
+index 728860e..f880029 100644
+--- a/src/main/java/com/soulenchants/listeners/IronSentinelListener.java
++++ b/src/main/java/com/soulenchants/listeners/IronSentinelListener.java
+@@ -31,8 +31,8 @@ public class IronSentinelListener implements Listener {
+         if (!(e.getEntity() instanceof Player)) return;
+         if (!IronGolemMinions.ACTIVE_UUIDS.contains(e.getDamager().getUniqueId())) return;
+         Player victim = (Player) e.getEntity();
+-        // Bonus 8 real damage on top of weapon damage so they hit hard through armor
+-        e.setDamage(e.getDamage() + 8);
++        // Bonus 24 real damage on top of weapon damage so they hit hard through armor
++        e.setDamage(e.getDamage() + 24);
+         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,     60, 1, false, true), true);
+         victim.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 80, 0, false, true), true);
+         if (Math.random() < 0.15)
+diff --git a/src/main/java/com/soulenchants/listeners/PvEDamageListener.java b/src/main/java/com/soulenchants/listeners/PvEDamageListener.java
+index ab524a9..613123b 100644
+--- a/src/main/java/com/soulenchants/listeners/PvEDamageListener.java
++++ b/src/main/java/com/soulenchants/listeners/PvEDamageListener.java
+@@ -69,8 +69,9 @@ public class PvEDamageListener implements Listener {
+             if (a == null) continue;
+             blessed = Math.max(blessed, ItemUtil.getLevel(a, "blessed"));
+         }
++        // Hard nerf: was -15/30/45%, now -6/12/18%
+         if (blessed > 0) {
+-            e.setDamage(e.getDamage() * (1.0 - 0.15 * blessed)); // -15/30/45%
++            e.setDamage(e.getDamage() * (1.0 - Math.min(0.18, 0.06 * blessed)));
+         }
+     }
+ 
+diff --git a/src/main/resources/plugin.yml b/src/main/resources/plugin.yml
+index 629b593..60ccce8 100644
+--- a/src/main/resources/plugin.yml
++++ b/src/main/resources/plugin.yml
+@@ -18,6 +18,10 @@ commands:
+     description: Remove all negative potion effects from a player
+     usage: /bless [player]
+     aliases: [cleanse]
++  boss:
++    description: Boss control (list/kill)
++    usage: /boss <list|kill>
++    aliases: [bosses]
+ 
+ permissions:
+   soulenchants.admin:
