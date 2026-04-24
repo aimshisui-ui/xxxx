@@ -66,43 +66,91 @@ public class SoulEnchants extends JavaPlugin {
     private LunarPingListener lunarPingListener;
     private com.soulenchants.pets.PetManager petManager;
 
+    /** Phase-4 god-class split — onEnable is now a lifecycle list, not a body.
+     *  Every phase below is wrapped in safePhase() so a throwing subsystem
+     *  marks itself failed and the plugin keeps loading the rest.
+     *  Phase order is load-bearing; see each method's header comment. */
     @Override
     public void onEnable() {
         System.err.println(">>> SE onEnable starting");
         saveDefaultConfig();
-        // Phase 1 — cleanup infrastructure MUST load first: MapManager's quit
-        // listener evicts UUID-cache entries for every subsystem below, and
-        // TempBlockTracker.install recovers any blocks a prior crash left in
-        // the world (cobblestone walls, cobwebs, etc.) so bosses can place
-        // fresh ones with a clean slate.
+        safePhase("cleanup-infra", this::initCleanupInfrastructure);
+        safePhase("world-bootstrap", this::initWorlds);
+        safePhase("configs",         this::initConfigs);
+        safePhase("registries",      this::initRegistries);
+        safePhase("managers",        this::initCoreManagers);
+        safePhase("mobs",            this::initMobs);
+        safePhase("listeners",       this::initListeners);
+        safePhase("tick-tasks",      this::initTickTasks);
+        safePhase("commands",        this::initCommands);
+        safePhase("rifts",           this::initRifts);
+        safePhase("recipe-gui",      this::initRecipeGui);
+        safePhase("loot-filter",     this::initLootFilter);
+        safePhase("transmog",        this::initTransmog);
+        safePhase("pvp-stats",       this::initPvpStats);
+        safePhase("guilds",          this::initGuilds);
+        safePhase("armor-sets",      this::initArmorSets);
+        safePhase("modock",          this::initModock);
+        safePhase("mythics",         this::initMythicSubsystem);
+        safePhase("masks",           this::initMaskSubsystem);
+        safePhase("soul-gems",       this::initSoulGems);
+        safePhase("pets",            this::initPets);
+        safePhase("lunar",           this::initLunar);
+        safePhase("tab-completion",  this::initTabCompletion);
+        getLogger().info("SoulEnchants enabled. " + EnchantRegistry.all().size() + " enchants, "
+                + MythicRegistry.all().size() + " mythics, " + MaskRegistry.all().size() + " masks.");
+    }
+
+    /** Run an init phase in isolation — a throwing subsystem logs + marks
+     *  itself failed but the rest of the plugin still loads. Replaces the
+     *  previous monolithic onEnable body where any unhandled Throwable
+     *  left the plugin in half-loaded state. */
+    private void safePhase(String name, Runnable phase) {
+        try {
+            phase.run();
+        } catch (Throwable t) {
+            getLogger().severe("[phase:" + name + "] FAILED — " + t);
+            t.printStackTrace();
+        }
+    }
+
+    // ────────────────────── phases (exact-order-preserving) ──────────────
+
+    /** Phase 1 — cleanup infrastructure MUST load first: MapManager's quit
+     *  listener evicts UUID-cache entries for every subsystem below, and
+     *  TempBlockTracker recovers any blocks a prior crash left in the world. */
+    private void initCleanupInfrastructure() {
         com.soulenchants.util.MapManager.install(this);
         com.soulenchants.util.TempBlockTracker.install(this);
         com.soulenchants.util.BossHealthHack.raise();
-        System.err.println(">>> SE: about to call RiftWorld.ensure");
-        try {
-            com.soulenchants.rifts.RiftWorld.ensure(this);
-        } catch (Throwable t) {
-            System.err.println(">>> SE: RiftWorld.ensure threw: " + t);
-            t.printStackTrace();
-        }
-        System.err.println(">>> SE: RiftWorld.ensure returned");
-        // Modock arena worlds — load all 3 phases up-front so first-time access
-        // doesn't pause the server thread mid-fight.
-        try {
-            com.soulenchants.modock.ModockWorlds.ensureAll(this);
-        } catch (Throwable t) {
-            System.err.println(">>> SE: ModockWorlds.ensureAll threw: " + t);
-            t.printStackTrace();
-        }
-        // v1.1 — reflection-bound configs. Defaults match prior hardcoded values.
+    }
+
+    /** Void Rift + Modock arena worlds — load up-front so first-time access
+     *  doesn't pause the server thread mid-fight. */
+    private void initWorlds() {
+        com.soulenchants.rifts.RiftWorld.ensure(this);
+        com.soulenchants.modock.ModockWorlds.ensureAll(this);
+    }
+
+    /** Reflection-bound YAML config loading. Defaults match prior hardcoded values. */
+    private void initConfigs() {
         this.enchantConfig = new EnchantConfig();
         ConfigBinder.bind(this, "enchants.yml", enchantConfig);
         this.mythicConfig = new MythicConfig();
         ConfigBinder.bind(this, "mythics.yml", mythicConfig);
+    }
 
+    /** Static registries — must load before any Manager tries to resolve an id. */
+    private void initRegistries() {
         EnchantRegistry.registerDefaults();
         MythicRegistry.registerDefaults(this, mythicConfig);
         MaskRegistry.registerDefaults();
+    }
+
+    /** Core managers — souls, boss handles, scoreboard, loot/shop. Order
+     *  matters: SoulManager reads its YAML, VeilweaverManager + IronGolemManager
+     *  are referenced by listeners initialised in initListeners(). */
+    private void initCoreManagers() {
         this.soulManager = new SoulManager(this, getDataFolder());
         this.veilweaverManager = new VeilweaverManager(this);
         this.ironGolemManager = new IronGolemManager(this);
@@ -119,16 +167,17 @@ public class SoulEnchants extends JavaPlugin {
         this.lootBoxRevealGUI = new com.soulenchants.shop.LootBoxRevealGUI(this);
         getServer().getPluginManager().registerEvents(lootBoxRevealGUI, this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.shop.LootBoxListener(this), this);
-
         com.soulenchants.quests.QuestRegistry.register();
         this.questManager = new com.soulenchants.quests.QuestManager(this);
         this.questGUI = new com.soulenchants.quests.QuestGUI(this);
         getServer().getPluginManager().registerEvents(questGUI, this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.quests.QuestEventListener(this), this);
+    }
 
+    /** Custom-mob registry + listener + spawner. MobRegistry.register() MUST
+     *  precede LootConfig which MUST precede MobListener (spawn-time id lookup). */
+    private void initMobs() {
         com.soulenchants.mobs.MobRegistry.register();
-        // Load loot overrides (YAML) + apply them to the freshly-registered mobs.
-        // Must sit AFTER MobRegistry.register() and BEFORE anything that spawns a mob.
         this.lootConfig = new com.soulenchants.config.LootConfig(this);
         this.lootConfig.applyMobOverrides();
         com.soulenchants.bosses.BossDamage.init(this.lootConfig);
@@ -139,7 +188,11 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new com.soulenchants.mobs.MobSpawner(this, mobListener), this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.mobs.NaturalBehaviorBlocker(), this);
         getLogger().info("[mobs] " + com.soulenchants.mobs.MobRegistry.all().size() + " custom mobs registered");
+    }
 
+    /** Combat + loot + boss-mechanic listeners. Runs after managers so
+     *  every listener can reach its dependency via plugin.getX(). */
+    private void initListeners() {
         com.soulenchants.loot.LootRecipes.register(this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.loot.LootItemListener(this), this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.loot.LootRecipes.GateListener(), this);
@@ -148,7 +201,6 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CrystalListener(this), this);
         getServer().getPluginManager().registerEvents(new IronSentinelListener(this), this);
         getServer().getPluginManager().registerEvents(new SpawnerTagListener(), this);
-
         getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new EntityDeathListener(this), this);
         getServer().getPluginManager().registerEvents(new InventoryClickListener(this), this);
@@ -161,22 +213,24 @@ public class SoulEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new GrindingListener(this), this);
         getServer().getPluginManager().registerEvents(new PvEDamageListener(this), this);
         getServer().getPluginManager().registerEvents(enchantMenu, this);
+    }
 
+    /** Periodic tick tasks — berserker tick, clarity splash cancel,
+     *  armor-change syncer, scoreboard refresher. */
+    private void initTickTasks() {
         tickTask = new BerserkTickTask(this);
         tickTask.start();
-
-        // Clarity III safety net — fast-tick strip + splash cancel
         this.clarityTask = new com.soulenchants.listeners.ClarityTask(this);
         this.clarityTask.start();
         getServer().getPluginManager().registerEvents(clarityTask, this);
         getServer().getPluginManager().registerEvents(new ArmorChangeListener(this, tickTask), this);
-
-        // Reset any lingering max-HP from a previous session, then let the tick re-apply correctly.
-        for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
-            p.setMaxHealth(20.0);
-        }
+        // Reset lingering max-HP from prior session; tick will re-apply correctly.
+        for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) p.setMaxHealth(20.0);
         scoreboardManager.start();
+    }
 
+    /** Core commands — /souls /ce /bless /boss /shop /quests /mob. */
+    private void initCommands() {
         getCommand("souls").setExecutor(new SoulsCommand(this));
         getCommand("ce").setExecutor(new CECommand(this));
         getCommand("bless").setExecutor(new BlessCommand(this));
@@ -184,13 +238,14 @@ public class SoulEnchants extends JavaPlugin {
         getCommand("shop").setExecutor(new com.soulenchants.shop.ShopCommand(this));
         getCommand("quests").setExecutor(new com.soulenchants.quests.QuestCommand(this));
         getCommand("mob").setExecutor(new com.soulenchants.mobs.MobCommand(this, mobListener));
-        // Void Rift system + holograms
+    }
+
+    /** Void Rift system + associated holograms. */
+    private void initRifts() {
         this.riftSpawnConfig = new com.soulenchants.rifts.RiftSpawnConfig(this);
         this.voidRiftManager = new com.soulenchants.rifts.VoidRiftManager(this, riftSpawnConfig);
         this.hologramConfig = new com.soulenchants.rifts.HologramConfig(this);
         this.hologramManager = new com.soulenchants.rifts.HologramManager(this, hologramConfig);
-        // Holograms must boot AFTER worlds are loaded — onEnable runs after world load,
-        // so we can call bootstrap() directly here.
         this.hologramManager.bootstrap();
         this.hologramGUI = new com.soulenchants.rifts.HologramGUI(this, hologramManager);
         getServer().getPluginManager().registerEvents(hologramGUI, this);
@@ -199,49 +254,61 @@ public class SoulEnchants extends JavaPlugin {
         getCommand("rift").setExecutor(
                 new com.soulenchants.rifts.RiftCommand(this, riftSpawnConfig, voidRiftManager,
                         hologramManager, hologramGUI));
-        // Chunk-pin listener for /rift loadchunks (one-shot screenshot helper)
         getServer().getPluginManager().registerEvents(new com.soulenchants.rifts.RiftChunkHolder(), this);
+    }
 
-        // Recipe GUI
+    private void initRecipeGui() {
         this.recipeGUI = new com.soulenchants.gui.RecipeGUI();
         getServer().getPluginManager().registerEvents(recipeGUI, this);
+    }
 
-        // Loot Filter
+    private void initLootFilter() {
         this.lootFilterManager = new com.soulenchants.loot.LootFilterManager(this, getDataFolder());
         this.lootFilterGUI = new com.soulenchants.gui.LootFilterGUI(this, lootFilterManager);
         getServer().getPluginManager().registerEvents(lootFilterGUI, this);
         getServer().getPluginManager().registerEvents(new com.soulenchants.loot.LootFilterListener(this), this);
         getCommand("lootfilter").setExecutor(new com.soulenchants.commands.LootFilterCommand(this));
+    }
 
-        // Transmog Scroll — sort enchants by tier when applied to gear
+    /** Transmog Scroll — sort enchants by tier when applied to gear. */
+    private void initTransmog() {
         getServer().getPluginManager().registerEvents(new com.soulenchants.items.TransmogScroll(), this);
+    }
 
-        // PvP stats — kills/deaths/KDR for the sidebar
+    /** PvP kills/deaths/KDR tracker (feeds sidebar). */
+    private void initPvpStats() {
         this.pvpStats = new com.soulenchants.scoreboard.PvPStats(getDataFolder());
         getServer().getPluginManager().registerEvents(pvpStats, this);
+    }
 
-        // Guild system — friendly fire, ally-aware procs, vault, leaderboard
+    /** Guild system — friendly-fire detection, ally-aware procs, vault,
+     *  leaderboard, /guild command. */
+    private void initGuilds() {
         this.guildManager = new com.soulenchants.guilds.GuildManager(this, getDataFolder());
         this.guildManager.start();
         getServer().getPluginManager().registerEvents(new com.soulenchants.guilds.GuildListener(this), this);
         getCommand("guild").setExecutor(new com.soulenchants.guilds.GuildCommand(this));
+    }
 
-        // Armor set bonuses — pieces tagged with se_set_id NBT trigger lifecycle
-        // hooks + per-event bonuses. Cached per-player; safety-swept every 2s.
+    /** Armor-set bonuses — NBT-tagged pieces trigger lifecycle + per-event bonuses. */
+    private void initArmorSets() {
         com.soulenchants.sets.SetRegistry.add(new com.soulenchants.sets.impl.BossKillerSet(this));
         com.soulenchants.sets.SetRegistry.add(new com.soulenchants.sets.impl.DuelistSet(this));
         this.setManager = new com.soulenchants.sets.SetManager(this);
         this.setManager.start();
         getServer().getPluginManager().registerEvents(new com.soulenchants.sets.SetBonusListener(this), this);
+    }
 
-        // Modock — three-phase Atlantis boss across modock_phase1/2/3
+    /** Modock — three-phase Atlantis boss across modock_phase1/2/3. */
+    private void initModock() {
         this.modockSpawnConfig = new com.soulenchants.modock.ModockSpawnConfig(this);
         this.modockManager = new com.soulenchants.modock.ModockManager(this, modockSpawnConfig);
         getServer().getPluginManager().registerEvents(new com.soulenchants.modock.ModockSpawner(this), this);
         if (getCommand("modock") != null)
             getCommand("modock").setExecutor(new com.soulenchants.modock.ModockCommand(this));
+    }
 
-        // ──────────────── Mythic Weapons (v1.1) ────────────────
+    private void initMythicSubsystem() {
         getServer().getPluginManager().registerEvents(new MythicListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new com.soulenchants.listeners.MythicDeathMessages(), this);
@@ -249,56 +316,52 @@ public class SoulEnchants extends JavaPlugin {
         mythicAuraTask.start();
         if (getCommand("mythic") != null)
             getCommand("mythic").setExecutor(new MythicCommand(this));
+    }
 
-        // ──────────────── Cosmetic Masks (v1.1) ────────────────
-        // Identity lives on items (se_mask_item / se_mask_attached NBT).
-        // Packet injector reads the wearer's helmet NBT each tick; the
-        // attach listener handles drag-onto-helmet / right-click-detach.
+    /** Cosmetic masks: packet injector (helmet-replace), attach listener,
+     *  and the Stalker/Phantom/Soul Harvest ability driver. */
+    private void initMaskSubsystem() {
         this.maskPacketInjector = new MaskPacketInjector(this);
         maskPacketInjector.attach();
         getServer().getPluginManager().registerEvents(new MaskAttachListener(this), this);
         if (getCommand("mask") != null)
             getCommand("mask").setExecutor(new MaskCommand(this));
-        // v1.4 mask ability driver — Stalker / Phantom Dash / Soul Harvest.
         com.soulenchants.masks.MaskAbilityTask maskTask =
                 new com.soulenchants.masks.MaskAbilityTask(this);
         maskTask.start();
         getServer().getPluginManager().registerEvents(maskTask, this);
+    }
 
-        // ──────────────── Soul Gems (v1.1) ────────────────
-        // Right-click-to-deposit + inventory merge. Soul-enchant procs now
-        // route through SoulGemUtil, so this listener is load-bearing for
-        // the license-gate behaviour described in items/SoulGem.java.
+    private void initSoulGems() {
         getServer().getPluginManager().registerEvents(
                 new com.soulenchants.listeners.SoulGemListener(this), this);
-        // /soulgem removed — minting is now a /souls withdraw subcommand.
+    }
 
-        // ──────────────── Pet system (v1.2) ────────────────
-        // Hybrid pets — egg item in bag, spawns a follower armor stand with
-        // per-pet visuals. Passives tick while summoned, active fires on
-        // sneak + right-click. XP lives on the egg (se_pet_xp), so eggs
-        // trade/sell cleanly without server-side bookkeeping.
+    /** Hybrid pet system — egg item + follower armor stand + XP on NBT. */
+    private void initPets() {
         com.soulenchants.pets.PetRegistry.registerDefaults(this);
         this.petManager = new com.soulenchants.pets.PetManager(this);
         this.petManager.start();
         getServer().getPluginManager().registerEvents(new com.soulenchants.pets.PetListener(this), this);
         if (getCommand("pet") != null)
             getCommand("pet").setExecutor(new com.soulenchants.pets.PetCommand(this));
+    }
 
-        // ──────────────── Lunar Client bridge (v1.1) ────────────────
+    /** Lunar Client bridge — optional. Failure here should never disable
+     *  any core gameplay; LunarBridge.init is already defensive. */
+    private void initLunar() {
         LunarBridge.init(this);
         this.lunarPingListener = new LunarPingListener(this);
         lunarPingListener.start();
         if (getCommand("lunar") != null)
             getCommand("lunar").setExecutor(new com.soulenchants.lunar.LunarCommand());
+    }
 
+    private void initTabCompletion() {
         com.soulenchants.commands.TabCompletion tab = new com.soulenchants.commands.TabCompletion(this);
         for (String c : new String[]{"souls","ce","shop","quests","boss","bless","mob","rift","modock","mythic","mask"}) {
             if (getCommand(c) != null) getCommand(c).setTabCompleter(tab);
         }
-
-        getLogger().info("SoulEnchants enabled. " + EnchantRegistry.all().size() + " enchants, "
-                + MythicRegistry.all().size() + " mythics, " + MaskRegistry.all().size() + " masks.");
     }
 
     /** /ce reload — re-read enchants.yml and mythics.yml live. */
