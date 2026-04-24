@@ -111,21 +111,11 @@ public class Veilweaver {
             if (nearest != null) ((org.bukkit.entity.Monster) entity).setTarget(nearest);
         }
 
-        // Melee enforcer — vanilla wither-skeleton AI swings ~once every 2-3s
-        // and gets distracted by ability casts. Every 24t (1.2s), if a player
-        // is within 3 blocks, force a swing + apply solid melee damage. Counts
-        // as the boss's own attack so all our damage hooks fire.
-        if (ticks % 24 == 0) {
-            Player closest = null; double bestSq = Double.MAX_VALUE;
-            for (Player pl : entity.getWorld().getPlayers()) {
-                double d = pl.getLocation().distanceSquared(entity.getLocation());
-                if (d < bestSq) { bestSq = d; closest = pl; }
-            }
-            if (closest != null && bestSq <= 9.0) {                       // 3-block reach
-                entity.getWorld().playSound(entity.getLocation(), Sound.HURT_FLESH, 1.0f, 0.8f);
-                com.soulenchants.bosses.BossDamage.apply(closest, "veilweaver", "melee", 110, entity);
-            }
-        }
+        // Melee enforcer via BossCommonBehaviors — vanilla wither-skeleton
+        // AI swings once every 2-3s and gets distracted by ability casts;
+        // we force a 110 dmg swing every 24t within 3 blocks.
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.meleeEnforcer(
+                entity, "veilweaver", 24, 3.0, 110, ticks);
 
         // Passive anti-kite heal removed per balance pass — bosses no longer
         // regenerate unless it's tied to a phase transition. Instead, teleport

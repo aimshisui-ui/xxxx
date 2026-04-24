@@ -189,6 +189,36 @@ public class CECommand implements CommandExecutor {
                     (didLoot ? MessageStyle.VALUE + "loot overrides" : "") + MessageStyle.GOOD + ".");
             return true;
         }
+        // /ce dmg-trace <player> — toggle a 60-second damage-pipeline trace
+        // on the target. Every hit they deal will stream a full breakdown
+        // (base, bonus, cap, mult, flat, mask, final) into their chat.
+        if (sub.equals("dmg-trace") || sub.equals("dmgtrace")) {
+            if (!sender.hasPermission("soulenchants.admin")) {
+                Chat.err(sender, "You need soulenchants.admin.");
+                return true;
+            }
+            if (args.length < 2) { Chat.info(sender, "Usage: /ce dmg-trace <player>"); return true; }
+            org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayerExact(args[1]);
+            if (target == null) { Chat.err(sender, "Player not online: " + args[1]); return true; }
+            boolean nowOn = com.soulenchants.util.DmgTrace.toggle(target);
+            Chat.good(sender, "dmg-trace " + (nowOn ? "§aENABLED" : "§cdisabled")
+                    + MessageStyle.GOOD + " for " + MessageStyle.VALUE + target.getName()
+                    + (nowOn ? MessageStyle.GOOD + " (auto-expires in 60s)" : ""));
+            return true;
+        }
+        if (sub.equals("dmg-dump") || sub.equals("dmgdump")) {
+            if (!sender.hasPermission("soulenchants.admin")) {
+                Chat.err(sender, "You need soulenchants.admin.");
+                return true;
+            }
+            if (args.length < 2) { Chat.info(sender, "Usage: /ce dmg-dump <player>"); return true; }
+            org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayerExact(args[1]);
+            if (target == null) { Chat.err(sender, "Player not online: " + args[1]); return true; }
+            if (!(sender instanceof org.bukkit.entity.Player)) { Chat.err(sender, "Players only."); return true; }
+            com.soulenchants.util.DmgTrace.dump(target.getUniqueId(), (org.bukkit.entity.Player) sender);
+            return true;
+        }
+
         // Phase 1 diagnostic — shows live UUID-cache sizes + temp-block count.
         // Helpful for verifying memory isn't leaking after long uptime or
         // after a crash/restart cycle.

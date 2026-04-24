@@ -793,6 +793,22 @@ public class CombatListener implements Listener {
                 attacker, victim instanceof Player);
         if (maskMult != 1.0) finalDmg *= maskMult;
         if (finalDmg != baseDmg) e.setDamage(finalDmg);
+
+        // If tracing is enabled for this attacker, record a full pipeline
+        // breakdown. No-op when nobody's tracing so zero overhead in prod.
+        if (com.soulenchants.util.DmgTrace.isTracing(attacker.getUniqueId())) {
+            String victimName = victim instanceof Player
+                    ? ((Player) victim).getName()
+                    : (victim.getCustomName() != null ? victim.getCustomName() : victim.getType().name());
+            com.soulenchants.util.DmgTrace.DmgEvent ev =
+                    new com.soulenchants.util.DmgTrace.DmgEvent(attacker.getName(), victimName, baseDmg)
+                            .cappedBonus(cappedBonus)
+                            .specialMult(specialMult)
+                            .flatAdd(flatAdd)
+                            .maskMult(maskMult)
+                            .finalDmg(finalDmg);
+            com.soulenchants.util.DmgTrace.record(attacker.getUniqueId(), ev);
+        }
     }
 
     /** Is `target` an active boss or one of their tracked minions? Used for Slayer

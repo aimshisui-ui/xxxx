@@ -48,9 +48,8 @@ public class IronGolemBoss {
     private final StateMachine<GolemCtx> fsm;
     private final GolemCtx ctx;
 
-    private int idleTicks = 0;
-    private boolean despawnAnnounced = false;
-    private int despawnAt = -1;
+    private final com.soulenchants.bosses.fsm.BossCommonBehaviors.DespawnState despawnState =
+            new com.soulenchants.bosses.fsm.BossCommonBehaviors.DespawnState();
     private Phase phase = Phase.ONE;
     private boolean invulnerable = false;
     private boolean usedReinforce = false;
@@ -99,44 +98,15 @@ public class IronGolemBoss {
         if (entity.isDead()) { stop(false); return; }
         ticks++;
 
-        // ── Ambient / universal behavior (runs every tick regardless of FSM state) ──
-
-        // Force hostile targeting every second
-        if (ticks % 20 == 0) {
-            Player nearest = null;
-            double bestSq = Double.MAX_VALUE;
-            for (Player pl : ctx.nearbyPlayers(30)) {
-                double d = pl.getLocation().distanceSquared(entity.getLocation());
-                if (d < bestSq) { bestSq = d; nearest = pl; }
-            }
-            if (nearest != null) entity.setTarget(nearest);
-        }
-
-        // Melee enforcer — force a 70-dmg swing every 28t if a player is in reach
-        if (ticks % 28 == 0) {
-            Player closest = null; double bestSq = Double.MAX_VALUE;
-            for (Player pl : entity.getWorld().getPlayers()) {
-                double d = pl.getLocation().distanceSquared(entity.getLocation());
-                if (d < bestSq) { bestSq = d; closest = pl; }
-            }
-            if (closest != null && bestSq <= 16.0) {
-                entity.getWorld().playSound(entity.getLocation(), Sound.IRONGOLEM_HIT, 1.2f, 0.7f);
-                BossDamage.apply(closest, "irongolem", "melee", 70, entity);
-            }
-        }
-
-        // Ambient particle halo
-        if (ticks % 4 == 0) {
-            Location loc = entity.getLocation().add(0, 1.5, 0);
-            for (int i = 0; i < 3; i++) {
-                double a = ticks * 0.15 + i * (Math.PI * 2 / 3);
-                Location p = loc.clone().add(Math.cos(a) * 1.0, 0, Math.sin(a) * 1.0);
-                p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.IRON_BLOCK.getId());
-            }
-        }
+        // ── Ambient / universal behavior via BossCommonBehaviors helpers ──
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.retargetNearestPlayer(entity, 30, ticks);
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.meleeEnforcer(
+                entity, "irongolem", 28, 4.0, 70, ticks);
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.ambientRing(
+                entity, Material.IRON_BLOCK, 1.0, ticks);
         if (ticks % 5 == 0) updateName();
 
-        // No-players despawn
+        // No-players despawn countdown — centralized state machine
         tickDespawnCountdown();
 
         // ── Phase triggers — force-transition the FSM into invulnerable states ──
@@ -157,33 +127,30 @@ public class IronGolemBoss {
         }
     }
 
-    /** Idle-timer-based auto-despawn when no players are near. */
+    /** Idle-timer-based auto-despawn when no players are near. Delegates to
+     *  BossCommonBehaviors.tickDespawn() and translates the result into
+     *  boss-specific broadcast flavor. */
     private void tickDespawnCountdown() {
-        if (ticks % 20 != 0) return;
-        boolean any = !ctx.nearbyPlayers(15).isEmpty();
-        if (any) {
-            idleTicks = 0;
-            if (despawnAnnounced) {
-                despawnAnnounced = false;
-                despawnAt = -1;
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.DespawnResult r =
+                com.soulenchants.bosses.fsm.BossCommonBehaviors.tickDespawn(
+                        entity, despawnState, 15, ticks, 100, 200);
+        switch (r) {
+            case RESUMED:
                 plugin.getServer().broadcastMessage(ChatColor.GOLD
                         + "✦ The Ironheart Colossus senses prey — its retreat is cancelled.");
-            }
-            return;
-        }
-        idleTicks += 20;
-        if (!despawnAnnounced && idleTicks >= 100) {
-            despawnAnnounced = true;
-            despawnAt = ticks + 200;
-            plugin.getServer().broadcastMessage(ChatColor.GRAY
-                    + "✦ The Ironheart Colossus finds no challengers — retreating in 10s.");
-        }
-        if (despawnAnnounced && ticks >= despawnAt) {
-            plugin.getServer().broadcastMessage(ChatColor.DARK_GRAY
-                    + "✦ The Ironheart Colossus vanishes into the dust.");
-            entity.remove();
-            plugin.getIronGolemManager().clearActive();
-            stop(false);
+                break;
+            case WARNING_ISSUED:
+                plugin.getServer().broadcastMessage(ChatColor.GRAY
+                        + "✦ The Ironheart Colossus finds no challengers — retreating in 10s.");
+                break;
+            case DESPAWN_NOW:
+                plugin.getServer().broadcastMessage(ChatColor.DARK_GRAY
+                        + "✦ The Ironheart Colossus vanishes into the dust.");
+                entity.remove();
+                plugin.getIronGolemManager().clearActive();
+                stop(false);
+                break;
+            default: break;
         }
     }
 

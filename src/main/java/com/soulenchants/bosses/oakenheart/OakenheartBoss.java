@@ -54,9 +54,8 @@ public final class OakenheartBoss {
     private Phase phase = Phase.ONE;
     private boolean invulnerable = false;
     private int ticks = 0;
-    private int idleTicks = 0;
-    private boolean despawnAnnounced = false;
-    private int despawnAt = -1;
+    private final com.soulenchants.bosses.fsm.BossCommonBehaviors.DespawnState despawnState =
+            new com.soulenchants.bosses.fsm.BossCommonBehaviors.DespawnState();
 
     private BukkitRunnable tickTask;
 
@@ -105,39 +104,12 @@ public final class OakenheartBoss {
         if (entity.isDead()) { stop(false); return; }
         ticks++;
 
-        // Keep target locked every second so vanilla golem AI doesn't drift
-        if (ticks % 20 == 0) {
-            Player nearest = null;
-            double bestSq = Double.MAX_VALUE;
-            for (Player pl : ctx.nearbyPlayers(30)) {
-                double d = pl.getLocation().distanceSquared(entity.getLocation());
-                if (d < bestSq) { bestSq = d; nearest = pl; }
-            }
-            if (nearest != null) entity.setTarget(nearest);
-        }
-
-        // Melee enforcer — 110 dmg forced swing every 32t within 4 blocks
-        if (ticks % 32 == 0) {
-            Player closest = null; double bestSq = Double.MAX_VALUE;
-            for (Player pl : entity.getWorld().getPlayers()) {
-                double d = pl.getLocation().distanceSquared(entity.getLocation());
-                if (d < bestSq) { bestSq = d; closest = pl; }
-            }
-            if (closest != null && bestSq <= 16.0) {
-                entity.getWorld().playSound(entity.getLocation(), Sound.IRONGOLEM_HIT, 1.2f, 0.6f);
-                BossDamage.apply(closest, "oakenheart", "melee", 110, entity);
-            }
-        }
-
-        // Leaf / moss ambient halo
-        if (ticks % 4 == 0) {
-            Location loc = entity.getLocation().add(0, 1.5, 0);
-            for (int i = 0; i < 3; i++) {
-                double a = ticks * 0.12 + i * (Math.PI * 2 / 3);
-                Location p = loc.clone().add(Math.cos(a) * 1.3, 0, Math.sin(a) * 1.3);
-                p.getWorld().playEffect(p, Effect.STEP_SOUND, Material.LEAVES.getId());
-            }
-        }
+        // Shared behaviors — targeting + melee enforcer + ambient halo
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.retargetNearestPlayer(entity, 30, ticks);
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.meleeEnforcer(
+                entity, "oakenheart", 32, 4.0, 110, ticks);
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.ambientRing(
+                entity, Material.LEAVES, 1.3, ticks);
         if (ticks % 5 == 0) updateName();
 
         tickDespawnCountdown();
@@ -159,30 +131,26 @@ public final class OakenheartBoss {
     }
 
     private void tickDespawnCountdown() {
-        if (ticks % 20 != 0) return;
-        boolean any = !ctx.nearbyPlayers(20).isEmpty();
-        if (any) {
-            idleTicks = 0;
-            if (despawnAnnounced) {
-                despawnAnnounced = false; despawnAt = -1;
+        com.soulenchants.bosses.fsm.BossCommonBehaviors.DespawnResult r =
+                com.soulenchants.bosses.fsm.BossCommonBehaviors.tickDespawn(
+                        entity, despawnState, 20, ticks, 200, 200);
+        switch (r) {
+            case RESUMED:
                 plugin.getServer().broadcastMessage(ChatColor.DARK_GREEN
                         + "✦ Oakenheart senses intruders — the roots hold firm.");
-            }
-            return;
-        }
-        idleTicks += 20;
-        if (!despawnAnnounced && idleTicks >= 200) {
-            despawnAnnounced = true;
-            despawnAt = ticks + 200;
-            plugin.getServer().broadcastMessage(ChatColor.GRAY
-                    + "✦ Oakenheart finds no challengers — withdrawing into the canopy in 10s.");
-        }
-        if (despawnAnnounced && ticks >= despawnAt) {
-            plugin.getServer().broadcastMessage(ChatColor.DARK_GRAY
-                    + "✦ Oakenheart vanishes into the deep wood.");
-            entity.remove();
-            plugin.getOakenheartManager().clearActive();
-            stop(false);
+                break;
+            case WARNING_ISSUED:
+                plugin.getServer().broadcastMessage(ChatColor.GRAY
+                        + "✦ Oakenheart finds no challengers — withdrawing into the canopy in 10s.");
+                break;
+            case DESPAWN_NOW:
+                plugin.getServer().broadcastMessage(ChatColor.DARK_GRAY
+                        + "✦ Oakenheart vanishes into the deep wood.");
+                entity.remove();
+                plugin.getOakenheartManager().clearActive();
+                stop(false);
+                break;
+            default: break;
         }
     }
 

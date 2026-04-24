@@ -65,6 +65,7 @@ public class SoulEnchants extends JavaPlugin {
     private MaskPacketInjector maskPacketInjector;
     private LunarPingListener lunarPingListener;
     private com.soulenchants.pets.PetManager petManager;
+    private com.soulenchants.data.ProfileService profileService;
 
     /** Phase-4 god-class split — onEnable is now a lifecycle list, not a body.
      *  Every phase below is wrapped in safePhase() so a throwing subsystem
@@ -123,6 +124,11 @@ public class SoulEnchants extends JavaPlugin {
         com.soulenchants.util.MapManager.install(this);
         com.soulenchants.util.TempBlockTracker.install(this);
         com.soulenchants.util.BossHealthHack.raise();
+        // Profile async scaffold — future per-player disk-reading subsystems
+        // register AsyncLoaders here so loads fire during AsyncPlayerPreLogin
+        // instead of blocking the main thread during PlayerJoinEvent.
+        this.profileService = new com.soulenchants.data.ProfileService(this);
+        profileService.install();
     }
 
     /** Void Rift world — load up-front so first-time access
@@ -238,6 +244,8 @@ public class SoulEnchants extends JavaPlugin {
         getCommand("shop").setExecutor(new com.soulenchants.shop.ShopCommand(this));
         getCommand("quests").setExecutor(new com.soulenchants.quests.QuestCommand(this));
         getCommand("mob").setExecutor(new com.soulenchants.mobs.MobCommand(this, mobListener));
+        if (getCommand("stats") != null)
+            getCommand("stats").setExecutor(new com.soulenchants.commands.StatsCommand(this));
     }
 
     /** Void Rift system + associated holograms. */
@@ -441,6 +449,7 @@ public class SoulEnchants extends JavaPlugin {
     public com.soulenchants.scoreboard.PvPStats getPvPStats() { return pvpStats; }
     public com.soulenchants.guilds.GuildManager getGuildManager() { return guildManager; }
     public com.soulenchants.sets.SetManager getSetManager() { return setManager; }
+    public com.soulenchants.data.ProfileService getProfileService() { return profileService; }
     public com.soulenchants.bosses.oakenheart.OakenheartManager getOakenheartManager() { return oakenheartManager; }
     public EnchantConfig getEnchantConfig() { return enchantConfig; }
     public MythicConfig getMythicConfig() { return mythicConfig; }

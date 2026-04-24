@@ -41,6 +41,14 @@ public class PvPStats implements Listener {
     public int getKills(OfflinePlayer p)  { return kills.getOrDefault(p.getUniqueId(),  0); }
     public int getDeaths(OfflinePlayer p) { return deaths.getOrDefault(p.getUniqueId(), 0); }
 
+    /** Wipe a single player's K/D record. Used by /stats reset. Returns
+     *  true if something was cleared. */
+    public boolean resetKd(UUID id) {
+        boolean hadK = kills.remove(id) != null;
+        boolean hadD = deaths.remove(id) != null;
+        return hadK || hadD;
+    }
+
     public double getKDR(OfflinePlayer p) {
         int k = getKills(p), d = getDeaths(p);
         if (d == 0) return k;

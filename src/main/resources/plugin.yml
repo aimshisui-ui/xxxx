@@ -15,6 +15,10 @@ commands:
     description: SoulEnchants admin hub — books, dust, scrolls, bosses, reload
     usage: §8/§ece §7<list|menu|god|reload|book|dust|scroll|summon|despawn|loot>
     aliases: [customenchants]
+  stats:
+    description: View a player's PvP / soul stats · /stats reset <player> wipes K/D · /stats top [kills|kdr]
+    usage: §8/§estats §7[player|reset <player>|top [kills|kdr]]
+    aliases: [statistics]
   bless:
     description: Cleanse all negative potion effects from a player
     usage: §8/§ebless §7[player]
