@@ -2,6 +2,10 @@ package com.soulenchants.bosses;
 
 import com.soulenchants.SoulEnchants;
 import com.soulenchants.bosses.attacks.VeilweaverAttacks;
+import com.soulenchants.bosses.fsm.StateMachine;
+import com.soulenchants.bosses.veilweaver.VeilweaverCtx;
+import com.soulenchants.bosses.veilweaver.states.IdleState;
+import com.soulenchants.bosses.veilweaver.states.PhaseTransitionState;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
 import org.bukkit.Location;
@@ -11,6 +15,12 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 
+/**
+ * Post-Phase-3 FSM refactor — attack-picking + phase-transition behavior
+ * now lives in StateMachine&lt;VeilweaverCtx&gt;. Individual attacks are
+ * still static calls to VeilweaverAttacks because they were already
+ * extracted there pre-refactor; IdleState fires them + tracks cooldowns.
+ */
 public class Veilweaver {
 
     public enum Phase { ONE, TWO, THREE }
@@ -27,6 +37,8 @@ public class Veilweaver {
     private final List<LivingEntity> minions = new ArrayList<>();
     private final List<LivingEntity> echoClones = new ArrayList<>();
     private final VeilweaverCrystals crystals;
+    private final StateMachine<VeilweaverCtx> fsm;
+    private final VeilweaverCtx ctx;
 
     /** Self-expiring invuln. Compared against System.currentTimeMillis().
      *  No abandoned BukkitRunnables, no stuck-on bug. */
@@ -36,17 +48,6 @@ public class Veilweaver {
     private int idleTicks = 0;
     private boolean despawnAnnounced = false;
     private int despawnAt = -1;
-
-    // Attack cooldowns (in ticks). Wider gaps so attacks land like punctuation,
-    // not a stream — players need recovery time between hits.
-    private int cdThreadLash = 40;
-    private int cdShatterBolt = 80;
-    private int cdMinionWeave = 400;
-    private int cdDimensionalRift = 160;
-    private int cdLoomLaser = 220;
-    private int cdEchoClones = 800;
-    private int cdRealityFracture = 140;
-    private int cdApocalypseWeave = 400;
 
     private BukkitRunnable tickTask;
 
@@ -60,6 +61,8 @@ public class Veilweaver {
         de.tr7zw.changeme.nbtapi.NBTEntity nbt = new de.tr7zw.changeme.nbtapi.NBTEntity(entity);
         nbt.setBoolean(NBT_VEILWEAVER, true);
         this.crystals = new VeilweaverCrystals(plugin, this);
+        this.ctx = new VeilweaverCtx(plugin, this);
+        this.fsm = new StateMachine<>(new IdleState());
     }
 
     public VeilweaverCrystals getCrystals() { return crystals; }
@@ -174,10 +177,13 @@ public class Veilweaver {
             }
         }
 
-        // Phase transitions
+        // Phase transitions — force-transition the FSM into an invuln window
         double pct = entity.getHealth() / entity.getMaxHealth();
-        if (phase == Phase.ONE && pct <= 0.65) transitionTo(Phase.TWO);
-        else if (phase == Phase.TWO && pct <= 0.30) transitionTo(Phase.THREE);
+        if (phase == Phase.ONE && pct <= 0.65) {
+            fsm.set(new PhaseTransitionState(Phase.TWO), ctx);
+        } else if (phase == Phase.TWO && pct <= 0.30) {
+            fsm.set(new PhaseTransitionState(Phase.THREE), ctx);
+        }
 
         // Final Thread Bind triggers once below 10%
         if (!usedFinalBind && pct <= 0.10 && phase == Phase.THREE) {
@@ -185,112 +191,12 @@ public class Veilweaver {
             VeilweaverAttacks.finalThreadBind(this);
         }
 
-        if (System.currentTimeMillis() < invulnerableUntil) return;
-
-        runAttacks();
-    }
-
-    private int nextAttackAt = 80;
-    private final Random rng = new Random();
-
-    /** Weighted random attack picker. Cheap moves dominate, signature moves still happen. */
-    private void runAttacks() {
-        if (cdThreadLash > 0)      cdThreadLash--;
-        if (cdShatterBolt > 0)     cdShatterBolt--;
-        if (cdMinionWeave > 0)     cdMinionWeave--;
-        if (cdDimensionalRift > 0) cdDimensionalRift--;
-        if (cdLoomLaser > 0)       cdLoomLaser--;
-        if (cdEchoClones > 0)      cdEchoClones--;
-        if (cdRealityFracture > 0) cdRealityFracture--;
-        if (cdApocalypseWeave > 0) cdApocalypseWeave--;
-
-        if (--nextAttackAt > 0) return;
-        nextAttackAt = 90 + rng.nextInt(50); // ~4.5-7s between picks (was ~1.75-3s)
-
-        java.util.List<String> pool = new java.util.ArrayList<>();
-        if (cdThreadLash <= 0)  for (int i = 0; i < 7; i++) pool.add("lash");    // very common
-        if (cdShatterBolt <= 0) for (int i = 0; i < 4; i++) pool.add("bolt");    // common
-        if (cdMinionWeave <= 0)                            pool.add("minion");   // rare
-        if (phase == Phase.TWO || phase == Phase.THREE) {
-            if (cdDimensionalRift <= 0) for (int i = 0; i < 3; i++) pool.add("rift");
-            if (cdLoomLaser <= 0)       for (int i = 0; i < 2; i++) pool.add("laser");
-            if (cdEchoClones <= 0)                                  pool.add("clones");
-        }
-        if (phase == Phase.THREE) {
-            if (cdRealityFracture <= 0) for (int i = 0; i < 2; i++) pool.add("fracture");
-            if (cdApocalypseWeave <= 0)                             pool.add("apoc");
-        }
-        if (pool.isEmpty()) return;
-
-        switch (pool.get(rng.nextInt(pool.size()))) {
-            case "lash":     cdThreadLash = 70 + rng.nextInt(30); VeilweaverAttacks.threadLash(this); break;       // 3.5-5s
-            case "bolt":     cdShatterBolt = 160;                  VeilweaverAttacks.shatterBolt(this); break;      // 8s
-            case "minion":   cdMinionWeave = 900;                  VeilweaverAttacks.minionWeave(this); break;      // 45s
-            case "rift":     cdDimensionalRift = 320;              VeilweaverAttacks.dimensionalRift(this); break;  // 16s
-            case "laser":    cdLoomLaser = 420;                    VeilweaverAttacks.loomLaser(this); break;        // 21s
-            case "clones":   cdEchoClones = 1200;                  VeilweaverAttacks.echoClones(this); break;       // 60s
-            case "fracture": cdRealityFracture = 260;              VeilweaverAttacks.realityFracture(this); break;  // 13s
-            case "apoc":     cdApocalypseWeave = 800;              VeilweaverAttacks.apocalypseWeave(this); break;  // 40s
-        }
-    }
-
-    private void transitionTo(Phase next) {
-        // 3-second self-expiring invuln. No scheduled task = no stuck-on bug.
-        invulnerableUntil = System.currentTimeMillis() + 3000L;
-        phase = next;
-        Location loc = entity.getLocation();
-        loc.getWorld().createExplosion(loc.getX(), loc.getY() + 1, loc.getZ(), 0f, false);
-        loc.getWorld().playSound(loc, Sound.ENDERDRAGON_GROWL, 2.0f, 0.7f);
-        for (int i = 0; i < 3; i++) {
-            double a = i * (Math.PI * 2 / 3);
-            Location strike = loc.clone().add(Math.cos(a) * 4, 0, Math.sin(a) * 4);
-            strike.getWorld().strikeLightningEffect(strike);
-        }
-        // Dramatic broadcast + center-screen title + strategy hints
-        String titleMain, titleSub;
-        String[] broadcast;
-        if (next == Phase.TWO) {
-            titleMain = ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "✦ THE VEIL TEARS ✦";
-            titleSub  = ChatColor.GRAY + "The Veilweaver becomes ethereal";
-            broadcast = new String[] {
-                    ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "══════════════════════════════",
-                    ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "  ✦ THE VEIL TEARS — Phase II ✦",
-                    ChatColor.GRAY + "  • §dBoss teleports to players and rips rifts",
-                    ChatColor.GRAY + "  • §dLoom Laser: 2.5s channel — break line of sight!",
-                    ChatColor.GRAY + "  • §dEcho Clones: kill with §cexplosions §dfor instant-drop",
-                    ChatColor.GRAY + "  • §5Arrows deal half damage in this phase",
-                    ChatColor.DARK_PURPLE + "" + ChatColor.BOLD + "══════════════════════════════"
-            };
-        } else {
-            titleMain = ChatColor.DARK_RED + "" + ChatColor.BOLD + "✦ THE SHATTERED LOOM ✦";
-            titleSub  = ChatColor.RED + "Reality itself breaks down";
-            broadcast = new String[] {
-                    ChatColor.DARK_RED + "" + ChatColor.BOLD + "══════════════════════════════",
-                    ChatColor.DARK_RED + "" + ChatColor.BOLD + "  ✦ THE SHATTERED LOOM — Phase III ✦",
-                    ChatColor.GRAY + "  • §cReality Fracture: §fjump between expanding rings",
-                    ChatColor.GRAY + "  • §cApocalypse Weave: §fboss goes invulnerable 4s — hide",
-                    ChatColor.GRAY + "  • §cAt §4§l10% HP§c: Final Thread Bind roots top damager",
-                    ChatColor.GRAY + "  • §cBurn the boss down fast before the bind completes",
-                    ChatColor.DARK_RED + "" + ChatColor.BOLD + "══════════════════════════════"
-            };
-        }
-        for (Player p : arena.playersInArena()) {
-            com.soulenchants.lunar.LunarFx.sendTitle(p, titleMain, titleSub,
-                    250L, 2000L, 500L, 1.35f);
-            for (String line : broadcast) p.sendMessage(line);
-            p.playSound(p.getLocation(), Sound.WITHER_SPAWN, 1.5f, 1.0f);
-        }
-        // Destroy 2 orbs on P2 transition; remaining on P3
-        if (next == Phase.TWO) arena.destroyOrbs(2);
-        else if (next == Phase.THREE) arena.destroyOrbs(99);
-        // Respawn crystal shield (more crystals each phase)
-        final int crystalCount = next == Phase.TWO ? 5 : 6;
-        new BukkitRunnable() {
-            @Override public void run() { crystals.spawnRing(crystalCount); }
-        }.runTaskLater(plugin, 40L);
-        // Boss floats up briefly
-        entity.setVelocity(entity.getVelocity().setY(0.6));
-        // (invuln clear is scheduled at the top of this method)
+        // Drive the FSM — IdleState picks + fires attacks; phase-transition
+        // states own their invuln window and self-transition back to Idle.
+        // Skip when invulnerable unless we're inside a PhaseTransitionState.
+        if (System.currentTimeMillis() < invulnerableUntil
+                && !(fsm.current() instanceof PhaseTransitionState)) return;
+        fsm.tick(ctx);
     }
 
     public void onDamageDealt(Player attacker, double damage) {
@@ -321,6 +227,13 @@ public class Veilweaver {
 
     public boolean isInvulnerable() { return System.currentTimeMillis() < invulnerableUntil; }
     public void forceClearInvuln() { this.invulnerableUntil = 0L; }
+    /** Start a self-expiring invuln window. Called from PhaseTransitionState. */
+    public void setInvulnerableFor(long millis) {
+        this.invulnerableUntil = System.currentTimeMillis() + Math.max(0, millis);
+    }
+    /** Set the current phase without running the broadcast (the FSM state
+     *  handles that). */
+    public void enterPhase(Phase p) { this.phase = p; }
     public Phase getPhase() { return phase; }
     public LivingEntity getEntity() { return entity; }
     public VeilweaverArena getArena() { return arena; }

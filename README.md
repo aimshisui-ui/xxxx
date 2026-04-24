@@ -1,14 +1,15 @@
 # SoulEnchants
 
-A full-scope custom-enchant, mythic-weapon, boss, and pet plugin for **Spigot 1.8.8**. Themed around a soul-gated currency, built to feel like a paid plugin.
+A full-scope custom-enchant, mythic-weapon, boss, and pet plugin for **Spigot 1.8.8**. Themed around a soul-gated currency, built to feel like a paid plugin. v1.4 adds a brand-new boss (Oakenheart), refactors boss AI onto a generic FSM, and hardens plugin lifecycle with a cleanup utility layer.
 
 ```
 ▸ 80+ custom enchants         ▸ 12 mythic weapons + ability slots
 ▸ 6 world bosses              ▸ 7 hybrid pets (egg + armor-stand companion)
-▸ 13 cosmetic masks           ▸ 6-tier soul-gem currency
+▸ 14 masks (tiered)           ▸ 6-tier soul-gem currency
 ▸ Soul license gating         ▸ Apollo cooldown / waypoint integration
 ▸ /g ping + /lunar test       ▸ Nordic mask attach-to-helmet
 ▸ Reloadable YAML balance     ▸ Soul Vault admin hub (/ce god)
+▸ FSM-driven boss AI          ▸ Crash-safe temp-block persistence
 ```
 
 ---
@@ -22,7 +23,7 @@ mvn package
 
 # Drop the jar in your server's plugins/ folder, restart.
 # Optional plugins (hot-loaded if present):
-#   Apollo         — Lunar Client cooldowns + waypoints
+#   Apollo         — Lunar Client cooldowns + waypoints + enhanced titles + notifications + holograms
 #   ProtocolLib    — mask helmet-override rendering
 ```
 
@@ -32,108 +33,82 @@ mvn package
 
 ### Custom enchants
 
-Six tiers — Common · Uncommon · Rare · Epic · Legendary · Soul Enchant (red). Books roll random success-% and destroy-% on creation; Magic Dust overrides success; White Scrolls absorb a single destruction. Max 9 enchants per piece.
+Six tiers — Common · Uncommon · Rare · Epic · Legendary · Soul Enchant (red). Books roll random success-% and destroy-% on creation; Magic Dust overrides success; White Scrolls absorb a single destruction. Max 9 enchants per piece, extendable to 14 with **Slot Orbs** (Weapon / Armor variants).
 
-**v1.2 added 16 new enchants.** Six axe debuffs, four PvE-focused armor enchants, six god-tier armor fillers that finally push utility filler (aquatic / night vision / depth strider) out of godset slots.
-
-| Category | Enchant | Slot | Effect |
-|---|---|---|---|
-| Axe debuff | Marrowbreak | Axe | 25%/lvl — Weakness II 5s |
-| Axe debuff | Crushing Blow | Axe | 20%/lvl — Slow III 3s |
-| Axe debuff | Pulverize | Axe | 15%/lvl — Nausea III + Slow II 4s |
-| Axe debuff | Exsanguinate | Axe | 10%/lvl — 5s true-damage DoT |
-| Axe stateful | Hunter's Mark | Axe | Mark 10s · +12%/lvl vs marked |
-| Axe stateful | Overwhelm | Axe | +6%/lvl per consecutive hit (max 5) |
-| Armor PvE | Soul Warden | Chest | Regen after mob hit (60s CD) |
-| Armor PvE | Mobslayer's Ward | Any armor | -10%/lvl damage from custom mobs |
-| Armor PvE | Radiant Shell | Any armor | -1 flat per piece (-4 full set) |
-| Armor PvE | Dreadmantle | Helmet | Aura Weakness on nearby mobs on hit |
-| Armor god | Thornback | Any armor | Reflect 5%/lvl as TRUE damage (stacks per piece) |
-| Armor god | Warden's Eye | Helmet | Mark attackers with particle ring |
-| Armor god | Bulwark | Chest | -6%/lvl from mobs · Resistance II below 40% HP |
-| Armor god | Voidwalker | Boots | 8%/lvl dodge · permanent Speed I |
-| Armor god | Oathbound | Helmet | Cleanse Slow/Weakness/Wither on hit (30s CD) |
-| Armor god | Entombed | Legs | Slow IV + MF III aura on attackers below 30% HP |
+**Recent additions:**
+- **Rage** (Legendary, weapon) — consecutive hits on the same target stack `+(lvl × stack × 2)` bonus damage, max 10 stacks, 30s decay, resets on damage taken. Live action-bar meter.
+- **Severance / Reaping Slash** — dedicated anti-heal enchants; bleed L4+ also applies anti-heal. Multiple sources stack multiplicatively with diminishing returns.
+- **ObsidianShield** (Epic, armor) — permanent Fire Resistance while worn.
+- **Slayer** now also deals flat TRUE damage vs bosses + minions (bypasses armor).
 
 Every balance knob lives in [`enchants.yml`](src/main/resources/enchants.yml) — reload with `/ce reload`.
 
 ### Mythic weapons
 
-Twelve named items, each with a unique effect and a **secondary ability slot** — bind one mythic's effect onto another for 12 × 11 = 132 unique combinations.
-
-| Mythic | Mode | Effect |
-|---|---|---|
-| Crimson Tongue | held | Heal per nearby Bleed tick |
-| Wraithcleaver | held | Heal per Cleave AoE proc |
-| Stormbringer | held | Chain-lightning on crit, soul-gated |
-| Voidreaver | held | Souls on kill + Speed aura |
-| Dawnbringer | aura | Periodic debuff purge + Regen for allies in radius |
-| Sunderer | held | Greataxe — armor strip + true damage |
-| Phoenix Feather | held | On-kill heal + radius ignite |
-| Soulbinder | held | Bow — souls per hit + true damage |
-| Tidecaller | hotbar | Water Breathing + Depth Strider aura |
-| **Graverend (v1.2)** | held | Heal 10% of killed mob's max HP + 20% dmg vs bosses |
-| **Emberlash (v1.2)** | held | 4-block fire splash + 4s ignite on every swing |
-| **Ruinhammer (v1.2)** | held | Stacking kill bonus + 5-block shockwave at 10 stacks |
+Twelve named items, each with a unique effect and a **secondary ability slot** — bind one mythic's effect onto another for 12 × 11 = 132 unique combinations. Custom death messages per mythic (e.g. "X was rent asunder by Graverend").
 
 Every mythic ships pre-enchanted (Sword: Sharpness V / Axe: Sharpness VI / Bow: Power V, plus Unbreaking III + Fire Aspect II + Looting III) and is **unbreakable**.
 
-### Pet system (v1.2) — hybrid model
+### Pet system — hybrid model
 
-7 pet archetypes. Each pet is a **dual-surface entity**:
+7 pet archetypes, each a dual-surface entity: an inventory egg (NBT-pinned progress) + a spawned follower armor-stand companion. Sneak + right-click fires the active ability.
 
-- **Inventory egg** — players carry an egg item with NBT-pinned progress (level, XP, UID). Eggs trade freely, stack-merge naturally, persist through death as loot-drops.
-- **Spawned companion** — an invisible armor stand wearing the pet's visual helmet (skull / block / netherrack / ice / etc.) that follows the player at ~1.4 blocks behind, teleports past 24 blocks, despawns cleanly on world change / quit.
+### Cosmetic masks (v1.4 redesign)
 
-Right-click to summon / despawn. **Sneak + right-click** fires the active ability. XP drips from every mob kill.
+Masks no longer grant free potion effects. Each mask has a **tier** (LOW · MID · HIGH) and a **power block** — any combination of:
+- Aura boosts (`+1` to an effect you already have — no free apply)
+- Outgoing damage multipliers (with optional "vs players" modifier)
+- Incoming damage reductions (with optional "below 50% HP" gate)
+- Fire / explosion / potion-effect immunities
+- Named **custom abilities**
 
-| Pet | Archetype | Passive | Active |
-|---|---|---|---|
-| Ethereal Wisp | Utility | Night Vision + Speed I + Regen I + 25% souls on kill | Phase — 8s Invis + Speed III + 8 HP heal |
-| Stone Guardian | Defensive | Permanent Resistance I + Health Boost II (+4 hearts) | Bulwark — 8 hearts Absorption + Resistance III + knockback pulse |
-| Hellhound | Offensive | Permanent Strength I + Speed I · kills → Haste II 4s refresh | Bloodfrenzy — 8s Strength III + Speed II + 25% lifesteal |
-| Frost Sprite | Crowd Control | 10-block Slow II + MF I aura on enemies | Glacier Burst — 12-block Slow V + MF III for 5s + 6 dmg |
-| Ember Fox | Offensive | Fire Resistance + Strength I · attackers ignite 4s | Inferno Ring — 8-block 3-ring burst + 6s residual flame aura |
-| Shadow Raven | Utility | 5-block Weakness aura on mobs · 10% mob-kill loot-dup | Assassinate — 6s Str III + Spd II + 8-block Weakness III |
-| The Seer | Progression | Haste II + Resistance I · +50% souls + XP per kill | Mark — reveal entities in 20 blocks · 12s Str II + Res II |
+**Abilities:**
+- **Stalker** (Hunter's Veil) — crouch still for 2s → Invisibility until you move or attack
+- **Ironwill** (Dragon Skull) — fully immune to Bleed stack application
+- **Frostguard** (Wither Skull) — immune to Slow + Mining Fatigue potions
+- **Soul Harvest** (Tyrant's Crown) — 20% max-HP heal on any kill, 30s CD
+- **Phantom Dash** (Void Mask) — 2s Invisibility burst while sprinting, 10s CD
 
-Manage with `/pet list | info | despawn | give <id> [player] | xp <n>`. Eggs mint fresh from `/pet give` or via the **Pets tile in `/ce god` → Support row (slot 23)**.
+Attach / detach exactly as before — drag onto any helmet to attach, right-click to remove. Browse via `/ce god → Masks` (tier-banded 54-slot view).
 
 ### Soul currency
 
-Two-stage economy. **Soul Bank** is the ledger (per-player balance in `souls.yml`). **Soul Gems** are one-way portable batteries minted via `/souls withdraw <amount>`. Soul-tier enchants **require a gem in inventory to fire** and drain it on proc. No ledger fallback — mint discipline matters.
+Two-stage economy. **Soul Bank** is the ledger. **Soul Gems** are one-way portable batteries minted via `/souls withdraw <amount>`. Soul-tier enchants **require a gem in inventory to fire** and drain it on proc. No ledger fallback — mint discipline matters.
 
-### World bosses
+### World bosses — v1.4 FSM refactor
 
-v1.1 shipped the Veilweaver, Ironheart Colossus, and Hollow King. **v1.2 adds three godset-tier elites** — tuned so a non-godset player can't survive the opening minute.
+Every boss now runs on a generic finite-state-machine framework (`bosses/fsm/`): a `BossState<C>` interface + a `StateMachine<C>` driver + per-boss state classes in `bosses/<boss>/states/`. Each attack / phase transition is now a ~50-80-line file. Previously every boss was a ~550-line class of switch-case + nested `BukkitRunnable`s.
 
-| Boss | HP | Base | Signature mechanics |
+| Boss | HP | Theme | Signature mechanics |
 |---|---|---|---|
-| The Veilweaver | 15,000 | encounter | Thread Lash → Shatter Bolt → Apocalypse Weave (3 phases) |
-| Ironheart Colossus | 8,000 | encounter | Seismic Stomp → Rocket Charge → Iron Wall (2 phases) |
-| Modock, King of Atlantis | rift | encounter | Three-arena phase progression |
-| The Hollow King | 25,000 | skeleton | Meteor + chain lightning + forced-melee enforcer + 6-pup death split |
-| **The Broodmother (v1.2)** | 18,000 | spider | Web-slow aura · venom cloud · 8-pup death split · Graverend drop |
-| **The Wurm-Lord (v1.2)** | 22,000 | zombie pigman | Fire aura · 5-block meteors · magma-cube summons · Ruinhammer drop |
-| **The Choirmaster (v1.2)** | 20,000 | wither skeleton | 4-bounce chain lightning · soul-steal aura · monk summons · Emberlash drop |
+| The Veilweaver | 15,000 | reality-bending wither skeleton | Thread Lash · Shatter Bolt · Dimensional Rift · Loom Laser · Echo Clones · Reality Fracture · Apocalypse Weave · Final Thread Bind (3 phases) |
+| Ironheart Colossus | 8,000 | iron golem | Seismic Stomp · Boulder Throw · Rocket Charge · Magnetic Pull · Iron Wall · Ground Slam (2 phases + Reinforce at 25%) |
+| **Oakenheart — Forest Sovereign** ★ v1.4 | 22,000 | ancient tree spirit | Thorn Lash (cone) · Root Bind (AoE slow) · Sapling Swarm · Falling Grove (oak-log meteors) · Briar Prison (cobweb cage + DoT) · Withering Aura (sneak-or-bleed) · 3 phases |
+| The Hollow King | 25,000 | wither skeleton | Meteor + chain lightning + 6-pup death split |
+| The Broodmother | 18,000 | spider | Web traps · venom cloud · 8-pup death split · Graverend drop |
+| The Wurm-Lord | 22,000 | zombie pigman | Fire aura · burrow strike · magma-cube summons · Ruinhammer drop |
+| The Choirmaster | 20,000 | wither skeleton | 3-bounce chain lightning · soul-steal aura · monk summons · Emberlash drop |
 
-Live Apollo waypoints update on spawn and clear on death. Top damage dealer gets 50% of the soul reward. Summon from `/ce god → Spawn tab` or `/ce summon <id>`.
+**Oakenheart** is summon-only: craft a **Ritual Sapling** from 4× Heartwood + 4× Verdant Tear + 1× Oakensap Essence (all drops from Oakenheart and sapling_sprout minions) and right-click on grass or dirt in the main world. Drops a guaranteed **Oaken Crown** + reagent stack, with a ~8% chance of the **Briar Mantle** boss chestplate and ~5% chance of the **Thornbound Gauntlet** boss axe.
 
-### Cosmetic masks (Nordic-style)
+*(Modock, the Atlantis boss, was removed in v1.4 and replaced with Oakenheart.)*
 
-Masks are real inventory items — player heads / skulls / pumpkins with custom flavor. Drag onto any helmet to attach (writes `se_mask_attached` NBT + appends `ATTACHED: <name>` lore line). Right-click the helmet to detach. The packet injector reads the helmet's NBT each tick and rewrites outgoing `ENTITY_EQUIPMENT` packets so other players see the mask visual. **Real helmet stays equipped** — enchants, durability, armor points all function normally.
-
-13 masks ship: Pumpkin Head, Jack-o'-Lantern, Dragon Skull, Wither Skull, Zombie Veil, Skeletal Crown, Creeper Mask, plus **v1.2 additions** Duelist's Mask, Tyrant's Crown, Battle-Scar, Hunter's Veil, Witchwood Mask, Soulfire Mask.
+Top damage dealer gets the souls reward. Summon non-summon-item bosses from `/ce god → Spawn tab` or `/ce summon <id>`.
 
 ### Apollo / Lunar Client integration
 
 Drop [Apollo](https://lunarclient.dev/apollo/downloads) in your plugins folder:
 
-- **Cooldown ring** above the hotbar for every whitelisted ability. Per-ability icon + countdown.
-- **Live boss waypoints** — push on spawn, clear on death, hide if player is in another world.
-- **`/g ping`** — ping your location to every online guildmate, labelled with their distance to you, auto-remove after 5 seconds.
+- **Cooldown ring** above the hotbar for every whitelisted ability
+- **Live boss waypoints** — push on spawn, clear on death
+- **Enhanced titles** with fade/scale timing for boss spawns + phase transitions
+- **Notification toasts** for anti-heal, Nature's Wrath, Divine Immolation, Phoenix, Soul Shield procs
+- **Holograms** for floating soul-gain numbers
+- **`/g ping`** — guild-wide 5s marker
 
-Legacy `LunarClient-API` is supported as a fallback. Diagnostic: `/lunar status`, test with `/lunar test`.
+Legacy `LunarClient-API` fallback. Diagnostic: `/lunar status`, test with `/lunar test`.
+
+Note: Rich Presence was removed — Lunar requires server listing in their curated ServerMappings allow-list for Discord RPC to render, which is impractical for private servers.
 
 ### Guilds
 
@@ -141,48 +116,51 @@ Legacy `LunarClient-API` is supported as a fallback. Diagnostic: `/lunar status`
 
 ---
 
-## Commands
+## Architecture (v1.4 refactor)
 
-All commands have colour-styled help panels grouped by intent. Full output: type `/<cmd>` with no args.
+**Phase 1 — Cleanup hygiene** (commit `71a0cc9`):
+- `util/MapManager` — single quit-eviction registry. Every UUID-keyed cache in the plugin (28+ maps across CombatListener, MaskAbilityTask, GUI state) registers here once; a single `PlayerQuitEvent` listener evicts across all of them.
+- `util/TempBlockTracker` — crash-safe temp-block lifecycle. IronGolem's Iron Wall, Broodmother's cobweb traps, Oakenheart's Briar Prison — all route through `place(loc, mat, ticks, tag)`. Persisted to `tempblocks.yml` every write so a mid-fight crash restores every block on the next boot instead of leaving permanent world damage.
+- Hardened `onDisable` — every subsystem stop/save wrapped in its own try/catch; `TempBlockTracker.restoreAll()` + `MapManager.clearAll()` + `scheduler.cancelTasks(plugin)` as mandatory final steps.
+- `/ce debug` admin command prints live UUID-cache entry count + temp-block count + per-map breakdown.
+
+**Phase 4 — onEnable god-class split** (commit `72d0cde`):
+- The 230-line `onEnable` body is now a 23-phase lifecycle list:
+  ```java
+  safePhase("cleanup-infra",   this::initCleanupInfrastructure);
+  safePhase("world-bootstrap", this::initWorlds);
+  safePhase("configs",         this::initConfigs);
+  // ... 20 more phases
+  ```
+- Each phase method contains its original inline init code but runs in its own try/catch. A throwing subsystem logs `[phase:lunar] FAILED — ...` and the rest of the plugin keeps loading.
+
+**Phase 3 — Boss FSM refactor** (commits `e612648` + v1.4):
+- New `bosses/fsm/` package: `BossState<C>` interface + `StateMachine<C>` driver. Generic context type so the same framework drives every boss.
+- **IronGolemBoss** refactored to FSM first. ~550-line monolithic class → 150-line orchestration + 9 state files (`golem/states/*State.java`).
+- **Veilweaver** follows the same pattern (`veilweaver/states/IdleState.java` + `PhaseTransitionState.java`). Attacks were already extracted to `VeilweaverAttacks` static calls, so Veilweaver's FSM is lean.
+- **Oakenheart** is FSM-native from day one (9 state files).
+- CustomMob-based bosses (Hollow King + 3 elites) keep their existing declarative `AbilityFactory` pattern — already well-structured, doesn't benefit from FSM migration.
+
+---
+
+## Commands
 
 | Command | Summary |
 |---|---|
 | `/ce` | SoulEnchants admin hub — `/ce god` opens the Soul Vault GUI |
-| `/ce bossset` | Equip the PvE loadout — armor + 2 classic mythics + 3 v1.2 mythics, **every mythic fully enchanted to PvE spec** |
-| `/ce godset` | Equip the PvP loadout — armor + sword + axe + 2 mythics |
-| `/ce summon <boss\|mob>` | Spawn any CustomMob or encounter boss at your location |
-| `/ce reload [enchants\|loot\|all]` | Live-reload balance without a restart |
-| `/souls` | Profile view — tier, bank balance, gem balance, licence state |
-| `/souls withdraw <amount>` | **One-way.** Mint a Soul Gem from bank balance (`k`/`m`/`b` suffixes) |
-| `/souls give\|take\|set <player> <amount>` | Admin — modify Soul Bank balance |
-| `/mythic list \| give <id> [player] \| infuse <id> \| clear` | Mythic weapon admin + ability slot management |
-| `/mask list \| give <id> [player]` | Browse cosmetic masks + hand them out |
-| `/pet list \| info \| despawn \| give <id> [p] \| xp <n>` | **(v1.2)** hybrid pet system |
+| `/ce bossset` · `/ce godset` | PvE / PvP loadouts (fully enchanted) |
+| `/ce summon <id>` | Spawn any CustomMob or boss at your location |
+| `/ce debug` | Live UUID-cache + temp-block diagnostic |
+| `/ce reload [enchants\|loot\|all]` | Live-reload balance without restart |
+| `/souls` · `/souls withdraw <amount>` · `/souls give\|take\|set` | Soul Bank + Gems |
+| `/mythic list \| give <id> [player] \| infuse <id> \| clear` | Mythic admin + ability slots |
+| `/mask list \| give <id> [player]` | Browse / hand out masks |
+| `/pet list \| info \| despawn \| give <id> [p] \| xp <n>` | Hybrid pet system |
+| `/oakenheart status \| summon \| abort \| give [player]` | ★ v1.4 — Forest Sovereign control |
 | `/lunar status \| test` | Apollo bridge diagnostic |
-| `/bless [player]` | Strip negative potion effects |
 | `/boss list \| kill` | Running-boss control |
-| `/shop` · `/quests` · `/mob` · `/rift` · `/modock` | Secondary systems |
-| `/lootfilter togglemessage` | Per-player drop blacklist |
-| `/guild` / `/g` | Guild management — `create`, `invite`, `join`, `leave`, `disband`, `vault`, `info`, `top`, `ping` |
-
-Aliases: `/soul` · `/g` · `/mw` · `/pets`
-
----
-
-## Admin GUI — `/ce god`
-
-A glass-framed Soul Vault hub. Every tile follows the same lore template (description · stats · `▸ Click to <verb>`) so eye-flow is consistent across the whole panel.
-
-```
-Row 1 — GEAR      Enchants · Mythics · Masks · Boss Loot
-Row 2 — SUPPORT   Reagents · Consumables · Loot Boxes · Recipes · Pets · Boss-Killer Set · God Set
-Row 3 — SPAWN     Soul Gem Mint · Summon Boss · Custom Mobs
-Row 4 — Close
-```
-
-The **Summon Boss** tile opens a 45-slot panel with tiles for Veilweaver, Ironheart Colossus, Modock, The Hollow King, and the three v1.2 elites (Broodmother / Wurm-Lord / Choirmaster). Click-to-summon runs the correct code path per boss type.
-
-Recipe view opens a real `InventoryType.WORKBENCH` so it reads exactly like a crafting table.
+| `/guild` / `/g` | Guild management |
+| `/shop` · `/quests` · `/mob` · `/rift` · `/lootfilter` | Secondary systems |
 
 ---
 
@@ -190,11 +168,12 @@ Recipe view opens a real `InventoryType.WORKBENCH` so it reads exactly like a cr
 
 | File | Contents |
 |---|---|
-| [`config.yml`](src/main/resources/config.yml) | Souls on kill, ore book-drop rates, veilweaver reward |
-| [`enchants.yml`](src/main/resources/enchants.yml) | ~80 balance knobs for every enchant |
+| [`config.yml`](src/main/resources/config.yml) | Souls on kill, ore book-drop rates, boss reward pool |
+| [`enchants.yml`](src/main/resources/enchants.yml) | ~80 balance knobs |
 | [`mythics.yml`](src/main/resources/mythics.yml) | Per-mythic proc rates, cooldowns, soul costs |
+| `tempblocks.yml` *(generated)* | Live temp-block persistence for crash recovery |
 
-Reload with `/ce reload` — no restart. YAML schema migrations are automatic: new keys added in a release merge into the on-disk copy, your tuning is preserved.
+Reload with `/ce reload` — no restart.
 
 ---
 
@@ -202,9 +181,10 @@ Reload with `/ce reload` — no restart. YAML schema migrations are automatic: n
 
 ```bash
 mvn package
+# target/SoulEnchants-1.1.0.jar
 ```
 
-Output: `target/SoulEnchants-1.1.0.jar`. Requires JDK 8+ at build time (tested on JDK 17).
+Requires JDK 8+ at build time (tested on JDK 17).
 
 ---
 
@@ -214,21 +194,24 @@ Output: `target/SoulEnchants-1.1.0.jar`. Requires JDK 8+ at build time (tested o
 |---|---|---|
 | Spigot API 1.8.8 | provided | runtime |
 | NBT-API 2.13.2 | shaded | item NBT on 1.8 |
-| Apollo API 1.2.5 | provided | optional — enables Lunar cooldowns + waypoints |
-| ProtocolLib | softdepend | optional — enables mask helmet rendering |
+| Apollo API 1.2.5 | provided | optional — Lunar enhancements |
+| Adventure API 4.17 | provided | Apollo Component types (Apollo bundles at runtime) |
+| ProtocolLib | softdepend | optional — mask helmet rendering |
 
-Both Apollo and ProtocolLib are optional at runtime — the plugin no-ops the relevant features if they're absent and logs a single startup notice.
+Every optional dep is hot-loaded with a no-op fallback if absent.
 
 ---
 
 ## Version history
 
-- **v1.2** (current) — Pet system (7 archetypes), 16 new enchants, 3 new PvE mythics (Graverend / Emberlash / Ruinhammer), 6 new masks, 3 godset-tier elite bosses, god-tier armor enchants (Thornback / Warden's Eye / Bulwark / Voidwalker / Oathbound / Entombed), `/ce bossset` ships every mythic perfectly enchanted.
-- **v1.1** — Soul Gems, mythic weapons, Nordic masks, Apollo bridge, `/g ping`, reloadable YAML, aesthetic overhaul
-- **v1.0-MVP** — Original scope: enchants + two bosses + souls ledger + sidebar
+- **v1.4** (current) — Phase 1 cleanup hygiene (MapManager + TempBlockTracker), Phase 4 onEnable god-class split, Phase 3 boss FSM refactor (IronGolem + Veilweaver), new Oakenheart boss (Forest Sovereign, 3 phases, summon-only via Ritual Sapling), Modock removed entirely, TierChatPrefix removed.
+- **v1.3** — Slot orbs (9 → 14 enchant slots), Rage enchant ported from Nordic, mask system redesign with tiers + abilities, ObsidianShield, Choirmaster nerf, boss armor TTK fix.
+- **v1.2** — Pet system (7 archetypes), 16 new enchants, 3 new PvE mythics, 6 new masks, 3 godset-tier elite bosses, god-tier armor enchants, `/ce bossset` with perfectly-enchanted mythics.
+- **v1.1** — Soul Gems, mythic weapons, Nordic masks, Apollo bridge, `/g ping`, reloadable YAML, aesthetic overhaul.
+- **v1.0-MVP** — Enchants + two bosses + souls ledger + sidebar.
 
 ---
 
 ## Credits
 
-Built by fulls on Spigot 1.8.8. Enchant-system architecture inspired by Nordic's CrankedEnchants (CrankedPvP). Pet model inspired by Nordic's CrankedPets but reimagined with a spawned armor-stand companion (Nordic's are inventory-only). Cooldown + waypoint integration via Lunar Client's Apollo API.
+Built by fulls on Spigot 1.8.8. Enchant system inspired by Nordic's CrankedEnchants. Pet model inspired by Nordic's CrankedPets but reimagined with a spawned armor-stand companion. Cooldown + waypoint integration via Lunar Client's Apollo API.
