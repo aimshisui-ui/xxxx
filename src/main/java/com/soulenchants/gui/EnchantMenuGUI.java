@@ -31,7 +31,10 @@ public class EnchantMenuGUI implements Listener {
     private final SoulEnchants plugin;
     private final Map<UUID, Integer> playerPage = new HashMap<>();
 
-    public EnchantMenuGUI(SoulEnchants plugin) { this.plugin = plugin; }
+    public EnchantMenuGUI(SoulEnchants plugin) {
+        this.plugin = plugin;
+        com.soulenchants.util.MapManager.registerMap(playerPage, "enchantMenuPage");
+    }
 
     public void open(Player p) { open(p, 0); }
 

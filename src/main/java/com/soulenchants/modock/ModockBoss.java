@@ -67,7 +67,9 @@ public class ModockBoss {
     private boolean stopped = false;
 
     // Track water blocks we placed for the trap so we can revert them
-    private final List<TempBlock> tempWaterBlocks = new ArrayList<>();
+    // tempWaterBlocks retired — all water-trap blocks route through
+    // TempBlockTracker with tag "modock_water" for forced restoration on
+    // phase change / boss death / server shutdown.
 
     public ModockBoss(SoulEnchants plugin, ModockSpawnConfig spawnCfg) {
         this.plugin = plugin;
@@ -216,16 +218,9 @@ public class ModockBoss {
             entity.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 1, false, false), true);
         }
 
-        // Cleanup expired temp water blocks
-        long now = System.currentTimeMillis();
-        Iterator<TempBlock> it = tempWaterBlocks.iterator();
-        while (it.hasNext()) {
-            TempBlock tb = it.next();
-            if (now >= tb.expiresAt) {
-                tb.restore();
-                it.remove();
-            }
-        }
+        // Temp water blocks are now managed by TempBlockTracker — its
+        // sweeper restores them on expiry and persists live entries so a
+        // crash doesn't leave water pockets scattered around the arena.
     }
 
     /** Phase-dependent base damage for melee + lightning. */
@@ -265,8 +260,8 @@ public class ModockBoss {
             // Don't overwrite anything solid — only air or water-like
             if (b.getType() == Material.AIR || b.getType() == Material.WATER
                     || b.getType() == Material.STATIONARY_WATER) {
-                tempWaterBlocks.add(new TempBlock(b.getLocation(), b.getType(), b.getData(), expires));
-                b.setType(Material.STATIONARY_WATER, false);
+                com.soulenchants.util.TempBlockTracker.place(
+                        b.getLocation(), Material.STATIONARY_WATER, 60L, "modock_water");
             }
         }
         target.addPotionEffect(new PotionEffect(PotionEffectType.SLOW,            60, 5, false, false), true);
@@ -375,8 +370,7 @@ public class ModockBoss {
         double curHp = entity.getHealth();
         despawnAllMinions();
         // Restore any temp water blocks BEFORE TP so we don't leave water in old world
-        for (TempBlock tb : tempWaterBlocks) tb.restore();
-        tempWaterBlocks.clear();
+        com.soulenchants.util.TempBlockTracker.restoreByTag("modock_water");
 
         // Move all participants first so they arrive ahead of the boss
         for (UUID u : new ArrayList<>(participants)) {
@@ -449,8 +443,7 @@ public class ModockBoss {
         stopped = true;
         try { tickTask.cancel(); } catch (Throwable ignored) {}
         despawnAllMinions();
-        for (TempBlock tb : tempWaterBlocks) tb.restore();
-        tempWaterBlocks.clear();
+        com.soulenchants.util.TempBlockTracker.restoreByTag("modock_water");
         if (entity != null && !entity.isDead() && !killed) {
             try { entity.remove(); } catch (Throwable ignored) {}
         }

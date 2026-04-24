@@ -189,6 +189,25 @@ public class CECommand implements CommandExecutor {
                     (didLoot ? MessageStyle.VALUE + "loot overrides" : "") + MessageStyle.GOOD + ".");
             return true;
         }
+        // Phase 1 diagnostic — shows live UUID-cache sizes + temp-block count.
+        // Helpful for verifying memory isn't leaking after long uptime or
+        // after a crash/restart cycle.
+        if (sub.equals("debug")) {
+            if (!sender.hasPermission("soulenchants.admin")) {
+                Chat.err(sender, "You need soulenchants.admin.");
+                return true;
+            }
+            int totalUuids = com.soulenchants.util.MapManager.totalEntries();
+            int tempBlocks = com.soulenchants.util.TempBlockTracker.liveCount();
+            Chat.banner(sender, "SoulEnchants Cleanup State");
+            sender.sendMessage(MessageStyle.MUTED + "Total UUID-cache entries: " + MessageStyle.VALUE + totalUuids);
+            sender.sendMessage(MessageStyle.MUTED + "Live temp-blocks tracked: " + MessageStyle.VALUE + tempBlocks);
+            sender.sendMessage("");
+            for (String line : com.soulenchants.util.MapManager.describeSizes()) {
+                sender.sendMessage(MessageStyle.FRAME + "  " + MessageStyle.MUTED + line);
+            }
+            return true;
+        }
         // v1.1 — GUI shortcuts. /ce mythic and /ce mask open the corresponding
         // panels in GodMenuGUI, so admins can tab-complete a single verb.
         if (sub.equals("mythic") || sub.equals("mythics")) {

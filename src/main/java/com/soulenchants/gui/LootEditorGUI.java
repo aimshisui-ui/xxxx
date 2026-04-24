@@ -53,7 +53,11 @@ public class LootEditorGUI implements Listener {
     // Navigation: which mob/boss/index each player is currently editing
     private final Map<UUID, EditCtx> ctx = new HashMap<>();
 
-    public LootEditorGUI(SoulEnchants plugin) { this.plugin = plugin; }
+    public LootEditorGUI(SoulEnchants plugin) {
+        this.plugin = plugin;
+        com.soulenchants.util.MapManager.registerMap(pending, "lootEditorPending");
+        com.soulenchants.util.MapManager.registerMap(ctx,     "lootEditorCtx");
+    }
 
     // ── ROOT screen ─────────────────────────────────────────────────────
     public void openRoot(Player p) {

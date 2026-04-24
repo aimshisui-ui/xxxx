@@ -165,6 +165,29 @@ public class CombatListener implements Listener {
     public CombatListener(SoulEnchants plugin) {
         this.plugin = plugin;
         this.cfg = plugin.getEnchantConfig();
+        // Register every UUID-keyed cache with MapManager so quit cleanup is
+        // automatic. Previously each map needed a manual .remove(id) inside
+        // onQuitClearWrath; missing a call meant a leak. Labels feed /ce debug.
+        com.soulenchants.util.MapManager.registerMap(bleedStacks,       "bleedStacks");
+        com.soulenchants.util.MapManager.registerMap(bleedUntil,        "bleedUntil");
+        com.soulenchants.util.MapManager.registerMap(bleedAttacker,     "bleedAttacker");
+        com.soulenchants.util.MapManager.registerMap(bleedCrimsonTongue,"bleedCrimsonTongue");
+        com.soulenchants.util.MapManager.registerMap(antiKbCd,          "antiKbCd");
+        com.soulenchants.util.MapManager.registerMap(lastCombatTick,    "lastCombatTick");
+        com.soulenchants.util.MapManager.registerMap(naturesWrathCd,    "naturesWrathCd");
+        com.soulenchants.util.MapManager.registerSet(naturesWrathRooted,"naturesWrathRooted");
+        com.soulenchants.util.MapManager.registerMap(exsangUntil,       "exsangUntil");
+        com.soulenchants.util.MapManager.registerMap(exsangAttacker,    "exsangAttacker");
+        com.soulenchants.util.MapManager.registerMap(markedBy,          "markedBy");
+        com.soulenchants.util.MapManager.registerMap(markedUntil,       "markedUntil");
+        com.soulenchants.util.MapManager.registerMap(owVictim,          "overwhelmVictim");
+        com.soulenchants.util.MapManager.registerMap(owStacks,          "overwhelmStacks");
+        com.soulenchants.util.MapManager.registerMap(owLast,            "overwhelmLast");
+        com.soulenchants.util.MapManager.registerMap(soulWardenCd,      "soulWardenCd");
+        com.soulenchants.util.MapManager.registerMap(rageVictim,        "rageVictim");
+        com.soulenchants.util.MapManager.registerMap(rageStacks,        "rageStacks");
+        com.soulenchants.util.MapManager.registerMap(rageLast,          "rageLast");
+        com.soulenchants.util.MapManager.registerMap(antiHealBySource,  "antiHealBySource");
         startBleedTicker();
         startExsanguinateTicker();
     }

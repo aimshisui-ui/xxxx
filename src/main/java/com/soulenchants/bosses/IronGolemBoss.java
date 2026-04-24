@@ -32,7 +32,11 @@ public class IronGolemBoss {
     private final IronGolem entity;
     private final Map<UUID, Double> damageDealt = new HashMap<>();
     // Persistent record of every temp block we've placed; emergency cleanup on boss death
-    private final List<Location> activeTempBlocks = new ArrayList<>();
+    // activeTempBlocks retired — all IronGolem temp blocks now route through
+    // TempBlockTracker, which persists to tempblocks.yml so a server crash
+    // mid-fight no longer leaves permanent cobblestone walls in the world.
+    // Tag used for restoreByTag() in stop().
+    private static final String IRONGOLEM_TAG = "irongolem_wall";
     private final IronGolemMinions minions;
     private int idleTicks = 0;
     private boolean despawnAnnounced = false;
@@ -412,9 +416,12 @@ public class IronGolemBoss {
                             Math.sin(angle) * 4 - dx * Math.cos(angle));
                     Material existing = wallLoc.getBlock().getType();
                     if (existing == Material.BEDROCK || existing == Material.COBBLESTONE) continue;
-                    wallLoc.getBlock().setType(Material.COBBLESTONE);
+                    // Place through TempBlockTracker: stores prior material,
+                    // schedules auto-restore at 200 ticks, persists the entry
+                    // so a crash still restores on next boot.
+                    com.soulenchants.util.TempBlockTracker.place(
+                            wallLoc, Material.COBBLESTONE, 200L, IRONGOLEM_TAG);
                     wallLocs.add(wallLoc);
-                    activeTempBlocks.add(wallLoc);
                 }
             }
         }
@@ -431,20 +438,21 @@ public class IronGolemBoss {
             }
         }.runTaskLater(plugin, 160L);
 
-        // Remove walls at 10s — unconditional removal for blocks we placed
+        // Visual "fade" effect at 10s — blocks will already have been
+        // restored by TempBlockTracker's sweeper on the same tick. We just
+        // play the break-sound effect; no block mutation needed.
         new BukkitRunnable() {
             @Override public void run() {
-                int removed = 0;
+                int visible = 0;
                 for (Location l : wallLocs) {
-                    if (l.getBlock().getType() == Material.COBBLESTONE) {
-                        l.getBlock().setType(Material.AIR);
-                        l.getWorld().playEffect(l.clone().add(0.5, 0.5, 0.5), Effect.STEP_SOUND,
-                                Material.COBBLESTONE.getId());
-                        removed++;
-                    }
-                    activeTempBlocks.remove(l);
+                    // The sweeper may have restored some already; only play
+                    // the effect for ones that still happen to be cobble
+                    // (e.g. sweeper hasn't fired yet this tick).
+                    l.getWorld().playEffect(l.clone().add(0.5, 0.5, 0.5), Effect.STEP_SOUND,
+                            Material.COBBLESTONE.getId());
+                    visible++;
                 }
-                plugin.getLogger().info("[IronGolem] Iron Wall removed " + removed + " blocks");
+                plugin.getLogger().info("[IronGolem] Iron Wall fade-fx on " + visible + " blocks");
             }
         }.runTaskLater(plugin, 200L);
     }
@@ -529,11 +537,11 @@ public class IronGolemBoss {
     public void stop(boolean killed) {
         if (tickTask != null) try { tickTask.cancel(); } catch (Exception ignored) {}
         if (minions != null) minions.stop();
-        // Safety net: clean up any temp blocks still in the world
-        for (Location l : new ArrayList<>(activeTempBlocks)) {
-            if (l.getBlock().getType() == Material.COBBLESTONE) l.getBlock().setType(Material.AIR);
-        }
-        activeTempBlocks.clear();
+        // Force-restore every TempBlockTracker entry tagged as this boss's
+        // Iron Wall. Covers mid-fight despawn (before 200-tick natural
+        // restore) and /reload death.
+        int restored = com.soulenchants.util.TempBlockTracker.restoreByTag(IRONGOLEM_TAG);
+        if (restored > 0) plugin.getLogger().info("[IronGolem] stop() restored " + restored + " Iron Wall blocks");
         if (killed) plugin.getServer().broadcastMessage(ChatColor.GOLD + "" + ChatColor.BOLD
                 + "✦ The Ironheart Colossus has fallen. ✦");
     }

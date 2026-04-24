@@ -819,19 +819,18 @@ public final class Abilities {
                     // their webs clear independently if decay were to drift.
                     for (final Player target : nearby) {
                         Location base = target.getLocation();
-                        final org.bukkit.block.Block[] blocks = new org.bukkit.block.Block[] {
-                                base.getBlock(),
-                                base.clone().add(0, 1, 0).getBlock()
-                        };
-                        final Material[] prev = new Material[blocks.length];
-                        final byte[]     prevData = new byte[blocks.length];
-                        for (int i = 0; i < blocks.length; i++) {
-                            prev[i] = blocks[i].getType();
-                            prevData[i] = blocks[i].getData();
-                            if (prev[i] == Material.AIR) {
-                                blocks[i].setType(Material.WEB);
-                            }
-                        }
+                        // v1.4: route through TempBlockTracker so mid-fight
+                        // server crashes no longer leave cobwebs stuck around
+                        // the victim's feet until someone mines them. Only
+                        // place over AIR — don't overwrite player structures.
+                        Location lower = base.clone();
+                        Location upper = base.clone().add(0, 1, 0);
+                        if (lower.getBlock().getType() == Material.AIR)
+                            com.soulenchants.util.TempBlockTracker.place(
+                                    lower, Material.WEB, decayTicks, "web_trap");
+                        if (upper.getBlock().getType() == Material.AIR)
+                            com.soulenchants.util.TempBlockTracker.place(
+                                    upper, Material.WEB, decayTicks, "web_trap");
                         try {
                             target.sendTitle("§2§l✦ CAUGHT ✦", "§aCut free before she closes in");
                         } catch (Throwable ignored) {}
@@ -839,20 +838,6 @@ public final class Abilities {
                             target.getWorld().playEffect(
                                     target.getLocation().add(0, 0.5, 0), Effect.SMOKE, 4);
                         }
-                        new BukkitRunnable() {
-                            @Override public void run() {
-                                // Revert only blocks we placed; if a player broke
-                                // the web between now and decay, leave it broken.
-                                for (int i = 0; i < blocks.length; i++) {
-                                    if (blocks[i].getType() == Material.WEB && prev[i] == Material.AIR) {
-                                        blocks[i].setType(Material.AIR);
-                                    } else if (blocks[i].getType() == Material.WEB && prev[i] != Material.AIR) {
-                                        blocks[i].setType(prev[i]);
-                                        blocks[i].setData(prevData[i]);
-                                    }
-                                }
-                            }
-                        }.runTaskLater(pl, decayTicks);
                     }
                 }
             };

@@ -46,7 +46,14 @@ public final class MaskAbilityTask implements Listener {
     private static final long PHANTOM_DUR_MS  = 2_000L;
     private static final long SOULHARVEST_CD  = 30_000L;
 
-    public MaskAbilityTask(SoulEnchants plugin) { this.plugin = plugin; }
+    public MaskAbilityTask(SoulEnchants plugin) {
+        this.plugin = plugin;
+        com.soulenchants.util.MapManager.registerMap(stalkerSneakStart, "stalkerSneakStart");
+        com.soulenchants.util.MapManager.registerMap(stalkerLastPos,    "stalkerLastPos");
+        com.soulenchants.util.MapManager.registerMap(stalkerActive,     "stalkerActive");
+        com.soulenchants.util.MapManager.registerMap(phantomLast,       "phantomLast");
+        com.soulenchants.util.MapManager.registerMap(soulHarvestCd,     "soulHarvestCd");
+    }
 
     public void start() {
         task = new BukkitRunnable() {

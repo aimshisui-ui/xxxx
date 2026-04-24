@@ -70,6 +70,13 @@ public class SoulEnchants extends JavaPlugin {
     public void onEnable() {
         System.err.println(">>> SE onEnable starting");
         saveDefaultConfig();
+        // Phase 1 — cleanup infrastructure MUST load first: MapManager's quit
+        // listener evicts UUID-cache entries for every subsystem below, and
+        // TempBlockTracker.install recovers any blocks a prior crash left in
+        // the world (cobblestone walls, cobwebs, etc.) so bosses can place
+        // fresh ones with a clean slate.
+        com.soulenchants.util.MapManager.install(this);
+        com.soulenchants.util.TempBlockTracker.install(this);
         com.soulenchants.util.BossHealthHack.raise();
         System.err.println(">>> SE: about to call RiftWorld.ensure");
         try {
@@ -306,21 +313,40 @@ public class SoulEnchants extends JavaPlugin {
         for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
             p.setMaxHealth(20.0);
         }
-        if (scoreboardManager != null) scoreboardManager.stop();
-        if (soulManager != null) soulManager.save();
-        if (lootFilterManager != null) lootFilterManager.save();
-        if (pvpStats != null) pvpStats.save();
-        if (guildManager != null) { guildManager.stop(); guildManager.save(); }
-        if (clarityTask != null) clarityTask.stop();
-        if (petManager != null) petManager.stop();
-        if (setManager != null) setManager.stop();
-        if (veilweaverManager != null && veilweaverManager.getActive() != null)
-            veilweaverManager.getActive().stop(false);
-        if (ironGolemManager != null && ironGolemManager.getActive() != null)
-            ironGolemManager.getActive().stop(false);
-        if (modockManager != null && modockManager.getActive() != null)
-            modockManager.getActive().stop(false);
+        // Stop subsystems in reverse-init order. Each wrapped in try/catch so
+        // a single throwing stop() can't abort the rest of the shutdown.
+        safe(new Runnable() { public void run() { if (scoreboardManager != null) scoreboardManager.stop(); }});
+        safe(new Runnable() { public void run() { if (soulManager != null) soulManager.save(); }});
+        safe(new Runnable() { public void run() { if (lootFilterManager != null) lootFilterManager.save(); }});
+        safe(new Runnable() { public void run() { if (pvpStats != null) pvpStats.save(); }});
+        safe(new Runnable() { public void run() { if (guildManager != null) { guildManager.stop(); guildManager.save(); } }});
+        safe(new Runnable() { public void run() { if (clarityTask != null) clarityTask.stop(); }});
+        safe(new Runnable() { public void run() { if (petManager != null) petManager.stop(); }});
+        safe(new Runnable() { public void run() { if (setManager != null) setManager.stop(); }});
+        safe(new Runnable() { public void run() { if (veilweaverManager != null && veilweaverManager.getActive() != null) veilweaverManager.getActive().stop(false); }});
+        safe(new Runnable() { public void run() { if (ironGolemManager != null && ironGolemManager.getActive() != null) ironGolemManager.getActive().stop(false); }});
+        safe(new Runnable() { public void run() { if (modockManager != null && modockManager.getActive() != null) modockManager.getActive().stop(false); }});
+        // Phase 1 — drain registered UUID caches and restore every tracked
+        // temporary block before we unload. Belt-and-suspenders so a crash
+        // mid-shutdown doesn't leave world damage behind.
+        safe(new Runnable() { public void run() {
+            int blocks = com.soulenchants.util.TempBlockTracker.restoreAll();
+            getLogger().info("[cleanup] Restored " + blocks + " temp blocks on shutdown.");
+        }});
+        safe(new Runnable() { public void run() { com.soulenchants.util.TempBlockTracker.shutdown(); }});
+        safe(new Runnable() { public void run() { com.soulenchants.util.MapManager.clearAll(); }});
+        // Cancel any outstanding scheduler tasks owned by this plugin. A
+        // BukkitRunnable started without being tracked still gets cancelled
+        // by this sweep. Load-bearing for /reload.
+        safe(new Runnable() { public void run() { getServer().getScheduler().cancelTasks(SoulEnchants.this); }});
         getLogger().info("SoulEnchants disabled, data saved.");
+    }
+
+    /** Run a shutdown step with try/catch so one failing manager can't stop
+     *  the rest of the plugin from draining cleanly. */
+    private void safe(Runnable step) {
+        try { step.run(); }
+        catch (Throwable t) { getLogger().warning("[onDisable step] " + t); }
     }
 
     public SoulManager getSoulManager() { return soulManager; }

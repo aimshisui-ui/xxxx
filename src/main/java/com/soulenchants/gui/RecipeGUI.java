@@ -52,6 +52,10 @@ public class RecipeGUI implements Listener {
 
     private final Map<UUID, Integer> currentPage = new HashMap<>();
 
+    public RecipeGUI() {
+        com.soulenchants.util.MapManager.registerMap(currentPage, "recipeGuiPage");
+    }
+
     public void openList(Player p) {
         openList(p, 0);
     }
