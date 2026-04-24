@@ -102,6 +102,30 @@ public final class Abilities {
         return AbilitySpec.of("sticky_targeter", "range", range);
     }
 
+    // ── ELITE BOSS BUNDLES ───────────────────────────────────────────────
+    // v1.5 convenience helpers — return a List of AbilitySpec so elite
+    // mob registrations don't have to hand-list the 5-6 "every boss has
+    // this" abilities. Matches the intent of BossCommonBehaviors for
+    // FSM-driven bosses: shared boilerplate lives in one place.
+
+    /** Standard elite-boss baseline: fire resistance, sticky targeting at
+     *  the given range, and Strength II. Use as a spread inside the
+     *  Arrays.asList(...) for an elite registration:
+     *
+     *    Arrays.asList(
+     *      ... Abilities.eliteBaseline(28.0).toArray(new AbilitySpec[0]),
+     *      Abilities.bossAttack(...),
+     *      ...
+     *    );
+     */
+    public static java.util.List<AbilitySpec> eliteBaseline(double stickyRange) {
+        java.util.List<AbilitySpec> out = new java.util.ArrayList<>();
+        out.add(fireResistance());
+        out.add(stickyTargeter(stickyRange));
+        out.add(strength(1));
+        return out;
+    }
+
     // ── ON-DEATH ─────────────────────────────────────────────────────────
 
     public static AbilitySpec deathExplode(double damage, int radius) {

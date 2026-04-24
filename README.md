@@ -141,6 +141,25 @@ Note: Rich Presence was removed — Lunar requires server listing in their curat
 - **Oakenheart** is FSM-native from day one (9 state files).
 - CustomMob-based bosses (Hollow King + 3 elites) keep their existing declarative `AbilityFactory` pattern — already well-structured, doesn't benefit from FSM migration.
 
+**v1.5 — infrastructure hardening + instrumentation** (commit `285d8c2` onward):
+- **`data/ProfileService`** — central async-load orchestrator. Per-player YAML readers register an `AsyncLoader` → pre-login futures fire on `AsyncPlayerPreLoginEvent` so disk I/O never blocks `PlayerJoinEvent`. 3-second ceiling per player. Infrastructure ships first; existing managers already boot-eager-cache, but the hook is in place for every future system.
+- **`bosses/fsm/BossCommonBehaviors`** — static helpers for the repeated behaviors that used to live inline in every FSM boss: `retargetNearestPlayer`, `meleeEnforcer`, `ambientRing`, `tickDespawn` (with `DespawnState` + result enum), `renderHpBar`, `nearbyPlayers`. Adopted by IronGolem and Oakenheart in full; Veilweaver uses the melee enforcer helper (its other behaviors are arena-specific).
+- **`util/DmgTrace`** + **`/ce dmg-trace <player>`** — admin per-player damage-pipeline tracer. Toggle for 60 seconds; every outgoing hit streams a full breakdown (base, capped bonus, multiplier, flat add, mask mult, final) to the target's chat. Zero overhead when nobody's tracing.
+- **`mythic/state/MythicStateRegistry`** — per-wielder mythic state blobs, replacing shared-instance fields that caused latent multi-wielder bugs. Dawnbringer migrated as the pilot (its `lastPurge` cooldown now isolated per wielder UUID). Auto-evicts on quit via `MapManager`.
+- **`Abilities.eliteBaseline(range)`** — bundles fire-resistance + sticky-targeting + Strength II for new elite-mob registrations.
+- **`/stats [player]`** + **`/stats top [kills|kdr]`** + **`/stats reset <player>`** (admin) — K/D, soul balance, tier profile display + leaderboards + targeted K/D-only reset.
+
+### Guardrails
+
+Every sprint preserves these:
+
+1. `/ce debug` temp-block count stays at 0 on idle. New world-block features route through `TempBlockTracker`.
+2. Every new UUID-keyed cache registers with `MapManager`.
+3. Every new phase in `onEnable` uses `safePhase()`.
+4. Every new boss extends the `BossState<C>` framework.
+5. **No new YAML load on the main thread during `PlayerJoinEvent`.** Load async via `AsyncPlayerPreLoginEvent` through `ProfileService`; read from cache in the sync join handler.
+6. Every new mythic with time-based state uses `MythicStateRegistry`, not instance fields.
+
 ---
 
 ## Commands
@@ -151,6 +170,8 @@ Note: Rich Presence was removed — Lunar requires server listing in their curat
 | `/ce bossset` · `/ce godset` | PvE / PvP loadouts (fully enchanted) |
 | `/ce summon <id>` | Spawn any CustomMob or boss at your location |
 | `/ce debug` | Live UUID-cache + temp-block diagnostic |
+| `/ce dmg-trace <player>` · `/ce dmg-dump <player>` | ★ v1.5 — per-player damage pipeline tracer |
+| `/stats [player]` · `/stats top [kills\|kdr]` · `/stats reset <player>` | ★ v1.5 — stat profile + leaderboards + admin K/D wipe |
 | `/ce reload [enchants\|loot\|all]` | Live-reload balance without restart |
 | `/souls` · `/souls withdraw <amount>` · `/souls give\|take\|set` | Soul Bank + Gems |
 | `/mythic list \| give <id> [player] \| infuse <id> \| clear` | Mythic admin + ability slots |
@@ -204,7 +225,8 @@ Every optional dep is hot-loaded with a no-op fallback if absent.
 
 ## Version history
 
-- **v1.4** (current) — Phase 1 cleanup hygiene (MapManager + TempBlockTracker), Phase 4 onEnable god-class split, Phase 3 boss FSM refactor (IronGolem + Veilweaver), new Oakenheart boss (Forest Sovereign, 3 phases, summon-only via Ritual Sapling), Modock removed entirely, TierChatPrefix removed.
+- **v1.5** (current) — ProfileService async-load scaffold + AsyncPlayerPreLogin guardrail, BossCommonBehaviors extraction (adopted by IronGolem + Oakenheart), `/ce dmg-trace` + `/ce dmg-dump` per-player damage-pipeline tracer, MythicStateRegistry (Dawnbringer migration pilot), Abilities.eliteBaseline() bundle helper, `/stats` command + `/stats top` leaderboards + admin `/stats reset`.
+- **v1.4** — Phase 1 cleanup hygiene (MapManager + TempBlockTracker), Phase 4 onEnable god-class split, Phase 3 boss FSM refactor (IronGolem + Veilweaver), new Oakenheart boss (Forest Sovereign, 3 phases, summon-only via Ritual Sapling), Modock removed entirely, TierChatPrefix removed.
 - **v1.3** — Slot orbs (9 → 14 enchant slots), Rage enchant ported from Nordic, mask system redesign with tiers + abilities, ObsidianShield, Choirmaster nerf, boss armor TTK fix.
 - **v1.2** — Pet system (7 archetypes), 16 new enchants, 3 new PvE mythics, 6 new masks, 3 godset-tier elite bosses, god-tier armor enchants, `/ce bossset` with perfectly-enchanted mythics.
 - **v1.1** — Soul Gems, mythic weapons, Nordic masks, Apollo bridge, `/g ping`, reloadable YAML, aesthetic overhaul.

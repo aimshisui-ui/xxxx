@@ -2,6 +2,8 @@ package com.soulenchants.mythic.impl;
 
 import com.soulenchants.config.MythicConfig;
 import com.soulenchants.mythic.MythicWeapon;
+import com.soulenchants.mythic.state.MythicStateHandle;
+import com.soulenchants.mythic.state.MythicStateRegistry;
 import com.soulenchants.style.MessageStyle;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -10,12 +12,16 @@ import org.bukkit.potion.PotionEffectType;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
-/** Aura purges negative effects from wielder + guildmates in radius. */
+/** Aura purges negative effects from wielder + guildmates in radius.
+ *  v1.5 — per-wielder purge cooldown via MythicStateRegistry. Previously
+ *  lastPurge was a shared field on the singleton MythicWeapon instance,
+ *  so two players wielding Dawnbringer at once stepped on each other's
+ *  cadence. MythicStateHandle isolates state per wielder UUID. */
 public final class Dawnbringer extends MythicWeapon {
 
     private final MythicConfig cfg;
-    private long lastPurge;
 
     public Dawnbringer(MythicConfig cfg) {
         super("dawnbringer", "Dawnbringer", ProximityMode.AURA);
@@ -36,16 +42,14 @@ public final class Dawnbringer extends MythicWeapon {
 
     @Override
     public void onAuraTick(Player owner) {
+        DawnbringerState state = MythicStateRegistry.getOrCreate(
+                owner, "dawnbringer", DawnbringerState::new);
         long now = System.currentTimeMillis();
-        // Purge interval is in ticks; convert to ms.
         long intervalMs = cfg.dawnbringerPurgeIntervalTicks * 50L;
-        if (now - lastPurge < intervalMs) return;
-        lastPurge = now;
-        // Self — strip debuffs, then +1 Regen above current tier (stacks with
-        // Implants / Soul Warden etc. instead of overwriting them).
+        if (now - state.lastPurge < intervalMs) return;
+        state.lastPurge = now;
         stripNegatives(owner);
         com.soulenchants.util.AuraStacker.bump(owner, PotionEffectType.REGENERATION, 60);
-        // Nearby players (guild-filtering is optional — omit the hard dep and buff all allies)
         for (Entity e : owner.getNearbyEntities(cfg.dawnbringerAuraRadius,
                 cfg.dawnbringerAuraRadius, cfg.dawnbringerAuraRadius)) {
             if (!(e instanceof Player)) continue;
@@ -63,5 +67,12 @@ public final class Dawnbringer extends MythicWeapon {
         p.removePotionEffect(PotionEffectType.WEAKNESS);
         p.removePotionEffect(PotionEffectType.CONFUSION);
         p.removePotionEffect(PotionEffectType.SLOW_DIGGING);
+    }
+
+    /** Per-wielder purge-cooldown state. Replaces the ex-shared
+     *  `private long lastPurge` field on the MythicWeapon singleton. */
+    public static final class DawnbringerState extends MythicStateHandle {
+        public long lastPurge = 0L;
+        public DawnbringerState(UUID wielder, String mythicId) { super(wielder, mythicId); }
     }
 }
